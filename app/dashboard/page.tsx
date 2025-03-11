@@ -11,6 +11,7 @@ import ConfiguracionContent from "@/components/ConfiguracionContent";
 
 export default function Dashboard() {
   const [activePage, setActivePage] = useState("menu");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const renderContent = () => {
     switch (activePage) {
@@ -52,9 +53,19 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen bg-[#f5f5f5]">
-      {/* Sidebar */}
-      <aside className="hidden md:flex flex-col w-50 bg-white border-r border-[#e6e6e6]">
-        <div className="p-6">
+      {/* Overlay for mobile menu */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 z-20 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar - Modified for mobile */}
+      <aside className={`fixed md:static md:flex flex-col w-50 md:w-44 bg-white border-r border-[#e6e6e6] h-full z-30 transition-transform duration-300 ${
+        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+      } md:translate-x-0`}>
+        <div className="p-4">
           <h1 className="text-xl font-bold text-[#1b1f26]">Trade Hub</h1>
         </div>
         <nav className="flex-1 overflow-y-auto">
@@ -122,9 +133,12 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
+        {/* Header - Modified menu button */}
         <header className="bg-white border-b border-[#e6e6e6] py-4 px-6 flex items-center justify-between">
-          <button className="md:hidden p-2 rounded-md text-[#667085] hover:bg-[#f5f5f5]">
+          <button 
+            className="md:hidden p-2 rounded-md text-[#667085] hover:bg-[#f5f5f5]"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
             <Menu className="h-6 w-6" />
           </button>
           <div className="relative flex-1 max-w-md ml-4 md:ml-0">
