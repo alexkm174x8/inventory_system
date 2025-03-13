@@ -1,24 +1,28 @@
 import { Zap } from "lucide-react"
 
-export default function LoginLogo() {
+export default function LoginLogo({ size = 64 }) {
   return (
-    <div className="relative flex h-64 w-64 items-center justify-center">
+    <div className={`relative flex items-center justify-center`} style={{ height: size, width: size }}>
       {/* Outer circle */}
-      <div className="absolute h-64 w-64 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 opacity-80"></div>
+      <div className="absolute rounded-full bg-gradient-to-r from-purple-600 to-pink-500 opacity-80" 
+           style={{ height: size, width: size }}></div>
 
       {/* Middle circle */}
-      <div className="absolute h-56 w-56 rounded-full bg-gradient-to-r from-purple-500 to-pink-400 opacity-80"></div>
+      <div className="absolute rounded-full bg-gradient-to-r from-purple-500 to-pink-400 opacity-80" 
+           style={{ height: size * 0.875, width: size * 0.875 }}></div>
 
       {/* Inner circle */}
-      <div className="absolute h-48 w-48 rounded-full bg-gradient-to-r from-purple-400 to-pink-300 opacity-80"></div>
+      <div className="absolute rounded-full bg-gradient-to-r from-purple-400 to-pink-300 opacity-80" 
+           style={{ height: size * 0.75, width: size * 0.75 }}></div>
 
       {/* White background for the icon */}
-      <div className="absolute h-40 w-40 rounded-full bg-white"></div>
+      <div className="absolute rounded-full bg-white" 
+           style={{ height: size * 0.625, width: size * 0.625 }}></div>
 
       {/* Lightning bolt icon */}
       <div className="relative z-10">
-        <Zap size={80} className="text-red-800" />
+        <Zap size={size * 0.3125} className="text-red-800" />
       </div>
     </div>
-  )
+  );
 }

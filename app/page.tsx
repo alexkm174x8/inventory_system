@@ -47,7 +47,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-white p-4">
       <div className="flex w-full max-w-4xl flex-col items-center justify-center gap-8 md:flex-row md:items-start md:gap-16">
         <div className="flex flex-col items-center">
-          <LoginLogo />
+          <LoginLogo size={300} />
         </div>
         <div className="w-full max-w-md space-y-6">
           <div className="space-y-2 text-center md:text-left">
