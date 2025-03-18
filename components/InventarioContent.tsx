@@ -1,82 +1,90 @@
-import React from 'react'
-import { Eye } from 'lucide-react';
-import { SlidersHorizontal } from 'lucide-react';
-import { ChevronLeft } from 'lucide-react';
-import {ChevronRight} from 'lucide-react';
-import { Plus } from 'lucide-react';
-import { ClipboardPlus } from 'lucide-react';
+import React, { useState } from 'react'
+import { Eye, SlidersHorizontal, ChevronLeft, ChevronRight, Plus, ClipboardPlus } from 'lucide-react';
+import CreateProductView from './CreateProductView';
 
 const InventarioContent = () => {
+  const [showCreateProduct, setShowCreateProduct] = useState(false);
+
   return (
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
-      {/* Stats Cards */}
-      <div className="flex gap-4 mb-9">
-        <button className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg'>
-          <Plus className="w-4 h-4" />
-          Crear producto
-        </button>
-        <button className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg'>
-          <ClipboardPlus className="w-4 h-4" />
-          Agregar inventario
-        </button>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white rounded-lg shadow p-10 mb-12 ">
-        {/* Tabla 1 */}
-        <div className="w-full">
-          <table className='table-fixed w-full'>
-            <tbody>
-              <tr>
-                <td><h2 className="text-base font-bold uppercase text-orange-300">Productos Totales</h2></td>
-              </tr>
-              <tr>
-                <td >870</td>
-                <td >$20,000</td>
-              </tr>
-              <tr className='text-neutral-400 text-sm'>
-                <td >Ultimos 7 dias</td>
-                <td >Cantidad </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        {/* Tabla 2 */}
-        <div className='w-full'>
-          <table className='table-fixed w-full'>
-            <tbody>
-              <tr>
-                <td><h2 className="text-base font-bold uppercase text-violet-300">Mas vendidos</h2></td>
-              </tr>
-              <tr>
-                <td >870</td>
-                <td >$20,000</td>
-              </tr>
-              <tr className='text-neutral-400 text-sm'>
-                <td >Ultimos 7 dias</td>
-                <td >Cantidad </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        {/* Tabla 3 */}
-        <div className='w-full'>
-          <table className='table-fixed w-full'>
-            <tbody>
-              <tr>
-                <td ><h2 className="text-base font-bold uppercase text-red-500">Menos vendidos</h2></td>
-              </tr>
-              <tr>
-                <td >870</td>
-                <td >$20,000</td>
-              </tr>
-              <tr className='text-neutral-400 text-sm'>
-                <td >Ultimos 7 dias</td>
-                <td>Cantidad </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div className="bg-white rounded-lg border border-[#e6e6e6] shadow-sm mb-6">
+      {showCreateProduct ? (
+        <CreateProductView onClose={() => setShowCreateProduct(false)} />
+      ) : (
+        <>
+          <div className="flex gap-4 mb-9">
+            <button 
+              onClick={() => setShowCreateProduct(true)}
+              className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg'
+            >
+              <Plus className="w-4 h-4" />
+              Crear producto
+            </button>
+            <button className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg'>
+              <ClipboardPlus className="w-4 h-4" />
+              Agregar inventario
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white rounded-lg shadow p-10 mb-12 ">
+            {/* Tabla 1 */}
+            <div className="w-full">
+              {/* TODO: Specific size gets to close */}
+              
+              <table className='table-fixed w-full'>
+                <tbody>
+                  <tr>
+                    <td><h2 className="whitespace-nowrap text-base font-bold uppercase text-orange-300">Productos Totales</h2></td>
+                  </tr>
+                  <tr>
+                    <td >870</td>
+                    <td >$20,000</td>
+                  </tr>
+                  <tr className='text-neutral-400 text-sm'>
+                    <td >Ultimos 7 dias</td>
+                    <td >Cantidad </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            {/* Tabla 2 */}
+            <div className='w-full'>
+              <table className='table-fixed w-full'>
+                <tbody>
+                  <tr>
+                    <td><h2 className="text-base font-bold uppercase text-violet-300">Mas vendidos</h2></td>
+                  </tr>
+                  <tr>
+                    <td >870</td>
+                    <td >$20,000</td>
+                  </tr>
+                  <tr className='text-neutral-400 text-sm'>
+                    <td >Ultimos 7 dias</td>
+                    <td >Cantidad </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            {/* Tabla 3 */}
+            <div className='w-full'>
+              <table className='table-fixed w-full'>
+                <tbody>
+                  <tr>
+                    <td ><h2 className="text-base font-bold uppercase text-red-500">Menos vendidos</h2></td>
+                  </tr>
+                  <tr>
+                    <td >870</td>
+                    <td >$20,000</td>
+                  </tr>
+                  <tr className='text-neutral-400 text-sm'>
+                    <td >Ultimos 7 dias</td>
+                    <td>Cantidad </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-[#e6e6e6] shadow-sm mb-6">
             <div className="px-6 py-4 border-b border-[#e6e6e6] flex justify-between items-center">
               <h2 className="text-lg font-medium text-[#1b1f26]">Productos</h2>
               <button className='border-2 px-3 py-2 flex items-center gap-2 rounded-sm'>
@@ -180,6 +188,8 @@ const InventarioContent = () => {
               </div>
             </div>
           </div>
+        </>
+      )}
     </main>
   )
 }

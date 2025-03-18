@@ -1,6 +1,6 @@
 'use client'
 import { useState } from "react";
-import { Search, Bell, ChevronDown, BarChart2, Users, CircleDollarSign, LogOut, Menu, Archive, User, Store, Settings } from "lucide-react";
+import { Bell, ChevronDown, BarChart2, Users, CircleDollarSign, LogOut, Menu, Archive, User, Store, Settings } from "lucide-react";
 import MenuContent from "@/components/MenuContent";
 import InventarioContent from "@/components/InventarioContent";
 import ClientesContent from "@/components/ClientesContent";
@@ -121,7 +121,7 @@ export default function Dashboard() {
             onClick={() => setActivePage("configuracion")}
             className={`flex items-center w-full px-4 py-2 text-sm font-medium rounded-md ${activePage === "configuracion" ? "bg-[#e8f1fd] text-[#007aff]" : "text-[#667085] hover:bg-[#f5f5f5]"}`}
           >
-            <Settings className="mr-3 h-5 w-5" />
+            <Settings className="mr-2 h-6 w-6" />
             Configuración
           </button>
           <button className="flex items-center w-full px-4 py-2 text-sm font-medium text-[#667085] rounded-md hover:bg-[#f5f5f5]">
