@@ -8,6 +8,12 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import LoginLogo from "@/components/login-logo"
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = 'https://dijctnuytoiqorvkcjmq.supabase.co'
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+const supabase = createClient(supabaseUrl, supabaseKey!)
 
 export default function LoginPage() {
   const router = useRouter()
@@ -16,7 +22,7 @@ export default function LoginPage() {
   const [emailError, setEmailError] = useState("")
   const [passwordError, setPasswordError] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     setEmailError("")
@@ -38,8 +44,26 @@ export default function LoginPage() {
     }
 
     if (isValid) {
-      console.log("Login attempted with:", { email, password })
-      router.push("/dashboard")
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+
+        if (error) {
+          console.error("Login error:", error)
+          setPasswordError("Correo electrónico o contraseña incorrectos")
+          return
+        }
+
+        if (data.user) {
+          console.log("Login successful:", data.user)
+          router.push("/dashboard")
+        }
+      } catch (error) {
+        console.error("Login error:", error)
+        setPasswordError("Error al iniciar sesión. Por favor, intenta de nuevo.")
+      }
     }
   }
 
