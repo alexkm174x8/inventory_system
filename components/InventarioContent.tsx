@@ -1,14 +1,59 @@
-import React, { useState } from 'react'
-import { Eye, SlidersHorizontal, ChevronLeft, ChevronRight, Plus, ClipboardPlus } from 'lucide-react';
-import CreateProductView from './CreateProductView';
-
+import React, { useState, useEffect } from 'react';
+import { Eye, SlidersHorizontal, ChevronLeft, ChevronRight, Plus, Check } from 'lucide-react';
+import CreateProductView, { Product } from './CreateProductView';
+import AddProductToStock, { StockRecord } from './AddProductToStock';
+import ProductDetailView from './ProductDetailView';
 const InventarioContent = () => {
   const [showCreateProduct, setShowCreateProduct] = useState(false);
+  const [showAddProductToStock, setShowAddProductToStock] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<(StockRecord & Product) | null>(null)
+  const [filterStatus, setFilterStatus] = useState("Todos");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [inventory, setInventory] = useState<StockRecord[]>([]);
+
+  const handleSaveProduct = (newProduct: Product) => {
+    setProducts((prev) => [newProduct, ...prev]);
+  };
+
+  const handleSaveStock = (newStock: StockRecord) => {
+    setInventory((prev) => [newStock, ...prev]);
+  };
+
+  const itemsPerPage = 5;
+  const filteredData = inventory.filter(stock => filterStatus === "Todos" );
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentData = filteredData.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus]);
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+  }
 
   return (
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
-      {showCreateProduct ? (
-        <CreateProductView onClose={() => setShowCreateProduct(false)} />
+      {selectedProduct ? (
+        <ProductDetailView 
+          product={selectedProduct} 
+          onClose={() => setSelectedProduct(null)} 
+        />
+      ) : showCreateProduct ? (
+        <CreateProductView 
+          onClose={() => setShowCreateProduct(false)}
+          onSaveProduct={handleSaveProduct}
+        />
+      ) : showAddProductToStock ? (
+        <AddProductToStock 
+          products={products} 
+          onSaveStock={handleSaveStock} 
+          onClose={() => setShowAddProductToStock(false)} 
+        />
       ) : (
         <>
           <div className="flex gap-4 mb-9">
@@ -19,12 +64,14 @@ const InventarioContent = () => {
               <Plus className="w-4 h-4" />
               Crear producto
             </button>
-            <button className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg'>
-              <ClipboardPlus className="w-4 h-4" />
+            <button 
+              onClick={() => setShowAddProductToStock(true)}
+              className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg'
+            >
+              <Plus className="w-4 h-4" />
               Agregar inventario
             </button>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white rounded-lg shadow p-10 mb-12 ">
             {/* Tabla 1 */}
             <div className="w-full">
@@ -83,105 +130,88 @@ const InventarioContent = () => {
               </table>
             </div>
           </div>
-
-          <div className="bg-white rounded-lg border border-[#e6e6e6] shadow-sm mb-6">
+          <div className="bg-white rounded-lg border border-[#e6e6e6] shadow-sm mt-8">
             <div className="px-6 py-4 border-b border-[#e6e6e6] flex justify-between items-center">
-              <h2 className="text-lg font-medium text-[#1b1f26]">Productos</h2>
-              <button className='border-2 px-3 py-2 flex items-center gap-2 rounded-sm'>
-              <SlidersHorizontal className="w-4 h-4" />
-                Filters
-              </button>
+              <h2 className="text-lg font-medium text-[#1b1f26]">Tabla de inventario</h2>
+              <div className="relative">
+                <button
+                  className="border-2 px-3 py-2 flex items-center gap-2 rounded-sm hoover:bg-gray-100"
+                  onClick={toggleDropdown} 
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  {filterStatus}
+                </button>
+                {isDropdownOpen && (
+                  <div className="absolute top-12 right-0 bg-white shadow-md border rounded-md w-40">
+                    {["Todos"].map((option) => (
+                      <button
+                        key={option}
+                        className={`flex justify-between px-4 py-2 w-full text-left hover:bg-gray-100 ${
+                          filterStatus === option ? "font-ragular" : ""
+                        }`}
+                        onClick={() => {
+                          setFilterStatus(option);
+                          setIsDropdownOpen(false);
+                        }}
+                      >
+                        {option}
+                        {filterStatus === option && <span><Check className='w-4 h-4 text-blue-700 '/></span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+              
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#f5f5f5]">
-                    <th className="px-3 py-3 text-left text-xs font-medium text-[#667085] uppercase tracking-wider">
-                      Producto
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-[#667085] uppercase tracking-wider">
-                      Precio unitario
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-[#667085] uppercase tracking-wider">
-                      Cantidad en existencia 
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-[#667085] uppercase tracking-wider">
-                      Fecha de llegada 
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-[#667085] uppercase tracking-wider">
-                      Disponibilidad
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-[#667085] uppercase tracking-wider">
-                      Ver mas
-                    </th>
+                  <tr className="bg-[#f5f5f5] text-center">
+                    {["Producto", "Cantidad", "Fecha de entrada", "Ver más"].map((header) => (
+                      <th key={header} className="px-3 py-3 text-xs font-medium text-[#667085] uppercase tracking-wider">
+                        {header}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#e6e6e6]">
-                  {[
-                    {
-                      name: "Pantalón azul marino",
-                      price_pu: "$30.00 MXN",
-                      ex_quantity : "50",
-                      arrival_date: "02/30/2025",
-                      status: "In stock",
-                      statusColor: "bg-[#ebffed] text-[#10a760]",
-                      seemore: <Eye/>
-                    },
-                    {
-                      name: "Pantalón azul claro",
-                      price_pu: "$40.00 MXN",
-                      ex_quantity : "20",
-                      arrival_date: "04/30/2025",
-                      status: "In stock",
-                      statusColor: "bg-[#ebffed] text-[#10a760]",
-                      seemore: <Eye/>
-                    },
-                    {
-                      name: "Pantalón azul claro",
-                      price_pu: "$40.00 MXN",
-                      ex_quantity : "20",
-                      arrival_date: "04/30/2025",
-                      status: "Out of stock",
-                      statusColor: "bg-red-200 text-red-600",
-                      seemore: <Eye/>
-                    },
-                    {
-                      name: "Pantalón azul claro",
-                      price_pu: "$40.00 MXN",
-                      ex_quantity : "20",
-                      arrival_date: "04/30/2025",
-                      status: "Out of stock",
-                      statusColor: "bg-red-200 text-red-600",
-                      seemore: <Eye/>
-                    }
-
-                  ].map((product, i) => (
-                    <tr key={i} >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]">{product.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{product.price_pu}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{product.ex_quantity}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#1b1f26] font-medium">{product.arrival_date}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${product.statusColor}`}
-                        >
-                          {product.status}
-                        </span>
+                <tbody className="divide-y divide-[#e6e6e6] text-center">
+                  {currentData.map((stock, i) => (
+                    <tr key={i}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]">{stock.productName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{stock.quantity}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{stock.entryDate}</td>
+                      <td 
+                        className="px-6 py-4 text-[#007aff] hover:text-[#e8f1fd] cursor-pointer"
+                        onClick={() => {
+                          const foundProduct = products.find((p) => p.name === stock.productName);
+                          if (foundProduct) {
+                            setSelectedProduct({ ...stock, ...foundProduct });
+                          }
+                        }}
+                      >
+                        <Eye />
                       </td>
-                      <td className='px-6 py-4 text-[#007aff]  hover:text-[#e8f1fd]'>{product.seemore}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <div className="px-6 py-4 border-b border-[#e6e6e6] flex justify-between items-center">
-                <button className="border-2 px-3 py-2 flex items-center gap-2 rounded-sm">
+              <div className="px-6 py-4 border-t border-[#e6e6e6] flex justify-between items-center">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  className={`border-2 px-3 py-2 flex items-center gap-2 rounded-sm ${currentPage === 1 ? "opacity-50 cursor-not-allowed" : ""}`}
+                  disabled={currentPage === 1}
+                >
                   <ChevronLeft className="w-4 h-4" />
                   Anterior
                 </button>
                 <span className="text-xs font-medium text-[#667085] uppercase tracking-wider">
-                  Página 1 de 10
+                  Página {currentPage} de {totalPages}
                 </span>
-                <button className="border-2 px-3 py-2 flex items-center gap-2 rounded-sm">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  className={`border-2 px-3 py-2 flex items-center gap-2 rounded-sm ${currentPage === totalPages ? "opacity-50 cursor-not-allowed" : ""}`}
+                  disabled={currentPage === totalPages}
+                >
                   Siguiente
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -191,7 +221,7 @@ const InventarioContent = () => {
         </>
       )}
     </main>
-  )
-}
+  );
+};
 
-export default InventarioContent
+export default InventarioContent;
