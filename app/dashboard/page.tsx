@@ -1,5 +1,5 @@
 'use client'
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, ChevronDown, BarChart2, Users, CircleDollarSign, LogOut, Menu, Archive, User, Store, Settings } from "lucide-react";
 import MenuContent from "@/components/MenuContent";
 import InventarioContent from "@/components/InventarioContent";
@@ -9,7 +9,49 @@ import EmpleadosContent from "@/components/EmpleadosContent";
 import SucursalesContent from "@/components/SucursalesContent";
 import ConfiguracionContent from "@/components/ConfiguracionContent";
 
+
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = 'https://dijctnuytoiqorvkcjmq.supabase.co'
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+const supabase = createClient(supabaseUrl, supabaseKey!)
+
 export default function Dashboard() {
+  const [userName, setUserName] = useState('Loading...')
+  useEffect(() => {
+    async function getUserData() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session?.user?.id) {
+          const userId = session.user.id
+
+          const { data: profile, error } = await supabase
+            .from('admins')
+            .select('name, id, user_id')
+            .eq('id', userId)
+
+          if (error) {
+            console.error('Error details:', error)
+            setUserName('Error fetching')
+            return
+          }
+
+          if (profile && profile.length > 0) {
+            setUserName(profile[0].name)
+          } else {
+            setUserName('Profile not found')
+          }
+        }
+      } catch (error) {
+        console.error('Unexpected error:', error)
+        setUserName('Error')
+      }
+    }
+
+    getUserData()
+  }, [supabase])
   const [activePage, setActivePage] = useState("menu");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -151,10 +193,10 @@ export default function Dashboard() {
             </button>
             <div className="flex items-center">
               <div className="h-8 w-8 rounded-full bg-[#007aff] flex items-center justify-center text-white font-medium">
-                JD
+                {userName && userName !== 'Loading...' && userName !== 'Profile not found' && userName !== 'Error' && userName !== 'Error fetching' ? userName.split(' ').map(name => name[0]).join('').toUpperCase().substring(0,2): ''}
               </div>
               <button className="ml-2 flex items-center text-sm font-medium text-[#1b1f26]">
-                John Doe
+                {userName}
                 <ChevronDown className="ml-1 h-4 w-4 text-[#667085]" />
               </button>
             </div>
