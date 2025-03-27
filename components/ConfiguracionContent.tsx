@@ -1,9 +1,11 @@
-import React from 'react'
+import React from "react";
+
 
 const ConfiguracionContent = () => {
   return (
-    <div>ConfiguracionContent</div>
-  )
-}
+    <div className="p-6">
+    </div>
+  );
+};
 
-export default ConfiguracionContent
+export default ConfiguracionContent;

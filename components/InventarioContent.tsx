@@ -7,18 +7,38 @@ const InventarioContent = () => {
   const [showCreateProduct, setShowCreateProduct] = useState(false);
   const [showAddProductToStock, setShowAddProductToStock] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<(StockRecord & Product) | null>(null)
+  // aqui se almacena la informacion del inventario de los productos como sus detalles para mostrarlos en productdetailview
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [currentPage, setCurrentPage] = useState(1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  // dice si el menu desplegabla para selccionar el flitro esta abierto 
   const [products, setProducts] = useState<Product[]>([]);
+  //array que almacena todos los productos 
   const [inventory, setInventory] = useState<StockRecord[]>([]);
+  // array donde se guarda el inventario de los productos 
 
   const handleSaveProduct = (newProduct: Product) => {
     setProducts((prev) => [newProduct, ...prev]);
   };
 
   const handleSaveStock = (newStock: StockRecord) => {
-    setInventory((prev) => [newStock, ...prev]);
+    setInventory((prevInventory) => {
+      const existingIndex = prevInventory.findIndex((item) => item.productName === newStock.productName);
+  
+      if (existingIndex !== -1) {
+        // Si el producto ya existe, suma la cantidad al existente
+        const updatedInventory = [...prevInventory];
+        updatedInventory[existingIndex] = {
+          ...updatedInventory[existingIndex],
+          quantity: updatedInventory[existingIndex].quantity + newStock.quantity,
+          entryDate: newStock.entryDate, // Puedes decidir si actualizar la fecha o mantener la anterior
+        };
+        return updatedInventory;
+      } else {
+        // Si no existe, agrégalo como nuevo
+        return [...prevInventory, newStock];
+      }
+    });
   };
 
   const itemsPerPage = 5;
@@ -42,18 +62,21 @@ const InventarioContent = () => {
         <ProductDetailView 
           product={selectedProduct} 
           onClose={() => setSelectedProduct(null)} 
+          // se renderiza el componente productdetal view 
         />
       ) : showCreateProduct ? (
         <CreateProductView 
           onClose={() => setShowCreateProduct(false)}
           onSaveProduct={handleSaveProduct}
         />
+        // se rederiza y se guara del producto 
       ) : showAddProductToStock ? (
         <AddProductToStock 
           products={products} 
           onSaveStock={handleSaveStock} 
           onClose={() => setShowAddProductToStock(false)} 
         />
+        // se pasa el arreglo de productos y la funcion para guardar el stock 
       ) : (
         <>
           <div className="flex gap-4 mb-9">

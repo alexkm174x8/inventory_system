@@ -41,10 +41,9 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ products, onSaveS
       quantity: parseInt(quantity.toString(), 10),
       entryDate: entryDate,
     };
-
+  
     onSaveStock(newStock);
-    console.log("Registro de inventario guardado:", newStock);
-
+  
     // Limpiar formulario
     setQuantity('');
     setEntryDate('');
