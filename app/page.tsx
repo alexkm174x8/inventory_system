@@ -8,12 +8,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import LoginLogo from "@/components/login-logo"
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = 'https://dijctnuytoiqorvkcjmq.supabase.co'
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-const supabase = createClient(supabaseUrl, supabaseKey!)
+import { supabase } from "@/lib/supabase"
 
 export default function LoginPage() {
   const router = useRouter()

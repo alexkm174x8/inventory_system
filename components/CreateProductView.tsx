@@ -1,11 +1,13 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { PlusIcon, Trash2 } from "lucide-react";
+import { getUserId } from '@/lib/userId';
+import { supabase } from '@/lib/supabase';
 
 interface Attribute {
   name: string;
@@ -32,30 +34,41 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
   const [isDragging, setIsDragging] = useState(false);
   const [attributes, setAttributes] = useState<Attribute[]>([{ name: '', options: [''] }]);
 
-  const handleSaveProduct = () => {
+  const handleSaveProduct = async () => {
     if (!productName || !unitPrice) {
       alert('Por favor complete todos los campos.');
       return;
     }
-
-    const newProduct: Product = {
-      name: productName,
-      unitPrice: parseFloat(unitPrice.toString()), 
-      image: productImage,
-      attributes: attributes,
-    };
-
-    // Actualiza la lista local de productos
-    onSaveProduct(newProduct);
-    console.log('Producto guardado:', newProduct);
-
-    // Limpiar formulario
-    setProductName('');
-    setUnitPrice('');
-    setProductImage(null);
-    setAttributes([{ name: '', options: [''] }]);
-
-    onClose();
+  
+    try {
+      const insertedId = await insertProduct(); // Insert product and get ID
+      if (!insertedId) {
+        console.error("No se pudo obtener el ID del producto");
+        return;
+      }
+  
+      const insertedChar = await insertAttribute(insertedId);
+      await insertOptions(insertedChar); // Insert options
+  
+      // Update local state
+      onSaveProduct({
+        name: productName,
+        unitPrice: parseFloat(unitPrice.toString()),
+        image: productImage,
+        attributes: attributes,
+      });
+  
+      console.log("Producto guardado con éxito");
+  
+      // Clear form
+      setProductName('');
+      setUnitPrice('');
+      setProductImage(null);
+      setAttributes([{ name: '', options: [''] }]);
+      onClose();
+    } catch (error) {
+      console.error("Error al guardar el producto:", error);
+    }
   };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,6 +146,63 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
   const addAttribute = () => {
     setAttributes([...attributes, { name: '', options: [''] }]);
   };
+
+  const [insertedId, setInsertedId] = useState(null);
+
+  async function insertProduct() {
+    try {
+      const userId = await getUserId();
+      console.log("Este es el userId: ", userId)
+      const { data, error } = await supabase
+        .from('inventory')
+        .insert([{ user_id: userId, name: productName, description: '', price: unitPrice }])
+        .select('id');
+  
+      if (error) throw error;
+  
+      return data?.[0]?.id;
+    } catch (error) {
+      console.error('Error inserting product:', error);
+    }
+  }
+  
+  async function insertAttribute(productId: number) {
+    try {
+      const { data, error } = await supabase
+        .from('product_characteristics')
+        .insert(attributes.map((attribute) => ({
+          product_id: productId,
+          name: attribute.name,
+        })))
+        .select('characteristics_id');
+  
+      if (error) throw error;
+      console.log(data?.[0]?.characteristics_id)
+      return data?.[0]?.characteristics_id;
+    } catch (error) {
+      console.error('Error inserting attributes:', error);
+    }
+  }
+  
+  async function insertOptions(productId: number) {
+    try {
+      const { error } = await supabase
+        .from('characteristics_options')
+        .insert(
+          attributes.flatMap((attribute) =>
+            attribute.options.map((option) => ({
+              characteristics_id: productId,
+              values: option,
+            }))
+          )
+        );
+  
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error inserting options:', error);
+    }
+  }
+  
 
   return (
     <div className="h-full">
