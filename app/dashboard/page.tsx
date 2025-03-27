@@ -8,14 +8,10 @@ import VentasContent from "@/components/VentasContent";
 import EmpleadosContent from "@/components/EmpleadosContent";
 import SucursalesContent from "@/components/SucursalesContent";
 import ConfiguracionContent from "@/components/ConfiguracionContent";
+import { getUserId, getUUID } from "@/lib/userId";
 
 
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = 'https://dijctnuytoiqorvkcjmq.supabase.co'
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-const supabase = createClient(supabaseUrl, supabaseKey!)
+import { supabase } from "@/lib/supabase";
 
 export default function Dashboard() {
   const [userName, setUserName] = useState('Loading...')
@@ -25,7 +21,7 @@ export default function Dashboard() {
         const { data: { session } } = await supabase.auth.getSession()
         
         if (session?.user?.id) {
-          const userId = session.user.id
+          const userId = await getUUID();
 
           const { data: profile, error } = await supabase
             .from('admins')
