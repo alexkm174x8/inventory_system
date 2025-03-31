@@ -154,7 +154,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
       const userId = await getUserId();
       console.log("Este es el userId: ", userId)
       const { data, error } = await supabase
-        .from('inventory')
+        .from('products')
         .insert([{ user_id: userId, name: productName, description: '', price: unitPrice }])
         .select('id');
   

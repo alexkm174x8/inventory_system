@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { Eye, SlidersHorizontal, ChevronLeft, ChevronRight, Plus, Check } from 'lucide-react';
 import CreateProductView, { Product } from './CreateProductView';
 import AddProductToStock, { StockRecord } from './AddProductToStock';
 import ProductDetailView from './ProductDetailView';
+import { supabase } from '@/lib/supabase';
+
 const InventarioContent = () => {
   const [showCreateProduct, setShowCreateProduct] = useState(false);
   const [showAddProductToStock, setShowAddProductToStock] = useState(false);
@@ -51,6 +53,11 @@ const InventarioContent = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [filterStatus]);
+
+  const [product, setProduct] = useState('Cargando...')
+  async function displayProducts() {
+    
+  }
 
   const toggleDropdown = () => {
     setIsDropdownOpen(!isDropdownOpen);

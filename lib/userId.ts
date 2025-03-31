@@ -16,7 +16,7 @@ export async function getUserId() {
   if (userId) {
     const { data: profile, error } = await supabase
       .from('admins')
-      .select('user_id')  // Select the numeric ID column
+      .select('user_id')
       .eq('id', userId)
       .single();
 
