@@ -4,6 +4,7 @@ import CreateProductView, { Product } from './CreateProductView';
 import AddProductToStock, { StockRecord } from './AddProductToStock';
 import ProductDetailView from './ProductDetailView';
 import { supabase } from '@/lib/supabase';
+import { getUserId } from '@/lib/userId';
 
 const InventarioContent = () => {
   const [showCreateProduct, setShowCreateProduct] = useState(false);
@@ -54,13 +55,41 @@ const InventarioContent = () => {
     setCurrentPage(1);
   }, [filterStatus]);
 
-  const [product, setProduct] = useState('Cargando...')
-  async function displayProducts() {
-    
-  }
-
   const toggleDropdown = () => {
     setIsDropdownOpen(!isDropdownOpen);
+  } 
+
+  const [product, setProduct] = useState<string | { name: string }[]>('Cargando...');
+  
+  useEffect(() => {
+    async function getProducts() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session?.user?.id) {
+          const userId = await getUserId();
+
+          const { data: products, error } = await supabase
+            .from('products')
+            .select('name')
+            .eq('user_id', userId)
+
+          if (error) {
+            console.error('Error details:', error)
+            return
+          }
+
+          setProduct(products);
+        }
+      } catch (error) {
+        console.error('Unexpected error:', error)
+      }
+    }
+    getProducts()
+  }, [supabase])
+
+  if (typeof product === 'string') {
+    return <div>{product}</div>;  // Display loading or error message
   }
 
   return (
@@ -205,22 +234,11 @@ const InventarioContent = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e6e6e6] text-center">
-                  {currentData.map((stock, i) => (
+                  {/* TODO*/}
+                  {product.map((stock, i) => (
                     <tr key={i}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]">{stock.productName}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{stock.quantity}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{stock.entryDate}</td>
-                      <td 
-                        className="px-6 py-4 text-[#007aff] hover:text-[#e8f1fd] cursor-pointer"
-                        onClick={() => {
-                          const foundProduct = products.find((p) => p.name === stock.productName);
-                          if (foundProduct) {
-                            setSelectedProduct({ ...stock, ...foundProduct });
-                          }
-                        }}
-                      >
-                        <Eye />
-                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]">{stock.name}</td>
+                      
                     </tr>
                   ))}
                 </tbody>
