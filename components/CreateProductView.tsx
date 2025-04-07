@@ -159,7 +159,6 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
   async function insertProduct() {
     try {
       const userId = await getUserId();
-      console.log("Este es el userId: ", userId)
       const { data, error } = await supabase
         .from('products')
         .insert([{ user_id: userId, name: productName, description: '', price: unitPrice }])
@@ -185,7 +184,6 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
         .select('characteristics_id, name');
   
       if (error) throw error;
-      console.log("Inserted attributes:", data);
       return data; // Return all inserted attributes with their IDs
     } catch (error) {
       console.error('Error inserting attributes:', error);

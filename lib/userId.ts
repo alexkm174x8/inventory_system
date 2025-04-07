@@ -27,7 +27,6 @@ export async function getUserId() {
 
     const numericId = profile ? Number(profile.user_id) : null;
     
-    console.log(numericId);
     return numericId;
   } else {
     console.error('No user ID found.');

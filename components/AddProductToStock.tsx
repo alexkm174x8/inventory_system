@@ -219,10 +219,8 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       const selectedOptionIds = Object.values(selectedOptions).filter(id => id !== null) as number[];
 
       const optionsArrayLiteral = `{${selectedOptionIds.join(',')}}`;
-      console.log("Llamando RPC con p_option_ids como string literal:", optionsArrayLiteral);
  
       // 2. --- Buscar Variante Existente usando RPC ---
-      console.log("Buscando variante existente...");
       const { data: rpcResult, error: searchError } = await supabase
         .rpc('find_variant_by_options', {
           p_user_id: userId,
@@ -242,11 +240,9 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       if (foundVariant && foundVariant.variant_id) {
         // --- 3a. Variante YA EXISTÍA ---
         varianteId = foundVariant.variant_id;
-        console.log("Variante encontrada con ID:", varianteId);
  
       } else {
         // --- 3b. Variante NO EXISTÍA, hay que crearla ---
-        console.log("Variante no encontrada, creando nueva variante...");
  
         // INSERTAR en 'producto_variantes' (ajusta el nombre si es diferente)
         const { data: newVariantData, error: variantInsertError } = await supabase
@@ -263,7 +259,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
           throw new Error(`Error creando la nueva variante: ${variantInsertError?.message || 'No se obtuvo ID'}`);
         }
         varianteId = newVariantData.variant_id; // Guardar el ID recién creado
-        console.log("Nueva variante creada con ID:", varianteId);
  
         // Si hay opciones seleccionadas, INSERTAR en 'variante_opciones'
         if (selectedOptionIds.length > 0) {
@@ -272,7 +267,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
             option_id: optId,
           }));
  
-          console.log("Vinculando opciones:", varianteOpcionesPayload);
           const { error: optionsInsertError } = await supabase
             .from('optionVariants') // <-- VERIFICA ESTE NOMBRE DE TABLA
             .insert(varianteOpcionesPayload);
@@ -284,7 +278,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
             await supabase.from('producto_variantes').delete().eq('variant_id', varianteId);
             throw new Error(`Error vinculando opciones: ${optionsInsertError.message}`);
           }
-          console.log("Opciones vinculadas correctamente.");
         } else {
            console.log("Producto sin opciones, no se inserta en variante_opciones.");
         }
@@ -293,7 +286,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       // --- 4. Actualizar o Insertar en la tabla 'stock' ---
       // Ahora ya tenemos el 'varianteId' correcto (sea existente o nuevo)
  
-      console.log(`Gestionando stock para variante ID: ${varianteId}, ubicación ID: ${selectedLocationId}`);
  
       // Buscar si ya existe una fila de stock para esta variante y ubicación
       const { data: stockCheck, error: stockCheckError } = await supabase
@@ -312,7 +304,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         // --- 4a. YA EXISTE Stock: Hacer UPDATE ---
         const currentStock = stockCheck.stock || 0;
         const newStockLevel = currentStock + quantityNum;
-        console.log(`Actualizando stock existente (ID: ${stockCheck.id}) de ${currentStock} a ${newStockLevel}`);
  
         const { error: updateError } = await supabase
           .from('stock') // <-- VERIFICA ESTE NOMBRE DE TABLA
