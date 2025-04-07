@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,8 +47,14 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
         return;
       }
   
-      const insertedChar = await insertAttribute(insertedId);
-      await insertOptions(insertedChar); // Insert options
+      // Check if there are any non-empty attributes
+      const nonEmptyAttributes = attributes.filter(attribute => attribute.name.trim() !== '');
+      if (nonEmptyAttributes.length > 0) {
+        const attributesData = await insertAttribute(insertedId, nonEmptyAttributes);
+        if (attributesData && attributesData.length > 0) {
+          await insertOptions(attributesData, nonEmptyAttributes); // Insert options with correct IDs
+        }
+      }
   
       // Update local state
       onSaveProduct({
@@ -70,6 +76,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
       console.error("Error al guardar el producto:", error);
     }
   };
+  
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -152,9 +159,8 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
   async function insertProduct() {
     try {
       const userId = await getUserId();
-      console.log("Este es el userId: ", userId)
       const { data, error } = await supabase
-        .from('inventory')
+        .from('products')
         .insert([{ user_id: userId, name: productName, description: '', price: unitPrice }])
         .select('id');
   
@@ -166,42 +172,62 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
     }
   }
   
-  async function insertAttribute(productId: number) {
+  async function insertAttribute(productId: number, nonEmptyAttributes: Attribute[]) {
     try {
+      // Insert all attributes at once and get back all their IDs
       const { data, error } = await supabase
         .from('product_characteristics')
-        .insert(attributes.map((attribute) => ({
+        .insert(nonEmptyAttributes.map((attribute) => ({
           product_id: productId,
           name: attribute.name,
         })))
-        .select('characteristics_id');
+        .select('characteristics_id, name');
   
       if (error) throw error;
-      console.log(data?.[0]?.characteristics_id)
-      return data?.[0]?.characteristics_id;
+      return data; // Return all inserted attributes with their IDs
     } catch (error) {
       console.error('Error inserting attributes:', error);
+      return [];
     }
   }
   
-  async function insertOptions(productId: number) {
+  async function insertOptions(attributesData: any[], nonEmptyAttributes: Attribute[]) {
     try {
-      const { error } = await supabase
-        .from('characteristics_options')
-        .insert(
-          attributes.flatMap((attribute) =>
-            attribute.options.map((option) => ({
-              characteristics_id: productId,
-              values: option,
-            }))
-          )
-        );
+      // Create an array to hold all options to be inserted
+      const optionsToInsert: any[] = [];
+      
+      // For each attribute, find its corresponding ID and add its options
+      for (let i = 0; i < attributesData.length; i++) {
+        const attrData = attributesData[i];
+        const attribute = nonEmptyAttributes.find(attr => attr.name === attrData.name);
+        
+        if (attribute) {
+          // Add each non-empty option for this attribute with the correct characteristics_id
+          attribute.options.forEach(option => {
+            if (option.trim() !== '') {
+              optionsToInsert.push({
+                characteristics_id: attrData.characteristics_id,
+                values: option
+              });
+            }
+          });
+        }
+      }
+      
+      // Only insert if we have options
+      if (optionsToInsert.length > 0) {
+        const { error } = await supabase
+          .from('characteristics_options')
+          .insert(optionsToInsert);
   
-      if (error) throw error;
+        if (error) throw error;
+        console.log("Inserted options successfully");
+      }
     } catch (error) {
       console.error('Error inserting options:', error);
     }
   }
+  
   
 
   return (
