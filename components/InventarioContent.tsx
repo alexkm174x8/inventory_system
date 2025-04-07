@@ -185,7 +185,6 @@ const InventarioContent = () => {
         />
       ) : showAddProductToStock ? (
         <AddProductToStock
-          // @ts-ignore: productList can be string | Product[]
           products={productList}
           onSaveStock={handleSaveStock}
           onClose={() => setShowAddProductToStock(false)}
