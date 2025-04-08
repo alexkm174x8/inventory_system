@@ -1,10 +1,12 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+// Import icons (assuming you use lucide-react, common with shadcn/ui)
+import { Eye, EyeOff } from "lucide-react" 
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import LoginLogo from "@/components/login-logo"
@@ -16,6 +18,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [emailError, setEmailError] = useState("")
   const [passwordError, setPasswordError] = useState("")
+  // --- 1. Add state for password visibility ---
+  const [showPassword, setShowPassword] = useState(false) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,6 +65,11 @@ export default function LoginPage() {
     }
   }
 
+  // --- Helper function to toggle password visibility ---
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword)
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-white p-4">
       <div className="flex w-full max-w-4xl flex-col items-center justify-center gap-8 md:flex-row md:items-start md:gap-16">
@@ -74,12 +83,13 @@ export default function LoginPage() {
           </div>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
+              <label htmlFor="email" className="text-lg font-medium">
                 Email
               </label>
               <Input
                 id="email"
-                type="text"
+                // Consider using type="email" for better semantics and mobile keyboards
+                type="email" 
                 placeholder="Ingresa tu correo electrónico"
                 value={email}
                 onChange={(e) => {
@@ -87,26 +97,54 @@ export default function LoginPage() {
                   if (emailError) setEmailError("")
                 }}
                 className={emailError ? "border-red-500" : ""}
+                // Add required attribute for basic HTML validation (optional)
+                required
               />
               {emailError && <p className="text-xs text-red-500">{emailError}</p>}
             </div>
+
+            {/* --- Password Input Section --- */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label htmlFor="password" className="text-sm font-medium">
+                <label htmlFor="password" className="text-lg font-medium">
                   Contraseña
                 </label>
               </div>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Ingresa tu contraseña"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value)
-                  if (passwordError) setPasswordError("")
-                }}
-                className={passwordError ? "border-red-500" : ""}
-              />
+              {/* --- Wrap Input and Button for positioning --- */}
+              <div className="relative"> 
+                <Input
+                  id="password"
+                  // --- 3. Dynamically set the type ---
+                  type={showPassword ? "text" : "password"} 
+                  placeholder="Ingresa tu contraseña"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    if (passwordError) setPasswordError("")
+                  }}
+                  // Add padding-right to prevent text from overlapping the icon
+                  className={`${passwordError ? "border-red-500" : ""} pr-10`} 
+                  required
+                />
+                {/* --- 2. Add the toggle button --- */}
+                <Button
+                  type="button" // Prevent form submission
+                  variant="ghost" // Use ghost variant for less emphasis
+                  size="icon" // Make it icon-sized
+                  // --- Position the button inside the input field ---
+                  className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-gray-500 hover:text-gray-700" 
+                  onClick={togglePasswordVisibility} // --- 4. Add onClick handler ---
+                  aria-label={showPassword ? "Hide password" : "Show password"} // Accessibility
+                >
+                  {/* --- Conditionally render the icon --- */}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {/* --- Error message and Forgot Password Link --- */}
               {passwordError && <p className="text-xs text-red-500">{passwordError}</p>}
               <div className="text-right">
                 <Link href="#" className="text-xs text-blue-500 hover:underline">
@@ -114,6 +152,7 @@ export default function LoginPage() {
                 </Link>
               </div>
             </div>
+            {/* --- Rest of the form --- */}
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
               Iniciar Sesión
             </Button>
@@ -129,4 +168,3 @@ export default function LoginPage() {
     </div>
   )
 }
-
