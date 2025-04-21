@@ -1,20 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, SlidersHorizontal, ChevronLeft, ChevronRight, Plus, Check } from 'lucide-react';
-import CreateProductView, { Product } from './CreateProductView';
+import CreateProductView, { Product as CreateProductType } from './CreateProductView';
 import AddProductToStock from './AddProductToStock';
-import ProductDetailView from './ProductDetailView';
+import ProductDetailView, { StockRecord, Product as ProductDetailType } from './ProductDetailView';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 
-interface InventoryItem {
+interface InventoryItem extends StockRecord, Partial<ProductDetailType> {
   id: number; // ID de la tabla stock
   variant_id: number;
-  product_name: string;
-  quantity: number;
   added_at: string;
   ubicacion_nombre: string;
-  caracteristicas: string[]; // Array para almacenar las características
+  caracteristicas: string[];
 }
+
+type SupabaseStockItem = {
+  id: number;
+  variant_id: number;
+  stock: number;
+  added_at: string;
+  locations: { name: string } | null;
+  productVariants: {
+    product_id: number;
+    products: {
+      name: string;
+      product_characteristics: {
+        name: string;
+        characteristics_id: number;
+      }[];
+    } | null;
+    optionVariants: {
+      option_id: number;
+      characteristics_options: {
+        values: string;
+        characteristics_id: number;
+      } | null;
+    }[];
+  } | null;
+  user_id: string;
+};
 
 const InventarioContent = () => {
   const [showCreateProduct, setShowCreateProduct] = useState(false);
@@ -23,12 +47,12 @@ const InventarioContent = () => {
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [currentPage, setCurrentPage] = useState(1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<CreateProductType[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loadingInventory, setLoadingInventory] = useState(true);
   const [errorInventory, setErrorInventory] = useState<string | null>(null);
 
-  const handleSaveProduct = (newProduct: Product) => {
+  const handleSaveProduct = (newProduct: CreateProductType) => {
     setProducts((prev) => [newProduct, ...prev]);
   };
 
@@ -52,35 +76,6 @@ const InventarioContent = () => {
     setIsDropdownOpen(!isDropdownOpen);
   }
 
-  const [productList, setProductList] = useState<string | { name: string; id: number }[]>('Cargando...');
-
-  useEffect(() => {
-    async function getProducts() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-
-        if (session?.user?.id) {
-          const userId = await getUserId();
-
-          const { data: products, error } = await supabase
-            .from('products')
-            .select('name, id')
-            .eq('user_id', userId)
-
-          if (error) {
-            console.error('Error details:', error)
-            return
-          }
-
-          setProductList(products);
-        }
-      } catch (error) {
-        console.error('Unexpected error:', error)
-      }
-    }
-    getProducts()
-  }, [supabase])
-
   const loadInventory = async () => {
     setLoadingInventory(true);
     setErrorInventory(null);
@@ -95,61 +90,77 @@ const InventarioContent = () => {
           variant_id,
           stock,
           added_at,
-          locations (
-            name
-          ),
+          locations ( name ),
           productVariants (
             product_id,
             products (
               name,
-              product_characteristics (
-                name,
-                characteristics_id
-              )
+              product_characteristics ( name, characteristics_id )
             ),
             optionVariants (
               option_id,
-              characteristics_options (
-                values,
-                characteristics_id
-              )
+              characteristics_options ( values, characteristics_id )
             )
           )
         `)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .returns<SupabaseStockItem[]>();
 
       if (error) {
         console.error("Error fetching inventory:", error);
         setErrorInventory(error.message);
+        setInventory([]);
+        return;
       }
 
       if (data) {
-        const formattedInventory = data.map(item => {
-          const productName = item.productVariants?.products?.name || 'Nombre no encontrado';
-          const locationName = item.locations?.name || 'Ubicación no encontrada';
-          const productCharacteristics = item.productVariants?.products?.product_characteristics || [];
+        const formattedInventory: InventoryItem[] = data.map((item): InventoryItem | null => {
+          const productVariant = item.productVariants;
+          const productInfo = productVariant?.products;
+          const locationInfo = item.locations;
 
-          const characteristics = item.productVariants?.optionVariants?.map(ov => {
-            const matchingCharacteristic = productCharacteristics.find(pc => pc.characteristics_id === ov.characteristics_options?.characteristics_id);
-            const characteristicName = matchingCharacteristic?.name || 'Característica';
-            return `${characteristicName}: ${ov.characteristics_options?.values}`;
-          }) || [];
+          const productName = productInfo?.name ?? 'Nombre no encontrado';
+          const locationName = locationInfo?.name ?? 'Ubicación no encontrada';
+          const productCharacteristics = productInfo?.product_characteristics ?? [];
+          const optionVariants = productVariant?.optionVariants ?? [];
+
+          const characteristics = optionVariants.map(ov => {
+            const charOption = ov.characteristics_options;
+            if (!charOption) return 'Opción inválida';
+
+            const matchingCharacteristic = productCharacteristics.find(
+              pc => pc.characteristics_id === charOption.characteristics_id
+            );
+            const characteristicName = matchingCharacteristic?.name ?? 'Característica';
+            return `${characteristicName}: ${charOption.values}`;
+          });
+
+          if (productName === 'Nombre no encontrado') {
+             console.warn(`Inventory item with id ${item.id} missing product name.`);
+          }
 
           return {
             id: item.id,
             variant_id: item.variant_id,
-            product_name: productName,
+            productName: productName,
+            name: productName,
             quantity: item.stock,
             added_at: item.added_at,
+            entryDate: new Date(item.added_at).toLocaleDateString(),
             ubicacion_nombre: locationName,
             caracteristicas: characteristics,
+            unitPrice: 0,
+            image: null,
+            attributes: [],
           };
-        });
+        }).filter((item): item is InventoryItem => item !== null);
+
         setInventory(formattedInventory);
       }
     } catch (error: any) {
       console.error("Error loading inventory:", error);
       setErrorInventory(error.message);
+      setInventory([]);
     } finally {
       setLoadingInventory(false);
     }
@@ -159,23 +170,27 @@ const InventarioContent = () => {
     loadInventory();
   }, []);
 
-  if (typeof productList === 'string') {
-    return <div>{productList}</div>;
-  }
-
   if (loadingInventory) {
-    return <div>Cargando inventario...</div>;
+    return (
+      <main className="flex-1 flex justify-center items-center h-screen bg-[#f5f5f5]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]"></div>
+      </main>
+    );
   }
 
   if (errorInventory) {
-    return <div>Error al cargar el inventario: {errorInventory}</div>;
+    return (
+      <main className="flex-1 flex justify-center items-center h-screen bg-[#f5f5f5]">
+         <div className="text-red-500">Error al cargar el inventario: {errorInventory}</div>
+      </main>
+    );
   }
 
   return (
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
       {selectedProduct ? (
         <ProductDetailView
-          product={selectedProduct}
+          product={selectedProduct as StockRecord & ProductDetailType}
           onClose={() => setSelectedProduct(null)}
         />
       ) : showCreateProduct ? (
@@ -185,7 +200,6 @@ const InventarioContent = () => {
         />
       ) : showAddProductToStock ? (
         <AddProductToStock
-          products={productList}
           onSaveStock={handleSaveStock}
           onClose={() => setShowAddProductToStock(false)}
         />
@@ -307,11 +321,11 @@ const InventarioContent = () => {
                 <tbody className="divide-y divide-[#e6e6e6] text-center">
                   {currentData.map((item) => (
                     <tr key={item.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]">{item.product_name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]">{item.productName}</td>
                       <td className="px-6 py-4 text-sm text-[#667085]">{item.caracteristicas.join(', ')}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.quantity}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.ubicacion_nombre}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{new Date(item.added_at).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.entryDate}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
                           onClick={() => setSelectedProduct(item)}
