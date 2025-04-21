@@ -131,7 +131,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
 
   return (
     <div className="flex ">
-      {/* Sección de productos */}
       <div className="w-3/4 p-12 bg-white rounded-lg h-auto">
         <h1 className="text-2xl font-bold mb-4">Nueva venta</h1>
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 justify-items-center">
@@ -176,9 +175,8 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
           })}
         </div>
         <div className="text-center mt-10">
-          <Button type="button" variant="destructive" onClick={onClose} className="w-40  h-10">
-          <Trash2 className="w-4 h-4 mr-2" />
-              Cancelar venta
+          <Button type="button" variant="outline" onClick={onClose} className="w-40  h-10">
+            Cancelar 
           </Button>
         </div>
       </div>

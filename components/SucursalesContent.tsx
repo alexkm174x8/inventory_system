@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import {Input } from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
 
 interface Sucursal {
   id: string;
@@ -10,12 +12,11 @@ interface Sucursal {
 }
 
 const SucursalesContent: React.FC = () => {
-  const [productImage, setProductImage] = useState<string | null>(null);
+  const [SucursalImage, setSucursalImage] = useState<string | null>(null);
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [showAddSucursal, setShowAddSucursal] = useState(false);
-  const [nuevoNombre, setNuevoNombre] = useState('');
-  const [nuevaDireccion, setNuevaDireccion] = useState('');
-  const [nuevaImagen, setNuevaImagen] = useState('');
+  const [SucursalName, setSucursalName] = useState('');
+  const [SucursalDireccion, setSucursalDireccion] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState("");
 
@@ -29,17 +30,17 @@ const SucursalesContent: React.FC = () => {
   const guardarSucursal = () => {
     const nuevaSucursal: Sucursal = {
       id: crypto.randomUUID(),
-      nombre: nuevoNombre,
-      direccion: nuevaDireccion,
-      imagen: productImage || undefined,
+      nombre: SucursalName,
+      direccion: SucursalDireccion,
+      imagen: SucursalImage || undefined,
     };
 
     const nuevas = [...sucursales, nuevaSucursal];
     setSucursales(nuevas);
     localStorage.setItem("sucursales", JSON.stringify(nuevas));
-    setNuevoNombre('');
-    setNuevaDireccion('');
-    setProductImage(null);
+    setSucursalName('');
+    setSucursalDireccion('');
+    setSucursalImage(null);
     setShowAddSucursal(false);
   };
 
@@ -59,7 +60,7 @@ const SucursalesContent: React.FC = () => {
       }
       setFileName(file.name);
       const imageUrl = URL.createObjectURL(file);
-      setProductImage(imageUrl);
+      setSucursalImage(imageUrl);
     };
   
     const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
@@ -79,7 +80,7 @@ const SucursalesContent: React.FC = () => {
     const handleDragLeave = () => setIsDragging(false);
   
     const processFile = (file: File) => {
-      setProductImage(URL.createObjectURL(file));
+      setSucursalImage(URL.createObjectURL(file));
       setFileName(file.name);
     };
 
@@ -87,9 +88,9 @@ const SucursalesContent: React.FC = () => {
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
       {showAddSucursal ? (
         <div className="p-6 bg-white shadow-md rounded-lg max-w-md mx-auto">
-          <h2 className="text-lg font-semibold mb-4">Agregar nueva sucursal</h2>
+          <h2 className="text-lg font-semibold mb-3 ">Agregar nueva sucursal</h2>
           <div
-            className={`mt-4 flex-col items-center rounded-lg border border-dashed py-8 cursor-pointer transition-all ${
+            className={`mb-3 flex-col items-center rounded-lg border border-dashed py-8 cursor-pointer transition-all ${
               isDragging ? "border-blue-500 bg-blue-100" : "border-gray-300"
             }`}
             onDrop={handleDrop}
@@ -98,16 +99,16 @@ const SucursalesContent: React.FC = () => {
             onClick={() => document.getElementById("file-upload")?.click()}
           >
             <div className="text-center">
-              {productImage ? (
+              {SucursalImage ? (
                 <div className="flex flex-col items-center">
                   <img
-                    src={productImage}
+                    src={SucursalImage}
                     alt="Preview"
                     className="w-24 h-24 object-cover rounded mb-2"
                   />
                   <p className="text-sm text-gray-500">{fileName}</p>
-                  <div className="flex gap-2 mt-2">
-                    <Button variant="destructive" onClick={() => setProductImage(null)}>
+                  <div className="flex gap-8 mt-2">
+                    <Button variant="destructive" onClick={() => setSucursalImage(null)}>
                       Eliminar
                     </Button>
                   </div>
@@ -144,33 +145,35 @@ const SucursalesContent: React.FC = () => {
               )}
             </div>
           </div>
-          <input
-            type="text"
-            placeholder="Nombre"
-            className="w-full mb-2 p-2 border border-gray-300 rounded"
-            value={nuevoNombre}
-            onChange={(e) => setNuevoNombre(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Dirección"
-            className="w-full mb-2 p-2 border border-gray-300 rounded"
-            value={nuevaDireccion}
-            onChange={(e) => setNuevaDireccion(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={guardarSucursal}
-              className="bg-blue-600 text-white px-4 py-2 rounded"
-            >
-              Guardar
-            </button>
-            <button
-              onClick={() => setShowAddSucursal(false)}
-              className="text-blue-600"
-            >
+          <div className="space-y-2">
+            <Label htmlFor="sucursal-name">Nombre</Label>
+              <Input
+                id="sucursal-name"
+                value={SucursalName}
+                onChange={(e) => setSucursalName(e.target.value)}
+                placeholder="Nombre de la sucursal"
+            />
+          </div>
+          <div className='mt-3 '>
+          <div className="space-y-2">
+            <Label htmlFor="direccion-name">Dirección</Label>
+              <Input
+                id="direccion-name"
+                value={SucursalDireccion}
+                onChange={(e) => setSucursalDireccion(e.target.value)}
+                placeholder="Agregue la dirección"
+            />
+          </div>
+          </div>
+          <div className="flex justify-end mt-3 gap-3">
+            <Button variant="outline" type="button" 
+              onClick={guardarSucursal}>
               Cancelar
-            </button>
+            </Button>
+            <Button type="button" onClick={() => setShowAddSucursal(false)}
+                className="bg-blue-500 hover:bg-blue-600">
+                Guardar
+            </Button>
           </div>
         </div>
       ) : (
@@ -198,7 +201,7 @@ const SucursalesContent: React.FC = () => {
                     <img
                       src={sucursal.imagen}
                       alt={sucursal.nombre}
-                      className="w-full h-48 object-cover rounded-t-lg"
+                      className="w-20 h-20 object-cover rounded-t-lg"
                     />
                   )}
                   <div className="p-4">

@@ -73,7 +73,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ products, onSaveS
             </select>
           </div>
 
-          {/* Cantidad */}
           <div className="mb-4">
             <Label htmlFor="quantity">Cantidad a agregar</Label>
             <Input
@@ -86,7 +85,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ products, onSaveS
             />
           </div>
 
-          {/* Fecha de Entrada */}
           <div className="mb-4">
             <Label htmlFor="entry-date">Fecha de entrada</Label>
             <Input
