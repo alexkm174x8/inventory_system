@@ -386,6 +386,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
     <div className="flex">
       {/* Products section */}
       <div className="w-3/4 p-8 bg-white rounded-lg h-auto">
+
         <h1 className="text-2xl font-bold mb-4">Nueva venta</h1>
         
         {/* Search and Filter Bar */}
@@ -501,9 +502,9 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         )}
         
         <div className="text-center mt-10">
-          <Button type="button" variant="destructive" onClick={onClose} className="w-40 h-10">
-            <Trash2 className="w-4 h-4 mr-2" />
-            Cancelar venta
+
+          <Button type="button" variant="outline" onClick={onClose} className="w-40  h-10">
+            Cancelar 
           </Button>
         </div>
       </div>
