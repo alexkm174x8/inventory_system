@@ -385,7 +385,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
               ))}
             </select>
           </div>
-
           {/* --- Selectores de Atributos/Opciones (si existen) --- */}
           {isLoading && attributes.length === 0 && selectedProductId && <div>Cargando atributos...</div>}
           {attributes.length > 0 && (
@@ -460,6 +459,17 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
               className="mt-1"
               disabled={isLoading}
               min="1" // Añadir validación mínima en HTML
+            />
+          </div>
+
+          <div className="mb-4">
+            <Label htmlFor="entry-date">Fecha de entrada</Label>
+            <Input
+              id="entry-date"
+              type="date"
+              value={entryDate}
+              onChange={(e) => setEntryDate(e.target.value)}
+              className="mt-1 text-[#737373]"
             />
           </div>
 
