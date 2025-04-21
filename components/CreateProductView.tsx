@@ -371,7 +371,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
 
           <div className="flex justify-end gap-4 mt-8">
             <Button variant="outline" type="button" onClick={onClose}>
-              Descartar
+              Cancelar
             </Button>
             <Button type="button" onClick={handleSaveProduct} className="bg-blue-500 hover:bg-blue-600">
               Agregar
