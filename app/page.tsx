@@ -52,7 +52,6 @@ export default function LoginPage() {
         }
 
         if (data.user) {
-          console.log("Login successful:", data.user)
           router.push("/dashboard")
         }
       } catch (error) {

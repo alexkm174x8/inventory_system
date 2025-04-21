@@ -14,7 +14,7 @@ import { getUserId, getUUID } from "@/lib/userId";
 import { supabase } from "@/lib/supabase";
 
 export default function Dashboard() {
-  const [userName, setUserName] = useState('Loading...')
+  const [userName, setUserName] = useState('Cargando...')
   useEffect(() => {
     async function getUserData() {
       try {
