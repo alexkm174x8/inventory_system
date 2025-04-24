@@ -84,7 +84,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ product, onClose 
 
           <div className="text-center">
             <Button type="button" variant="outline" onClick={onClose} className="w-20">
-              Cerrar
+              Cerrar           
             </Button>
           </div>
         </CardContent>

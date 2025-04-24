@@ -5,9 +5,10 @@ import AddProductToStock from './AddProductToStock';
 import ProductDetailView, { StockRecord, Product as ProductDetailType } from './ProductDetailView';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
+import { useRouter } from 'next/navigation';
 
 interface InventoryItem extends StockRecord, Partial<ProductDetailType> {
-  id: number; // ID de la tabla stock
+  id: number; 
   variant_id: number;
   added_at: string;
   ubicacion_nombre: string;
@@ -41,9 +42,7 @@ type SupabaseStockItem = {
 };
 
 const InventarioContent = () => {
-  const [showCreateProduct, setShowCreateProduct] = useState(false);
-  const [showAddProductToStock, setShowAddProductToStock] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
+  const router = useRouter();
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [currentPage, setCurrentPage] = useState(1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -51,15 +50,6 @@ const InventarioContent = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loadingInventory, setLoadingInventory] = useState(true);
   const [errorInventory, setErrorInventory] = useState<string | null>(null);
-
-  const handleSaveProduct = (newProduct: CreateProductType) => {
-    setProducts((prev) => [newProduct, ...prev]);
-  };
-
-  const handleSaveStock = () => {
-    loadInventory();
-    setShowAddProductToStock(false);
-  };
 
   const itemsPerPage = 5;
   const filteredData = inventory.filter(stock => filterStatus === "Todos");
@@ -188,34 +178,18 @@ const InventarioContent = () => {
 
   return (
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
-      {selectedProduct ? (
-        <ProductDetailView
-          product={selectedProduct as StockRecord & ProductDetailType}
-          onClose={() => setSelectedProduct(null)}
-        />
-      ) : showCreateProduct ? (
-        <CreateProductView
-          onClose={() => setShowCreateProduct(false)}
-          onSaveProduct={handleSaveProduct}
-        />
-      ) : showAddProductToStock ? (
-        <AddProductToStock
-          onSaveStock={handleSaveStock}
-          onClose={() => setShowAddProductToStock(false)}
-        />
-      ) : (
         <>
           <div className="flex gap-4 mb-9">
             <button
-              onClick={() => setShowCreateProduct(true)}
-              className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg'
+              onClick={() => router.push('/inventario/crearproducto')}
+              className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
             >
               <Plus className="w-4 h-4" />
               Crear producto
             </button>
             <button
-              onClick={() => setShowAddProductToStock(true)}
-              className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg'
+              onClick={() => router.push('/inventario/agregarinventario')}
+              className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
             >
               <Plus className="w-4 h-4" />
               Agregar inventario
@@ -328,7 +302,6 @@ const InventarioContent = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.entryDate}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
-                          onClick={() => setSelectedProduct(item)}
                           className="text-indigo-600 hover:text-indigo-900"
                         >
                           <Eye className="w-4 h-4 mx-auto" />
@@ -362,7 +335,6 @@ const InventarioContent = () => {
             </div>
           </div>
         </>
-      )}
     </main>
   );
 };

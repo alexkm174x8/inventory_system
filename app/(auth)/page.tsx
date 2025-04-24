@@ -56,7 +56,7 @@ export default function LoginPage() {
         }
 
         if (data.user) {
-          router.push("/dashboard")
+          router.push("/menu")
         }
       } catch (error) {
         console.error("Login error:", error)
