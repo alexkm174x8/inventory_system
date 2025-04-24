@@ -32,11 +32,11 @@ export interface Ubicacion { // <-- NUEVA: Para la tabla Ubicaciones
 }
 
 // Interfaz para lo que realmente guardaremos (no necesario pasarla como prop)
-// interface StockRecord {
-//  productName: string; // Ya no usaremos esto directamente
-//  quantity: number;
-//  entryDate: string; // Puedes mantenerlo si quieres registrar la fecha de entrada en 'stock'
-// }
+interface StockRecord {
+  productName: string; // Ya no usaremos esto directamente
+  quantity: number;
+  entryDate: string; // Puedes mantenerlo si quieres registrar la fecha de entrada en 'stock'
+ }
 
 interface AddProductToStockProps {
   
@@ -52,7 +52,7 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
   const [attributeOptions, setAttributeOptions] = useState<{ [key: number]: OptionData[] }>({}); // <-- CAMBIO: Guarda OptionData[]
   const [selectedOptions, setSelectedOptions] = useState<{ [key: number]: number | null }>({}); // <-- NUEVO: Guarda la opción seleccionada por atributo {charId: optionId}
   const [quantity, setQuantity] = useState<number | string>('');
-  // const [entryDate, setEntryDate] = useState<string>(''); // Opcional
+  const [entryDate, setEntryDate] = useState<string>(''); // Opcional
   const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([]); // <-- NUEVO: Guarda ubicaciones
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null); // <-- NUEVO: Guarda ubicación seleccionada
   const [isLoading, setIsLoading] = useState(false); // <-- NUEVO: Para feedback
@@ -344,7 +344,7 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       // Limpiar formulario
       setSelectedProductId(null); // Esto disparará los useEffect para limpiar atributos/opciones
       setQuantity('');
-      // setEntryDate(''); // Si usas fecha
+      setEntryDate(''); // Si usas fecha
       setSelectedLocationId(null);
       onClose(); // Cerrar
  
@@ -472,12 +472,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
               className="mt-1 text-[#737373]"
             />
           </div>
-
-          {/* (Opcional) Fecha de Entrada - Quitar si no la guardas en 'stock' */}
-          {/* <div className="mb-4">
-             <Label htmlFor="entry-date">Fecha de entrada</Label>
-             <Input id="entry-date" type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} className="mt-1 text-[#737373]" disabled={isLoading} />
-           </div> */}
 
            {/* --- Mensaje de Error --- */}
            {errorMsg && <p className="text-red-500 text-sm mb-4">{errorMsg}</p>}

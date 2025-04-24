@@ -2,10 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import LoginLogo from './login-logo';
-import CheckoutVenta from './CheckoutVenta';
-import VentaViewDetails from './VentaViewDetails';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
+import { useRouter } from 'next/navigation';
 
 interface SaleItem {
   id: number;
@@ -49,9 +48,8 @@ interface SupabaseSale {
 }
 
 const VentasContent: React.FC = () => {
+  const router = useRouter()
   const [ventas, setVentas] = useState<Venta[]>([]);
-  const [showCheckoutVenta, setShowCheckoutVenta] = useState(false);
-  const [ventaDetails, setVentaDetails] = useState<Venta | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
@@ -202,29 +200,10 @@ const VentasContent: React.FC = () => {
 
   return (
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
-      {/* Renderizado condicional de los componentes: */}
-      {showCheckoutVenta && (
-        <CheckoutVenta 
-          onClose={() => {
-            setShowCheckoutVenta(false);
-            updateVentas();
-          }}
-        />
-      )}
-
-      {ventaDetails && (
-        <VentaViewDetails 
-          venta={ventaDetails} 
-          onClose={() => setVentaDetails(null)}
-        />
-      )}
-
-      {(!showCheckoutVenta && !ventaDetails) && (
-        <>
+      <>
           <div className="flex justify-between items-center mb-6">
-            {/* Botón para crear una nueva venta */}
             <button 
-              onClick={() => setShowCheckoutVenta(true)}
+              onClick={() => router.push('/ventas/agregarventa')}
               className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
             >
               <Plus className="w-4 h-4" />
@@ -311,7 +290,6 @@ const VentasContent: React.FC = () => {
                       <div className="mx-3 border-t border-slate-200 pb-3 pt-2 px-1 flex justify-between items-center">
                         <p className="text-sm text-slate-600 font-medium">Total: ${venta.total} MXN</p>
                         <button 
-                          onClick={() => setVentaDetails(venta)}
                           className="text-blue-600 text-sm font-medium hover:text-blue-800"
                         >
                           Ver más
@@ -324,7 +302,6 @@ const VentasContent: React.FC = () => {
             </div>
           )}
         </>
-      )}
     </main>
   );
 };
