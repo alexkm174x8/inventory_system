@@ -16,7 +16,6 @@ interface Attribute {
 
 export interface Product {
   name: string;
-  unitPrice: number;
   image: string | null;
   attributes: Attribute[];
 }
@@ -30,12 +29,11 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
   const [productImage, setProductImage] = useState<string | null>(null);
   const [fileName, setFileName] = useState("");
   const [productName, setProductName] = useState('');
-  const [unitPrice, setUnitPrice] = useState<number | string>('');
   const [isDragging, setIsDragging] = useState(false);
   const [attributes, setAttributes] = useState<Attribute[]>([{ name: '', options: [''] }]);
 
   const handleSaveProduct = async () => {
-    if (!productName || !unitPrice) {
+    if (!productName) {
       alert('Por favor complete todos los campos.');
       return;
     }
@@ -59,7 +57,6 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
       // Update local state
       onSaveProduct({
         name: productName,
-        unitPrice: parseFloat(unitPrice.toString()),
         image: productImage,
         attributes: attributes,
       });
@@ -68,7 +65,6 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
   
       // Clear form
       setProductName('');
-      setUnitPrice('');
       setProductImage(null);
       setAttributes([{ name: '', options: [''] }]);
       onClose();
@@ -161,7 +157,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
       const userId = await getUserId();
       const { data, error } = await supabase
         .from('products')
-        .insert([{ user_id: userId, name: productName, description: '', price: unitPrice }])
+        .insert([{ user_id: userId, name: productName, description: ''}])
         .select('id');
   
       if (error) throw error;
@@ -305,21 +301,6 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="unit-price">Precio unitario</Label>
-              <div className="relative">
-                <Input
-                  id="unit-price"
-                  value={unitPrice}
-                  onChange={(e) => setUnitPrice(e.target.value)}
-                  placeholder="Precio del producto"
-                />
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
-                  MXN
-                </div>
-              </div>
-            </div>
-
             <div className="space-y-6">
               {attributes.map((attribute, attrIndex) => (
                 <div key={attrIndex} className="space-y-4 p-4 border rounded-lg">
@@ -410,5 +391,3 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
 };
 
 export default CreateProductView;
-
-

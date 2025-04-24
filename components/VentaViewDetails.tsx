@@ -11,6 +11,7 @@ interface Venta {
     name: string;
     quantity: number;
     unitPrice: number;
+    attributes?: Record<string, string>; // Add attributes property
   }[];
   discount: number;
   subtotal: number;
@@ -24,6 +25,28 @@ interface VentaViewDetailsProps {
 
 const VentaViewDetails: React.FC<VentaViewDetailsProps> = ({ venta, onClose }) => {
   const fecha = new Date(venta.createdAt);
+
+  // Helper function to format item name with attributes
+  const formatItemWithAttributes = (item: Venta['items'][0]) => {
+    if (!item.attributes || Object.keys(item.attributes).length === 0) {
+      return item.name;
+    }
+    
+    const attributesList = Object.entries(item.attributes).map(([key, value]) => (
+      <span key={key} className="inline-block bg-gray-100 rounded-full px-2 py-0.5 text-xs font-semibold text-gray-600 mr-1">
+        {key}: {value}
+      </span>
+    ));
+    
+    return (
+      <div>
+        <div>{item.name}</div>
+        <div className="flex flex-wrap gap-1 mt-1">
+          {attributesList}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="h-full">
@@ -42,8 +65,11 @@ const VentaViewDetails: React.FC<VentaViewDetailsProps> = ({ venta, onClose }) =
                 <ul className="mt-2">
                     {venta.items.map((item, index) => (
                     <li key={index} className="flex justify-between border-b py-1">
-                        <span>{item.quantity} x {item.name}</span>
-                        <span>MXN ${item.unitPrice * item.quantity}</span>
+                        <div className="flex">
+                          <span className="mr-2">{item.quantity} x</span>
+                          <div>{formatItemWithAttributes(item)}</div>
+                        </div>
+                        <span className="ml-auto">MXN ${item.unitPrice * item.quantity}</span>
                     </li>
                     ))}
                 </ul>

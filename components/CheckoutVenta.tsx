@@ -1,4 +1,4 @@
-// CheckoutVenta.tsx - Fixed version
+// CheckoutVenta.tsx - Optimized for your database schema
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Minus, Image, Trash2, Search, Filter } from 'lucide-react';
@@ -9,7 +9,7 @@ import { getUserId } from '@/lib/userId';
 
 // Interfaces for database entities
 interface ProductVariant {
-  id: number;
+  variant_id: number; // Note: Using variant_id instead of id
   product_id: number;
   sku: string;
   price: number;
@@ -21,13 +21,7 @@ interface Product {
   name: string;
   description: string;
   user_id: number;
-  category?: string; // Added category as optional property
-}
-
-interface CharacteristicOption {
-  id: number;
-  characteristic_id: number;
-  value: string;
+  category?: string;
 }
 
 interface StockItem {
@@ -54,11 +48,6 @@ interface ProductoCarrito {
 interface CheckoutVentaProps {
   onClose: () => void;
 }
-
-// Function to generate a unique ID
-const generateId = (): string => {
-  return Date.now().toString();
-};
 
 const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
   // State for products, variants, stock and cart
@@ -94,10 +83,10 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         
         if (productsError) throw productsError;
         
-        // Fetch product variants with product info in one query
+        // Fetch product variants for these products
         const { data: variantsData, error: variantsError } = await supabase
           .from('productVariants')
-          .select('*, product:product_id(*)')
+          .select('*')
           .in('product_id', productsData.map(p => p.id));
         
         if (variantsError) throw variantsError;
@@ -105,39 +94,53 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         // Fetch stock information for these variants
         const { data: stockData, error: stockError } = await supabase
           .from('stock')
-          .select('*, location:location(*)')
-          .in('variant_id', variantsData.map(v => v.id))
-          .eq('location.user_id', userId);
+          .select('*')
+          .in('variant_id', variantsData.map(v => v.variant_id));
         
         if (stockError) throw stockError;
         
-        // Use your RPC function to get variant attributes
-        const { data: attributesData, error: attributesError } = await supabase
-          .rpc('get_variant_attributes', { user_id_param: userId });
+        // Manually fetch variant attributes since we had issues with the RPC function
+        const { data: optionVariantsData, error: optionVariantsError } = await supabase
+          .from('optionVariants')
+          .select('*')
+          .in('variant_id', variantsData.map(v => v.variant_id));
         
-        if (attributesError) throw attributesError;
+        if (optionVariantsError) throw optionVariantsError;
+        
+        // Fetch characteristics options
+        const { data: optionsData, error: optionsError } = await supabase
+          .from('characteristics_options')
+          .select('*, product_characteristics(name)')
+          .in('id', optionVariantsData.map(ov => ov.option_id));
+        
+        if (optionsError) throw optionsError;
         
         // Process the data
         setProducts(productsData);
         setProductVariants(variantsData);
         setStockItems(stockData);
         
-        // Process attributes into a more usable format
+        // Process variant attributes into a more usable format
         const varAttrs: Record<number, Record<string, string>> = {};
-        if (attributesData) {
-          attributesData.forEach((attr: any) => {
-            if (!varAttrs[attr.variant_id]) {
-              varAttrs[attr.variant_id] = {};
+        
+        optionVariantsData.forEach(ov => {
+          const option = optionsData.find(o => o.id === ov.option_id);
+          if (option) {
+            if (!varAttrs[ov.variant_id]) {
+              varAttrs[ov.variant_id] = {};
             }
-            varAttrs[attr.variant_id][attr.characteristic_name] = attr.option_value;
-          });
-        }
+            // Use the characteristic name from the joined product_characteristics
+            const characteristicName = option.product_characteristics?.name || "Unknown";
+            varAttrs[ov.variant_id][characteristicName] = option.values;
+          }
+        });
+        
         setVariantAttributes(varAttrs);
         
         // Initialize quantities for each variant
         const initialQuantities: Record<number, number> = {};
         variantsData.forEach((variant: ProductVariant) => {
-          initialQuantities[variant.id] = 1;
+          initialQuantities[variant.variant_id] = 1;
         });
         setCantidades(initialQuantities);
         
@@ -171,24 +174,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
     });
   }, [products, searchTerm, selectedCategory]);
 
-  // Find variant by options
-  const findVariantByOptions = async (productId: number, optionIds: number[]) => {
-    try {
-      const userId = await getUserId();
-      const { data, error } = await supabase.rpc('find_variant_by_options', {
-        p_user_id: userId,
-        p_product_id: productId,
-        p_option_ids: optionIds
-      });
-      
-      if (error) throw error;
-      return data && data.length > 0 ? data[0].variant_id : null;
-    } catch (error) {
-      console.error('Error finding variant:', error);
-      return null;
-    }
-  };
-
   // Get available stock for a variant
   const getAvailableStock = (variantId: number): number => {
     const stockItem = stockItems.find(item => item.variant_id === variantId);
@@ -197,7 +182,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
 
   // Get product name for a variant
   const getProductName = (variantId: number): string => {
-    const variant = productVariants.find(v => v.id === variantId);
+    const variant = productVariants.find(v => v.variant_id === variantId);
     if (!variant) return "Unknown Product";
     
     const product = products.find(p => p.id === variant.product_id);
@@ -239,7 +224,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
 
   // Add product to cart
   const agregarAlCarrito = (variantId: number) => {
-    const variant = productVariants.find(v => v.id === variantId);
+    const variant = productVariants.find(v => v.variant_id === variantId);
     if (!variant) return;
     
     const variantName = formatVariantName(variantId);
@@ -276,7 +261,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
   const descuentoAplicado = descuento ? subtotal * (descuento / 100) : 0;
   const total = subtotal - descuentoAplicado;
 
-  // Confirm sale and save to Supabase with improved validation
+  // Confirm sale and save to Supabase
   const confirmarVenta = async () => {
     if (ventaItems.length === 0) {
       alert('No hay productos en el carrito');
@@ -342,24 +327,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         }
       }
       
-      // For backwards compatibility with localStorage-based system
-      const ventaForLocalStorage = {
-        id: saleId.toString(), // Use the actual Supabase ID
-        createdAt: new Date().toISOString(),
-        items: ventaItems.map(item => ({
-          name: item.name,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice
-        })),
-        discount: descuento,
-        subtotal,
-        total: total < 0 ? 0 : total,
-      };
-      
-      const ventasPrevias = JSON.parse(localStorage.getItem("ventas") || "[]");
-      ventasPrevias.push(ventaForLocalStorage);
-      localStorage.setItem("ventas", JSON.stringify(ventasPrevias));
-
       alert('Venta confirmada');
       onClose();
       
@@ -433,11 +400,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
                   <h2 className="text-xl font-semibold mb-3">{product.name}</h2>
                   <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 justify-items-center">
                     {variants.map(variant => {
-                      const stock = getAvailableStock(variant.id);
-                      const variantName = formatVariantName(variant.id);
+                      const stock = getAvailableStock(variant.variant_id);
+                      const variantName = formatVariantName(variant.variant_id);
                       
                       return (
-                        <Card key={variant.id} className='border border-gray-300 rounded-lg w-full hover:shadow-md transition-shadow'>
+                        <Card key={variant.variant_id} className='border border-gray-300 rounded-lg w-full hover:shadow-md transition-shadow'>
                           <CardContent className="text-center flex flex-col items-center gap-y-2 p-4">
                             <h3 className="font-semibold">{variantName}</h3>
                             <p className="text-sm font-light">MXN ${variant.price}.00</p>
@@ -453,7 +420,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
                             
                             <div className="flex items-center border border-gray-300 rounded-md overflow-hidden w-full bg-white">
                               <button 
-                                onClick={() => disminuir(variant.id)} 
+                                onClick={() => disminuir(variant.variant_id)} 
                                 className="p-2 text-gray-700 hover:bg-gray-200 transition"
                                 disabled={stock <= 0}
                               >
@@ -461,18 +428,18 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
                               </button>
                               <input
                                 type="number"
-                                value={stock <= 0 ? 0 : cantidades[variant.id] || 1}
+                                value={stock <= 0 ? 0 : cantidades[variant.variant_id] || 1}
                                 onChange={(e) => {
                                   let valor = Number(e.target.value);
                                   if (valor < 1) valor = 1;
                                   if (valor > stock) valor = stock;
-                                  setCantidades(prev => ({ ...prev, [variant.id]: valor }));
+                                  setCantidades(prev => ({ ...prev, [variant.variant_id]: valor }));
                                 }}
                                 className="w-full text-center outline-none bg-transparent appearance-none"
                                 disabled={stock <= 0}
                               />
                               <button 
-                                onClick={() => aumentar(variant.id)} 
+                                onClick={() => aumentar(variant.variant_id)} 
                                 className="p-2 text-gray-700 hover:bg-gray-200 transition"
                                 disabled={stock <= 0}
                               >
@@ -485,7 +452,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
                             </div>
                             
                             <button 
-                              onClick={() => agregarAlCarrito(variant.id)} 
+                              onClick={() => agregarAlCarrito(variant.variant_id)} 
                               className={`w-full h-10 rounded-sm ${stock <= 0 ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#1366D9] hover:bg-[#0d4ea6]'} text-white text-sm font-semibold shadow-lg transition-colors`}
                               disabled={stock <= 0}
                             >
@@ -502,8 +469,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         )}
         
         <div className="text-center mt-10">
-
-          <Button type="button" variant="outline" onClick={onClose} className="w-40  h-10">
+          <Button type="button" variant="outline" onClick={onClose} className="w-40 h-10">
             Cancelar 
           </Button>
         </div>

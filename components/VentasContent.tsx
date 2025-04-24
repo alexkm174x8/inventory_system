@@ -2,15 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import LoginLogo from './login-logo';
+import CheckoutVenta from './CheckoutVenta';
+import VentaViewDetails from './VentaViewDetails';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
-import { useRouter } from 'next/navigation';
 
 interface SaleItem {
   id: number;
   name: string;
   quantity: number;
   unitPrice: number;
+  attributes?: Record<string, string>;
 }
 
 interface Venta {
@@ -48,11 +50,59 @@ interface SupabaseSale {
 }
 
 const VentasContent: React.FC = () => {
-  const router = useRouter()
   const [ventas, setVentas] = useState<Venta[]>([]);
+  const [showCheckoutVenta, setShowCheckoutVenta] = useState(false);
+  const [ventaDetails, setVentaDetails] = useState<Venta | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [variantAttributes, setVariantAttributes] = useState<Record<number, Record<string, string>>>({});
+
+  // Fetch variant attributes for given variant ids
+  const fetchVariantAttributes = async (variantIds: number[]) => {
+    if (!variantIds.length) return {};
+    
+    try {
+      // Fetch option variants
+      const { data: optionVariantsData, error: optionVariantsError } = await supabase
+        .from('optionVariants')
+        .select('*')
+        .in('variant_id', variantIds);
+      
+      if (optionVariantsError) throw optionVariantsError;
+      
+      // Get unique option IDs
+      const optionIds = [...new Set(optionVariantsData.map(ov => ov.option_id))];
+      
+      // Fetch characteristics options
+      const { data: optionsData, error: optionsError } = await supabase
+        .from('characteristics_options')
+        .select('*, product_characteristics(name)')
+        .in('id', optionIds);
+      
+      if (optionsError) throw optionsError;
+      
+      // Process variant attributes into a more usable format
+      const varAttrs: Record<number, Record<string, string>> = {};
+      
+      optionVariantsData.forEach(ov => {
+        const option = optionsData.find(o => o.id === ov.option_id);
+        if (option) {
+          if (!varAttrs[ov.variant_id]) {
+            varAttrs[ov.variant_id] = {};
+          }
+          // Use the characteristic name from the joined product_characteristics
+          const characteristicName = option.product_characteristics?.name || "Unknown";
+          varAttrs[ov.variant_id][characteristicName] = option.values;
+        }
+      });
+      
+      return varAttrs;
+    } catch (error) {
+      console.error('Error fetching variant attributes:', error);
+      return {};
+    }
+  };
 
   // Fetch sales from Supabase
   useEffect(() => {
@@ -78,13 +128,22 @@ const VentasContent: React.FC = () => {
         
         if (salesError) throw salesError;
         
-        // Transform Supabase data to our Venta format
+        // Get unique variant IDs from all sales
+        const variantIds = salesData.flatMap(sale => 
+          sale.sales_items?.map(item => item.variant_id) || []
+        );
+        
+        // Fetch attributes for all variants
+        const attributes = await fetchVariantAttributes([...new Set(variantIds)]);
+        setVariantAttributes(attributes);
+        
         const transformedSales: Venta[] = salesData.map((sale: SupabaseSale) => {
           const saleItems: SaleItem[] = sale.sales_items?.map(item => ({
             id: item.id,
             name: item.variant?.product?.name || 'Unknown Product',
             quantity: item.quantity_sold,
-            unitPrice: item.sale_price
+            unitPrice: item.sale_price,
+            attributes: attributes[item.variant_id] || {}
           })) || [];
           
           const subtotal = saleItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
@@ -100,22 +159,6 @@ const VentasContent: React.FC = () => {
         });
         
         setVentas(transformedSales);
-        
-        // Also load from localStorage for compatibility
-        const ventasGuardadas = localStorage.getItem("ventas");
-        if (ventasGuardadas) {
-          const localSales = JSON.parse(ventasGuardadas);
-          
-          // Only add local sales that don't exist in Supabase data
-          const existingIds = transformedSales.map(s => s.id);
-          const uniqueLocalSales = localSales.filter(
-            (ls: Venta) => !existingIds.includes(ls.id)
-          );
-          
-          if (uniqueLocalSales.length > 0) {
-            setVentas([...transformedSales, ...uniqueLocalSales]);
-          }
-        }
         
       } catch (error) {
         console.error('Error fetching sales:', error);
@@ -152,13 +195,23 @@ const VentasContent: React.FC = () => {
         
         if (salesError) throw salesError;
         
+        // Get unique variant IDs from all sales
+        const variantIds = salesData.flatMap(sale => 
+          sale.sales_items?.map(item => item.variant_id) || []
+        );
+        
+        // Fetch attributes for all variants
+        const attributes = await fetchVariantAttributes([...new Set(variantIds)]);
+        setVariantAttributes(attributes);
+        
         // Transform Supabase data to our Venta format
         const transformedSales: Venta[] = salesData.map((sale: SupabaseSale) => {
           const saleItems: SaleItem[] = sale.sales_items?.map(item => ({
             id: item.id,
             name: item.variant?.product?.name || 'Unknown Product',
             quantity: item.quantity_sold,
-            unitPrice: item.sale_price
+            unitPrice: item.sale_price,
+            attributes: attributes[item.variant_id] || {}
           })) || [];
           
           const subtotal = saleItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
@@ -198,12 +251,44 @@ const VentasContent: React.FC = () => {
     return matchesSearch && matchesDate;
   });
 
+  // Helper function to format product name with attributes
+  const formatProductWithAttributes = (item: SaleItem) => {
+    if (!item.attributes || Object.keys(item.attributes).length === 0) {
+      return item.name;
+    }
+    
+    const attrString = Object.entries(item.attributes)
+      .map(([characteristic, value]) => `${characteristic}: ${value}`)
+      .join(", ");
+    
+    return `${item.name} (${attrString})`;
+  };
+
   return (
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
-      <>
+      {/* Renderizado condicional de los componentes: */}
+      {showCheckoutVenta && (
+        <CheckoutVenta 
+          onClose={() => {
+            setShowCheckoutVenta(false);
+            updateVentas();
+          }}
+        />
+      )}
+
+      {ventaDetails && (
+        <VentaViewDetails 
+          venta={ventaDetails} 
+          onClose={() => setVentaDetails(null)}
+        />
+      )}
+
+      {(!showCheckoutVenta && !ventaDetails) && (
+        <>
           <div className="flex justify-between items-center mb-6">
+            {/* Botón para crear una nueva venta */}
             <button 
-              onClick={() => router.push('/ventas/agregarventa')}
+              onClick={() => setShowCheckoutVenta(true)}
               className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
             >
               <Plus className="w-4 h-4" />
@@ -276,7 +361,9 @@ const VentasContent: React.FC = () => {
                           {venta.items.slice(0, 3).map((producto, index) => (
                             <li key={index} className="flex justify-between py-1">
                               <span>{producto.quantity}</span>
-                              <span className="mx-2 text-ellipsis overflow-hidden">{producto.name}</span>
+                              <span className="mx-2 text-ellipsis overflow-hidden">
+                                {formatProductWithAttributes(producto)}
+                              </span>
                               <span>${producto.unitPrice * producto.quantity} MXN</span>
                             </li>
                           ))}
@@ -290,6 +377,7 @@ const VentasContent: React.FC = () => {
                       <div className="mx-3 border-t border-slate-200 pb-3 pt-2 px-1 flex justify-between items-center">
                         <p className="text-sm text-slate-600 font-medium">Total: ${venta.total} MXN</p>
                         <button 
+                          onClick={() => setVentaDetails(venta)}
                           className="text-blue-600 text-sm font-medium hover:text-blue-800"
                         >
                           Ver más
@@ -302,6 +390,7 @@ const VentasContent: React.FC = () => {
             </div>
           )}
         </>
+      )}
     </main>
   );
 };
