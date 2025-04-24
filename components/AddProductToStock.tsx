@@ -31,15 +31,7 @@ export interface Ubicacion { // <-- NUEVA: Para la tabla Ubicaciones
   name: string;
 }
 
-// Interfaz para lo que realmente guardaremos (no necesario pasarla como prop)
-interface StockRecord {
-  productName: string; // Ya no usaremos esto directamente
-  quantity: number;
-  entryDate: string; // Puedes mantenerlo si quieres registrar la fecha de entrada en 'stock'
- }
-
 interface AddProductToStockProps {
-  
   onSaveStock: () => void; // <-- CAMBIO: Ya no pasa StockRecord simple
   onClose: () => void;
 }
@@ -52,11 +44,13 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
   const [attributeOptions, setAttributeOptions] = useState<{ [key: number]: OptionData[] }>({}); // <-- CAMBIO: Guarda OptionData[]
   const [selectedOptions, setSelectedOptions] = useState<{ [key: number]: number | null }>({}); // <-- NUEVO: Guarda la opción seleccionada por atributo {charId: optionId}
   const [quantity, setQuantity] = useState<number | string>('');
+  const [price, setPrice] = useState<number | string>(''); // <-- NUEVO: Estado para guardar el precio
   const [entryDate, setEntryDate] = useState<string>(''); // Opcional
   const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([]); // <-- NUEVO: Guarda ubicaciones
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null); // <-- NUEVO: Guarda ubicación seleccionada
   const [isLoading, setIsLoading] = useState(false); // <-- NUEVO: Para feedback
   const [errorMsg, setErrorMsg] = useState<string | null>(null); // <-- NUEVO: Para errores
+  const [existingPrice, setExistingPrice] = useState<number | null>(null); // <-- NUEVO: Para almacenar el precio existente si la variante ya existe
 
   // --- Carga de Datos Inicial ---
   useEffect(() => {
@@ -170,7 +164,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
     getAttributeOptions();
   }, [attributes]); // Ejecutar cuando cambie la lista de atributos
 
-
   // --- Handler para Cambios en Dropdowns de Opciones ---
   const handleOptionChange = (characteristicId: number, optionIdStr: string) => {
     const optionId = optionIdStr ? parseInt(optionIdStr, 10) : null;
@@ -178,8 +171,87 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       ...prev,
       [characteristicId]: optionId,
     }));
+    
+    // Limpiar precio existente cuando se cambia alguna opción
+    setExistingPrice(null);
+    
+    // Verificar si esta combinación ya existe para cargar el precio
+    checkExistingVariant();
   };
+  
+  // --- Verificar si la variante ya existe y cargar su precio ---
+  const checkExistingVariant = async () => {
+    // Solo verificar si tenemos producto seleccionado y al menos una opción seleccionada
+    if (!selectedProductId) return;
+    
+    const selectedOptionIds = Object.values(selectedOptions).filter(id => id !== null) as number[];
+    if (selectedOptionIds.length === 0) return;
+    
+    // Solo proceder si tenemos todas las opciones necesarias seleccionadas
+    if (attributes.length > 0 && selectedOptionIds.length !== attributes.length) return;
+    
+    setIsLoading(true);
+    try {
+      const userId = await getUserId();
+      if (!userId) throw new Error("Usuario no autenticado.");
 
+      const optionsArrayLiteral = `{${selectedOptionIds.join(',')}}`;
+      
+      // Buscar la variante
+      const { data: rpcResult, error: searchError } = await supabase
+        .rpc('find_variant_by_options', {
+          p_user_id: userId,
+          p_product_id: selectedProductId,
+          p_option_ids: optionsArrayLiteral
+        });
+        
+      if (searchError) {
+        console.error("Error buscando variante:", searchError);
+        return;
+      }
+      
+      // Si encontramos la variante, buscar su precio
+      if (rpcResult && rpcResult.length > 0 && rpcResult[0].variant_id) {
+        const varianteId = rpcResult[0].variant_id;
+        
+        // Buscar si tiene precio en stock
+        const { data: stockData, error: stockError } = await supabase
+          .from('stock')
+          .select('price')
+          .eq('variant_id', varianteId)
+          .eq('location', selectedLocationId || -1) // Usar -1 u otro valor que no exista si no hay ubicación seleccionada
+          .maybeSingle();
+          
+        if (stockError) {
+          console.error("Error buscando precio en stock:", stockError);
+          return;
+        }
+        
+        // Si encontramos precio, establecerlo
+        if (stockData && stockData.price) {
+          setExistingPrice(stockData.price);
+          setPrice(stockData.price);
+        } else {
+          setExistingPrice(null);
+          setPrice(''); // Limpiar precio si no hay existente
+        }
+      } else {
+        setExistingPrice(null);
+        setPrice(''); // Limpiar precio si no existe la variante
+      }
+    } catch (error: any) {
+      console.error("Error verificando variante existente:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Verificar existencia cuando cambia la ubicación
+  useEffect(() => {
+    if (selectedLocationId) {
+      checkExistingVariant();
+    }
+  }, [selectedLocationId]);
 
   // --- Lógica Principal para Guardar Stock ---
   const handleSaveStock = async () => {
@@ -206,6 +278,14 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
     }
     if (!selectedLocationId) {
       setErrorMsg("Por favor, selecciona una ubicación.");
+      setIsLoading(false);
+      return;
+    }
+    
+    // Validar precio
+    const priceNum = parseFloat(price.toString());
+    if (isNaN(priceNum) || priceNum <= 0) {
+      setErrorMsg("Por favor, ingresa un precio válido (mayor a 0).");
       setIsLoading(false);
       return;
     }
@@ -286,11 +366,10 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       // --- 4. Actualizar o Insertar en la tabla 'stock' ---
       // Ahora ya tenemos el 'varianteId' correcto (sea existente o nuevo)
  
- 
       // Buscar si ya existe una fila de stock para esta variante y ubicación
       const { data: stockCheck, error: stockCheckError } = await supabase
         .from('stock') // <-- VERIFICA ESTE NOMBRE DE TABLA
-        .select('id, stock')
+        .select('id, stock, price')
         .eq('variant_id', varianteId)
         .eq('location', selectedLocationId)
         // .eq('user_id', userId) // Si añadiste user_id a stock, también filtra aquí
@@ -304,16 +383,17 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         // --- 4a. YA EXISTE Stock: Hacer UPDATE ---
         const currentStock = stockCheck.stock || 0;
         const newStockLevel = currentStock + quantityNum;
- 
+
         const { error: updateError } = await supabase
-          .from('stock') // <-- VERIFICA ESTE NOMBRE DE TABLA
+          .from('stock')
           .update({
             stock: newStockLevel,
-            added_at: new Date().toISOString() // Actualizar fecha/hora
-            // user_id: userId // Si tienes user_id en stock, puedes re-asegurarlo aquí aunque no debería cambiar
+            // Only update price if there was no existing price
+            ...(stockCheck.price ? {} : { price: priceNum }),
+            added_at: new Date().toISOString()
           })
-          .eq('id', stockCheck.id); // Actualizar usando el ID de la fila de stock
- 
+          .eq('id', stockCheck.id);
+          
         if (updateError) {
           throw new Error(`Error actualizando stock: ${updateError.message}`);
         }
@@ -328,6 +408,7 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
             variant_id: varianteId,
             location: selectedLocationId,
             stock: quantityNum,
+            price: priceNum, // <-- NUEVO: Guardar precio
             user_id: userId, // <-- ¡ASEGÚRATE QUE TIENES ESTA COLUMNA 'user_id' EN TU TABLA 'stock'!
             added_at: new Date().toISOString()
           });
@@ -344,7 +425,8 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       // Limpiar formulario
       setSelectedProductId(null); // Esto disparará los useEffect para limpiar atributos/opciones
       setQuantity('');
-      setEntryDate(''); // Si usas fecha
+      setPrice('');
+      setEntryDate('');
       setSelectedLocationId(null);
       onClose(); // Cerrar
  
@@ -460,6 +542,34 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
               disabled={isLoading}
               min="1" // Añadir validación mínima en HTML
             />
+          </div>
+          
+          {/* --- Precio --- */}
+          <div className="mb-4">
+            <Label htmlFor="price">
+              {existingPrice !== null ? "Precio (valor existente)" : "Precio"}
+            </Label>
+            <div className="relative">
+              <Input
+                id="price"
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="Precio del producto"
+                className="mt-1"
+                disabled={isLoading || existingPrice !== null} // Disable if there's an existing price
+                min="0.01"
+                step="0.01"
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                MXN
+              </div>
+            </div>
+            {existingPrice !== null && (
+              <p className="text-sm text-blue-500 mt-1">
+                Esta variante ya tiene un precio establecido de {existingPrice} MXN.
+              </p>
+            )}
           </div>
 
           <div className="mb-4">
