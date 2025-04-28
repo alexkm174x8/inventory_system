@@ -1,4 +1,3 @@
-// CheckoutVenta.tsx - Optimized for your database schema
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Minus, Image, Trash2, Search, Filter } from 'lucide-react';
@@ -7,9 +6,8 @@ import { Input } from "@/components/ui/input";
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 
-// Interfaces for database entities
 interface ProductVariant {
-  variant_id: number; // Note: Using variant_id instead of id
+  variant_id: number;
   product_id: number;
   sku: string;
   price: number;
