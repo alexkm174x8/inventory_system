@@ -30,7 +30,6 @@ interface StockItem {
   added_at: string;
 }
 
-// Interface for cart items
 interface ProductoCarrito {
   id: number;
   variant_id: number;
@@ -42,14 +41,12 @@ interface ProductoCarrito {
   attributes: Record<string, string>;
 }
 
-// Props for the component
 interface CheckoutVentaProps {
   onClose: () => void;
 }
 
 const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
-  // State for products, variants, stock and cart
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [productVariants, setProductVariants] = useState<ProductVariant[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
@@ -60,16 +57,14 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
   const [inputDescuento, setInputDescuento] = useState<string>("0");
   const [ventaItems, setVentaItems] = useState<ProductoCarrito[]>([]);
   
-  // Add states for search and filters
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<string[]>([]);
 
-  // Fetch product data from Supabase
   useEffect(() => {
     const fetchProductData = async () => {
-      setLoading(true);
       try {
+        setLoading(true);
         // Get user ID
         const userId = await getUserId();
         
@@ -153,7 +148,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         }
         
       } catch (error) {
-        console.error('Error fetching product data:', error);
+        console.error('Error fetching sales:', error);
       } finally {
         setLoading(false);
       }
@@ -335,7 +330,9 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full">Cargando productos...</div>;
+    return <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]"></div>
+            </div>;
   }
 
   // Group variants by product for better organization
