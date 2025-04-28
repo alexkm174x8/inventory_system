@@ -27,7 +27,9 @@ interface StockItem {
   variant_id: number;
   location: number;
   stock: number;
+  price: number;
   added_at: string;
+  user_id?: string;
 }
 
 interface ProductoCarrito {
@@ -65,10 +67,8 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
     const fetchProductData = async () => {
       try {
         setLoading(true);
-        // Get user ID
         const userId = await getUserId();
         
-        // Fetch products for this user
         const { data: productsData, error: productsError } = await supabase
           .from('products')
           .select('*')
@@ -76,7 +76,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         
         if (productsError) throw productsError;
         
-        // Fetch product variants for these products
         const { data: variantsData, error: variantsError } = await supabase
           .from('productVariants')
           .select('*')
@@ -84,15 +83,13 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         
         if (variantsError) throw variantsError;
         
-        // Fetch stock information for these variants
         const { data: stockData, error: stockError } = await supabase
           .from('stock')
-          .select('*')
-          .in('variant_id', variantsData.map(v => v.variant_id));
-        
+          .select('*, price') 
+          .in('variant_id', variantsData.map(v => v.variant_id))
+
         if (stockError) throw stockError;
         
-        // Manually fetch variant attributes since we had issues with the RPC function
         const { data: optionVariantsData, error: optionVariantsError } = await supabase
           .from('optionVariants')
           .select('*')
@@ -100,7 +97,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         
         if (optionVariantsError) throw optionVariantsError;
         
-        // Fetch characteristics options
         const { data: optionsData, error: optionsError } = await supabase
           .from('characteristics_options')
           .select('*, product_characteristics(name)')
@@ -217,25 +213,57 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
 
   // Add product to cart
   const agregarAlCarrito = (variantId: number) => {
+    // Find the basic variant info (for name, sku, image etc.)
     const variant = productVariants.find(v => v.variant_id === variantId);
-    if (!variant) return;
-    
+    if (!variant) {
+      console.error("Variant details not found for ID:", variantId);
+      alert("Error: No se encontraron detalles del producto.");
+      return;
+    }
+
+    // *** Find the corresponding stock item for this variant ***
+    // Assumption: You're selling from a context where one stock entry per variant is relevant,
+    // or you just pick the first one found.
+    // You might need more sophisticated logic if a variant can be in multiple locations
+    // with different prices within this single sales interface.
+    const stockItem = stockItems.find(item => item.variant_id === variantId);
+
+    // Check if we found a stock item and it has a valid price
+    if (!stockItem || typeof stockItem.price !== 'number') {
+        console.error("Stock information (including price) not found for variant ID:", variantId);
+        // Decide how to handle this: prevent adding, show error, use a fallback?
+        // Using fallback from productVariants if available, but prefer stock price.
+        // If you MUST have a price from stock, then show an error:
+        alert(`Error: Precio no encontrado en el inventario para ${formatVariantName(variantId)}. No se puede agregar.`);
+        return;
+        // Or, if fallback is acceptable (use with caution as it might be wrong price):
+        // if (!variant.price) {
+        //   alert(`Error: Precio no disponible para ${formatVariantName(variantId)}.`);
+        //   return;
+        // }
+        // unitPrice = variant.price; // Fallback - less ideal based on schema
+    }
+
+    const unitPrice = stockItem.price; // <-- Use price from the stock item
+
     const variantName = formatVariantName(variantId);
-    
+
     setVentaItems(prev => {
       const existe = prev.find(item => item.variant_id === variantId);
       if (existe) {
+        // Update quantity if item already exists
         return prev.map(item =>
           item.variant_id === variantId
-            ? { ...item, quantity: cantidades[variantId] }
+            ? { ...item, quantity: cantidades[variantId], unitPrice: unitPrice } // Ensure price is updated if it changed
             : item
         );
       }
+      // Add new item
       return [...prev, {
         id: Date.now(), // Just for React key
         variant_id: variantId,
         name: variantName,
-        unitPrice: variant.price,
+        unitPrice: unitPrice, // <-- Use the fetched stock price
         quantity: cantidades[variantId],
         image: variant.image_url,
         sku: variant.sku,
@@ -389,22 +417,36 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
             .map(([productId, variants]) => {
               const product = products.find(p => p.id === Number(productId));
               if (!product) return null;
-              
+           
               return (
                 <div key={productId} className="mb-8">
                   <h2 className="text-xl font-semibold mb-3">{product.name}</h2>
                   <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 justify-items-center">
                     {variants.map(variant => {
-                      const stock = getAvailableStock(variant.variant_id);
+                      // --- Find the stock item for this variant ---
+                      const stockItem = stockItems.find(item => item.variant_id === variant.variant_id);
+                      const stock = stockItem ? stockItem.stock : 0;
+                      // --- Get the price from the stock item ---
+                      const displayPrice = stockItem ? stockItem.price : null;
                       const variantName = formatVariantName(variant.variant_id);
-                      
+           
                       return (
                         <Card key={variant.variant_id} className='border border-gray-300 rounded-lg w-full hover:shadow-md transition-shadow'>
                           <CardContent className="text-center flex flex-col items-center gap-y-2 p-4">
                             <h3 className="font-semibold">{variantName}</h3>
-                            <p className="text-sm font-light">MXN ${variant.price}.00</p>
+           
+                            {/* --- THIS IS THE UPDATED PRICE LINE --- */}
+                            {displayPrice !== null ? (
+                              // Display the price from stock, formatted to 2 decimal places
+                              <p className="text-sm font-light">MXN ${displayPrice.toFixed(2)}</p>
+                            ) : (
+                              // Show a message if price is not found in stock data
+                              <p className="text-sm font-light text-red-500">Precio no disponible</p>
+                            )}
+                            {/* --- END OF UPDATED PRICE LINE --- */}
+           
                             <p className="text-xs text-gray-500">SKU: {variant.sku}</p>
-                            
+           
                             {variant.image_url ? (
                               <img src={variant.image_url} alt={variantName} className='w-24 h-24 object-cover rounded mx-auto'/>
                             ) : (
@@ -412,10 +454,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
                                 <Image className="w-12 h-12 text-[#1366D9]" />
                               </div>
                             )}
-                            
+           
+                            {/* Quantity Input - Uses 'stock' variable derived from stockItem */}
                             <div className="flex items-center border border-gray-300 rounded-md overflow-hidden w-full bg-white">
-                              <button 
-                                onClick={() => disminuir(variant.variant_id)} 
+                              <button
+                                onClick={() => disminuir(variant.variant_id)}
                                 className="p-2 text-gray-700 hover:bg-gray-200 transition"
                                 disabled={stock <= 0}
                               >
@@ -427,31 +470,37 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
                                 onChange={(e) => {
                                   let valor = Number(e.target.value);
                                   if (valor < 1) valor = 1;
+                                  // Use 'stock' variable derived from stockItem for max value
                                   if (valor > stock) valor = stock;
                                   setCantidades(prev => ({ ...prev, [variant.variant_id]: valor }));
                                 }}
                                 className="w-full text-center outline-none bg-transparent appearance-none"
                                 disabled={stock <= 0}
+                                // Hide arrows in number input for cleaner look
+                                style={{ MozAppearance: 'textfield', appearance: 'textfield' }}
                               />
-                              <button 
-                                onClick={() => aumentar(variant.variant_id)} 
+                              <button
+                                onClick={() => aumentar(variant.variant_id)}
                                 className="p-2 text-gray-700 hover:bg-gray-200 transition"
-                                disabled={stock <= 0}
+                                // Use 'stock' variable derived from stockItem
+                                disabled={stock <= 0 || (cantidades[variant.variant_id] || 1) >= stock}
                               >
                                 <Plus />
                               </button>
                             </div>
-                            
+           
+                            {/* Stock Status Display - Uses 'stock' variable derived from stockItem */}
                             <div className={`text-xs ${stock > 5 ? 'text-green-600' : stock > 0 ? 'text-orange-500' : 'text-red-500'}`}>
                               {stock > 0 ? `Stock: ${stock}` : 'Sin stock'}
                             </div>
-                            
-                            <button 
-                              onClick={() => agregarAlCarrito(variant.variant_id)} 
-                              className={`w-full h-10 rounded-sm ${stock <= 0 ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#1366D9] hover:bg-[#0d4ea6]'} text-white text-sm font-semibold shadow-lg transition-colors`}
-                              disabled={stock <= 0}
+           
+                            {/* Add Button - Disabled if no stock OR if price is unavailable */}
+                            <button
+                              onClick={() => agregarAlCarrito(variant.variant_id)}
+                              className={`w-full h-10 rounded-sm ${stock <= 0 || displayPrice === null ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#1366D9] hover:bg-[#0d4ea6]'} text-white text-sm font-semibold shadow-lg transition-colors`}
+                              disabled={stock <= 0 || displayPrice === null}
                             >
-                              {stock <= 0 ? 'Sin stock' : 'Agregar'}
+                              {stock <= 0 ? 'Sin stock' : (displayPrice === null ? 'Precio no disp.' : 'Agregar')}
                             </button>
                           </CardContent>
                         </Card>
