@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Minus, Image, Trash2, Search, Filter } from 'lucide-react';
+import { Plus, Minus, Image, Trash2, Search, Filter, Building } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from '@/lib/supabase';
@@ -32,6 +32,12 @@ interface StockItem {
   added_at: string;
 }
 
+interface Location {
+  id: number;
+  name: string;
+  location: string;
+}
+
 // Interface for cart items
 interface ProductoCarrito {
   id: number;
@@ -47,9 +53,13 @@ interface ProductoCarrito {
 // Props for the component
 interface CheckoutVentaProps {
   onClose: () => void;
+  locationId: number;
 }
 
-const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
+const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) => {
+  // State for location info
+  const [locationInfo, setLocationInfo] = useState<Location | null>(null);
+  
   // State for products, variants, stock and cart
   const [loading, setLoading] = useState<boolean>(true);
   const [products, setProducts] = useState<Product[]>([]);
@@ -67,6 +77,28 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<string[]>([]);
 
+  // Fetch location information
+  useEffect(() => {
+    const fetchLocationInfo = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('locations')
+          .select('id, name, location')
+          .eq('id', locationId)
+          .single();
+        
+        if (error) throw error;
+        setLocationInfo(data);
+      } catch (error) {
+        console.error('Error fetching location info:', error);
+      }
+    };
+
+    if (locationId) {
+      fetchLocationInfo();
+    }
+  }, [locationId]);
+
   // Fetch product data from Supabase
   useEffect(() => {
     const fetchProductData = async () => {
@@ -75,36 +107,53 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         // Get user ID
         const userId = await getUserId();
         
-        // Fetch products for this user
-        const { data: productsData, error: productsError } = await supabase
-          .from('products')
+        // First, fetch stock items for the selected location
+        // This is the key change - we only get stock from the specified location
+        const { data: stockData, error: stockError } = await supabase
+          .from('stock')
           .select('*')
+          .eq('location', locationId)
           .eq('user_id', userId);
         
-        if (productsError) throw productsError;
+        if (stockError) throw stockError;
         
-        // Fetch product variants for these products
+        // If there's no stock at this location, set empty arrays and return early
+        if (!stockData || stockData.length === 0) {
+          setStockItems([]);
+          setProductVariants([]);
+          setProducts([]);
+          setLoading(false);
+          return;
+        }
+        
+        // Extract variant IDs from stock to fetch only relevant variants
+        const variantIds = stockData.map(item => item.variant_id);
+        
+        // Fetch only the product variants that exist in this location's stock
         const { data: variantsData, error: variantsError } = await supabase
           .from('productVariants')
           .select('*')
-          .in('product_id', productsData.map(p => p.id));
+          .in('variant_id', variantIds);
         
         if (variantsError) throw variantsError;
         
-        const { data: stockData, error: stockError } = await supabase
-        .from('stock')
-        .select('*, price') 
-        .in('variant_id', variantsData.map(v => v.variant_id))
+        // Extract product IDs to fetch only relevant products
+        const productIds = variantsData.map(variant => variant.product_id);
         
-        if (stockError) throw stockError;
-
-        setStockItems(stockData as StockItem[]); // Cast to the updated interface
+        // Fetch only the products that have variants in this location's stock
+        const { data: productsData, error: productsError } = await supabase
+          .from('products')
+          .select('*')
+          .in('id', productIds)
+          .eq('user_id', userId);
+        
+        if (productsError) throw productsError;
         
         // Manually fetch variant attributes since we had issues with the RPC function
         const { data: optionVariantsData, error: optionVariantsError } = await supabase
           .from('optionVariants')
           .select('*')
-          .in('variant_id', variantsData.map(v => v.variant_id));
+          .in('variant_id', variantIds);
         
         if (optionVariantsError) throw optionVariantsError;
         
@@ -162,8 +211,10 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
       }
     };
     
-    fetchProductData();
-  }, []);
+    if (locationId) {
+      fetchProductData();
+    }
+  }, [locationId]);
 
   // Filter products based on search and category
   const filteredProducts = useMemo(() => {
@@ -233,31 +284,17 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
       return;
     }
 
-    // *** Find the corresponding stock item for this variant ***
-    // Assumption: You're selling from a context where one stock entry per variant is relevant,
-    // or you just pick the first one found.
-    // You might need more sophisticated logic if a variant can be in multiple locations
-    // with different prices within this single sales interface.
+    // Find the corresponding stock item for this variant
     const stockItem = stockItems.find(item => item.variant_id === variantId);
 
     // Check if we found a stock item and it has a valid price
     if (!stockItem || typeof stockItem.price !== 'number') {
         console.error("Stock information (including price) not found for variant ID:", variantId);
-        // Decide how to handle this: prevent adding, show error, use a fallback?
-        // Using fallback from productVariants if available, but prefer stock price.
-        // If you MUST have a price from stock, then show an error:
         alert(`Error: Precio no encontrado en el inventario para ${formatVariantName(variantId)}. No se puede agregar.`);
         return;
-        // Or, if fallback is acceptable (use with caution as it might be wrong price):
-        // if (!variant.price) {
-        //   alert(`Error: Precio no disponible para ${formatVariantName(variantId)}.`);
-        //   return;
-        // }
-        // unitPrice = variant.price; // Fallback - less ideal based on schema
     }
 
-    const unitPrice = stockItem.price; // <-- Use price from the stock item
-
+    const unitPrice = stockItem.price;
     const variantName = formatVariantName(variantId);
 
     setVentaItems(prev => {
@@ -266,7 +303,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         // Update quantity if item already exists
         return prev.map(item =>
           item.variant_id === variantId
-            ? { ...item, quantity: cantidades[variantId], unitPrice: unitPrice } // Ensure price is updated if it changed
+            ? { ...item, quantity: cantidades[variantId], unitPrice: unitPrice }
             : item
         );
       }
@@ -275,7 +312,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         id: Date.now(), // Just for React key
         variant_id: variantId,
         name: variantName,
-        unitPrice: unitPrice, // <-- Use the fetched stock price
+        unitPrice: unitPrice,
         quantity: cantidades[variantId],
         image: variant.image_url,
         sku: variant.sku,
@@ -315,7 +352,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
     try {
       const userId = await getUserId();
       
-      // Create new sale record
+      // Create new sale record - now includes the location ID
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert([
@@ -323,7 +360,8 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
             user_id: userId,
             total_amount: total < 0 ? 0 : total,
             discount_percentage: descuento,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            location: locationId // Include the location ID in the sale
           }
         ])
         .select();
@@ -347,9 +385,12 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
       
       if (itemsError) throw itemsError;
       
-      // Update stock levels
+      // Update stock levels - specifically for the selected location
       for (const item of ventaItems) {
-        const stockItem = stockItems.find(s => s.variant_id === item.variant_id);
+        const stockItem = stockItems.find(s => 
+          s.variant_id === item.variant_id && s.location === locationId
+        );
+        
         if (stockItem) {
           const { error: stockError } = await supabase
             .from('stock')
@@ -386,8 +427,16 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
     <div className="flex">
       {/* Products section */}
       <div className="w-3/4 p-8 bg-white rounded-lg h-auto">
-
-        <h1 className="text-2xl font-bold mb-4">Nueva venta</h1>
+        {/* Location header */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Nueva venta</h1>
+          {locationInfo && (
+            <div className="flex items-center rounded-full bg-blue-50 px-3 py-1">
+              <Building className="w-4 h-4 text-blue-700 mr-2" />
+              <span className="text-blue-700 font-medium">{locationInfo.name}</span>
+            </div>
+          )}
+        </div>
         
         {/* Search and Filter Bar */}
         <div className="mb-6 flex gap-4">
@@ -417,7 +466,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         </div>
         
         {/* Products Display */}
-        {filteredProducts.length === 0 ? (
+        {products.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="text-gray-500">No hay productos disponibles en esta sucursal</p>
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-gray-500">No se encontraron productos</p>
           </div>
@@ -434,7 +487,9 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
                   <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 justify-items-center">
                     {variants.map(variant => {
                       // --- Find the stock item for this variant ---
-                      const stockItem = stockItems.find(item => item.variant_id === variant.variant_id);
+                      const stockItem = stockItems.find(
+                        item => item.variant_id === variant.variant_id && item.location === locationId
+                      );
                       const stock = stockItem ? stockItem.stock : 0;
                       // --- Get the price from the stock item ---
                       const displayPrice = stockItem ? stockItem.price : null;
@@ -445,15 +500,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
                           <CardContent className="text-center flex flex-col items-center gap-y-2 p-4">
                             <h3 className="font-semibold">{variantName}</h3>
            
-                            {/* --- THIS IS THE UPDATED PRICE LINE --- */}
                             {displayPrice !== null ? (
-                              // Display the price from stock, formatted to 2 decimal places
                               <p className="text-sm font-light">MXN ${displayPrice.toFixed(2)}</p>
                             ) : (
-                              // Show a message if price is not found in stock data
                               <p className="text-sm font-light text-red-500">Precio no disponible</p>
                             )}
-                            {/* --- END OF UPDATED PRICE LINE --- */}
            
                             <p className="text-xs text-gray-500">SKU: {variant.sku}</p>
            
