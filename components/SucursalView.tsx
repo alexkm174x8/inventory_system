@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
-import { Package, ShoppingCart, Users, MapPin } from 'lucide-react';
+import { Package, ShoppingCart, Users, MapPin, ArrowLeft } from 'lucide-react';
 
 interface SucursalViewProps {
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 const SucursalView: React.FC<SucursalViewProps> = ({ onClose }) => {
@@ -54,6 +54,14 @@ const SucursalView: React.FC<SucursalViewProps> = ({ onClose }) => {
 
   return (
     <div className="h-full">
+      <button 
+        onClick={() => router.push('/sucursales')}
+        className="mb-4 flex items-center gap-2 text-[#1366D9] hover:underline"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Volver a Sucursales
+      </button>
+      
       <Card className="w-full overflow-hidden mt-6">
         <CardContent>
           <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3 flex-wrap gap-2">
@@ -90,11 +98,13 @@ const SucursalView: React.FC<SucursalViewProps> = ({ onClose }) => {
             </button>
           </div>
 
-          <div className="text-center mt-6">
-            <Button variant="outline" onClick={onClose}>
-              Cerrar
-            </Button>
-          </div>
+          {onClose && (
+            <div className="text-center mt-6">
+              <Button variant="outline" onClick={onClose}>
+                Cerrar
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -102,5 +112,3 @@ const SucursalView: React.FC<SucursalViewProps> = ({ onClose }) => {
 };
 
 export default SucursalView;
-
-
