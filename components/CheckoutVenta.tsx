@@ -411,7 +411,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full">Cargando productos...</div>;
+    return(
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]"></div>
+      </div>
+    )
   }
 
   // Group variants by product for better organization
@@ -506,7 +510,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                               <p className="text-sm font-light text-red-500">Precio no disponible</p>
                             )}
            
-                            <p className="text-xs text-gray-500">SKU: {variant.sku}</p>
+                            {/* <p className="text-xs text-gray-500">SKU: {variant.sku}</p> */}
            
                             {variant.image_url ? (
                               <img src={variant.image_url} alt={variantName} className='w-24 h-24 object-cover rounded mx-auto'/>

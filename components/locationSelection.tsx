@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 import { Building } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Location {
   id: number;
@@ -32,6 +33,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -81,7 +83,9 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
         </DialogHeader>
         
         {loading ? (
-          <div className="flex justify-center py-6">Cargando sucursales...</div>
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]"></div>
+          </div>
         ) : locations.length === 0 ? (
           <div className="text-center py-6">
             <p className="text-gray-500 mb-4">No hay sucursales disponibles</p>
@@ -117,7 +121,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           <Button
             type="button"
             variant="outline"
-            onClick={onClose}
+            onClick={() => router.push('/ventas')}
           >
             Cancelar
           </Button>

@@ -21,6 +21,8 @@ interface Venta {
   discount: number;
   subtotal: number;
   total: number;
+  locationId: number;
+  locationName: string;
 }
 
 interface SupabaseSale {
@@ -28,6 +30,7 @@ interface SupabaseSale {
   user_id: number;
   total_amount: number;
   discount_percentage: number;
+  location: number;
   created_at: string;
   sales_items?: {
     id: number;
@@ -48,6 +51,11 @@ interface SupabaseSale {
   }[];
 }
 
+interface Location {
+  id: number;
+  name: string;
+}
+
 const VentasContent: React.FC = () => {
   const router = useRouter();
   const [ventas, setVentas] = useState<Venta[]>([]);
@@ -55,6 +63,28 @@ const VentasContent: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [variantAttributes, setVariantAttributes] = useState<Record<number, Record<string, string>>>({});
+  const [locations, setLocations] = useState<Record<number, string>>({});
+
+  const fetchLocations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('locations')
+        .select('id, name');
+      
+      if (error) throw error;
+      
+      const locationMap: Record<number, string> = {};
+      data.forEach((location: Location) => {
+        locationMap[location.id] = location.name;
+      });
+      
+      return locationMap;
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      return {};
+    }
+  };
+
   const fetchVariantAttributes = async (variantIds: number[]) => {
     if (!variantIds.length) return {};
     
@@ -94,6 +124,10 @@ const VentasContent: React.FC = () => {
       try {
         setLoading(true);
         const userId = await getUserId();
+        
+        // Fetch locations first
+        const locationMap = await fetchLocations();
+        setLocations(locationMap);
         
         const { data: salesData, error: salesError } = await supabase
           .from('sales')
@@ -138,7 +172,9 @@ const VentasContent: React.FC = () => {
             items: saleItems,
             discount: sale.discount_percentage || 0,
             subtotal: subtotal,
-            total: sale.total_amount
+            total: sale.total_amount,
+            locationId: sale.location,
+            locationName: locationMap[sale.location] || 'Ubicación desconocida'
           };
         });
         
@@ -204,7 +240,9 @@ const VentasContent: React.FC = () => {
             items: saleItems,
             discount: sale.discount_percentage || 0,
             subtotal: subtotal,
-            total: sale.total_amount
+            total: sale.total_amount,
+            locationId: sale.location,
+            locationName: locations[sale.location] || 'Ubicación desconocida'
           };
         });
         
@@ -302,6 +340,7 @@ const VentasContent: React.FC = () => {
                           <LoginLogo size={60} />
                           <div>
                             <h2 className="text-lg font-semibold">Venta #{venta.id}</h2>
+                            <p className="font-light text-sm mt-2">Ubicación: {venta.locationName}</p>
                             <p className="font-light text-sm mt-2">Cliente: Público en general</p>
                           </div>
                         </div>
