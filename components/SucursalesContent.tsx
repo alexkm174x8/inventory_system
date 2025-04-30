@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
-import { Button } from "@/components/ui/button";
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 import { useRouter } from 'next/navigation';

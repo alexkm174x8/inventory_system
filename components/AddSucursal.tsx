@@ -35,7 +35,7 @@ const AddSucursal: React.FC<AddSucursalProps> = ({ onClose, onSave }) => {
 
       if (error) throw error;
 
-      onSave(); // vuelve a /sucursales
+      onSave(); 
     } catch (error) {
       console.error(error);
       alert('Error al guardar la sucursal.');

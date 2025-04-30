@@ -8,37 +8,33 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 
-// --- Interfaces (Añadimos Ubicacion y OptionData) ---
 export interface Product {
   id: number;
   name: string;
 }
 
 export interface Attribute {
-  characteristics_id: number; // Asegurarse que siempre esté presente al usarlo
+  characteristics_id: number; 
   name: string;
 }
 
-// Para guardar la información de las opciones recuperadas
-export interface OptionData { // <-- CAMBIO: Necesitamos ID y Valor de la opción
+export interface OptionData { 
   id: number;
   value: string;
 }
 
-// Para guardar la información de las ubicaciones
-export interface Ubicacion { // <-- NUEVA: Para la tabla Ubicaciones
+export interface Ubicacion { 
   id: number;
   name: string;
 }
 
 interface AddProductToStockProps {
-  onSaveStock: () => void; // <-- CAMBIO: Ya no pasa StockRecord simple
+  onSaveStock: () => void; 
   onClose: () => void;
 }
 
 const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onClose }) => {
-  // --- Estados ---
-  const [products, setProducts] = useState<Product[]>([]); // <-- CAMBIO: Carga productos aquí
+  const [products, setProducts] = useState<Product[]>([]); 
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null); // <-- CAMBIO: Usamos ID
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [attributeOptions, setAttributeOptions] = useState<{ [key: number]: OptionData[] }>({}); // <-- CAMBIO: Guarda OptionData[]
@@ -52,7 +48,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
   const [errorMsg, setErrorMsg] = useState<string | null>(null); // <-- NUEVO: Para errores
   const [existingPrice, setExistingPrice] = useState<number | null>(null); // <-- NUEVO: Para almacenar el precio existente si la variante ya existe
 
-  // --- Carga de Datos Inicial ---
   useEffect(() => {
     async function loadInitialData() {
       setIsLoading(true);
@@ -83,9 +78,8 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       }
     }
     loadInitialData();
-  }, []); // Ejecutar solo una vez al montar
-
-  // --- Carga de Atributos cuando cambia el Producto Seleccionado ---
+  }, []); 
+  
   useEffect(() => {
     async function getAttributes(productId: number | null) {
       if (productId === null) {
@@ -361,26 +355,19 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         } else {
            console.log("Producto sin opciones, no se inserta en variante_opciones.");
         }
-      } // Fin de la creación de la variante
- 
-      // --- 4. Actualizar o Insertar en la tabla 'stock' ---
-      // Ahora ya tenemos el 'varianteId' correcto (sea existente o nuevo)
- 
-      // Buscar si ya existe una fila de stock para esta variante y ubicación
+      } 
       const { data: stockCheck, error: stockCheckError } = await supabase
-        .from('stock') // <-- VERIFICA ESTE NOMBRE DE TABLA
+        .from('stock') 
         .select('id, stock, price')
         .eq('variant_id', varianteId)
         .eq('location', selectedLocationId)
-        // .eq('user_id', userId) // Si añadiste user_id a stock, también filtra aquí
-        .maybeSingle(); // Puede devolver una fila o null
+        .maybeSingle(); 
  
       if (stockCheckError) {
         throw new Error(`Error al verificar stock existente: ${stockCheckError.message}`);
       }
  
       if (stockCheck && stockCheck.id) {
-        // --- 4a. YA EXISTE Stock: Hacer UPDATE ---
         const currentStock = stockCheck.stock || 0;
         const newStockLevel = currentStock + quantityNum;
 
@@ -388,7 +375,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
           .from('stock')
           .update({
             stock: newStockLevel,
-            // Only update price if there was no existing price
             ...(stockCheck.price ? {} : { price: priceNum }),
             added_at: new Date().toISOString()
           })
@@ -417,13 +403,10 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
           throw new Error(`Error insertando nuevo stock: ${insertError.message}`);
         }
         console.log("Nuevo stock insertado.");
-      } // Fin del manejo de stock
- 
-      // --- 5. Éxito Final ---
+      } 
       alert("Stock agregado correctamente!");
-      onSaveStock(); // Notificar
-      // Limpiar formulario
-      setSelectedProductId(null); // Esto disparará los useEffect para limpiar atributos/opciones
+      onSaveStock();
+      setSelectedProductId(null); 
       setQuantity('');
       setPrice('');
       setEntryDate('');
@@ -433,14 +416,10 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
     } catch (error: any) {
       console.error("Error detallado en handleSaveStock:", error);
       setErrorMsg(`Error al guardar: ${error.message}`);
-      // No limpiar el formulario en caso de error para que el usuario pueda corregir
     } finally {
-      setIsLoading(false); // Quitar estado de carga
+      setIsLoading(false); 
     }
-  }; // Fin de handleSaveStock
-
-
-  // --- Renderizado ---
+  }; 
   return (
     <div className="h-full">
       <Card className="w-full">
