@@ -1,9 +1,10 @@
 "use client"
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Minus, Image, Trash2, Search, Filter, Building } from 'lucide-react';
+import { Plus, Minus, Image, Trash2, Search, Filter, Building, Users } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 
@@ -38,6 +39,15 @@ interface Location {
   location: string;
 }
 
+// New Client interface
+interface Client {
+  id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  user_id: number;
+}
+
 // Interface for cart items
 interface ProductoCarrito {
   id: number;
@@ -67,6 +77,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [variantAttributes, setVariantAttributes] = useState<Record<number, Record<string, string>>>({});
   
+  // New state for clients
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [loadingClients, setLoadingClients] = useState<boolean>(true);
+  
   const [cantidades, setCantidades] = useState<Record<number, number>>({});
   const [descuento, setDescuento] = useState<number>(0);
   const [inputDescuento, setInputDescuento] = useState<string>("0");
@@ -76,6 +91,45 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<string[]>([]);
+
+  // Fetch clients from database
+  useEffect(() => {
+    const fetchClients = async () => {
+      setLoadingClients(true);
+      try {
+        const userId = await getUserId();
+        
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('user_id', userId);
+        
+        if (error) throw error;
+        
+        // Check if we have a "Cliente General" in the data
+        // If not, we'll create a default client object
+        let clienteGeneral = data?.find(client => 
+          client.name.toLowerCase() === 'cliente general' || 
+          client.name.toLowerCase() === 'general'
+        );
+        
+        if (clienteGeneral) {
+          setSelectedClientId(clienteGeneral.id);
+        } else if (data && data.length > 0) {
+          // If no "Cliente General", select the first client
+          setSelectedClientId(data[0].id);
+        }
+        
+        setClients(data || []);
+      } catch (error) {
+        console.error('Error fetching clients:', error);
+      } finally {
+        setLoadingClients(false);
+      }
+    };
+    
+    fetchClients();
+  }, []);
 
   // Fetch location information
   useEffect(() => {
@@ -352,7 +406,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     try {
       const userId = await getUserId();
       
-      // Create new sale record - now includes the location ID
+      // Create new sale record - now includes the location ID and client ID
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert([
@@ -361,7 +415,8 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
             total_amount: total < 0 ? 0 : total,
             discount_percentage: descuento,
             created_at: new Date().toISOString(),
-            location: locationId // Include the location ID in the sale
+            location: locationId,
+            client: selectedClientId // Add the selected client ID
           }
         ])
         .select();
@@ -410,7 +465,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     }
   };
 
-  if (loading) {
+  if (loading || loadingClients) {
     return(
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]"></div>
@@ -587,6 +642,35 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       {/* Checkout sidebar */}
       <div className="w-1/4 p-4 bg-white mx-4 h-full rounded-lg">
         <h1 className="text-xl font-bold mb-4">Resumen de venta</h1>
+        
+        {/* Client Dropdown */}
+        <div className="mb-4">
+          <label htmlFor="client" className="block text-sm font-medium mb-2 flex items-center">
+            <Users className="w-4 h-4 mr-1 text-gray-500" />
+            Cliente
+          </label>
+          
+          {clients.length > 0 ? (
+            <Select 
+              value={selectedClientId?.toString() || ""} 
+              onValueChange={(value) => setSelectedClientId(Number(value))}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccionar cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map(client => (
+                  <SelectItem key={client.id} value={client.id.toString()}>
+                    {client.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-sm text-gray-500">No hay clientes disponibles</p>
+          )}
+        </div>
+        
         {ventaItems.length === 0 ? (
           <p className="text-sm font-light">No hay productos agregados</p>
         ) : (
