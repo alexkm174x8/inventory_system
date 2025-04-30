@@ -5,6 +5,8 @@ import {
   BarChart2, Archive, Users, CircleDollarSign,
   Store, Settings, LogOut, Bell, ChevronDown, Menu as MenuIcon
 } from 'lucide-react';
+import { getUserId, getUUID } from "@/lib/userId";
+import { supabase } from '@/lib/supabase';
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -14,8 +16,38 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    // fetch supabase u otros para setUserName…
-  }, []);
+    async function getUserData() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session?.user?.id) {
+          const userId = await getUUID();
+
+          const { data: profile, error } = await supabase
+            .from('admins')
+            .select('name, id, user_id')
+            .eq('id', userId)
+
+          if (error) {
+            console.error('Error details:', error)
+            setUserName('Error fetching')
+            return
+          }
+
+          if (profile && profile.length > 0) {
+            setUserName(profile[0].name)
+          } else {
+            setUserName('Profile not found')
+          }
+        }
+      } catch (error) {
+        console.error('Unexpected error:', error)
+        setUserName('Error')
+      }
+    }
+
+    getUserData()
+  }, [supabase])
 
   const menuItems = [
     { label: 'Menú',         href: '/menu',         icon: <BarChart2 /> },
@@ -72,7 +104,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             <Bell />
             <div className="flex items-center">
               <div className="h-8 w-8 rounded-full bg-[#007aff] text-white flex items-center justify-center">
-                {/* iniciales del usuario */}
+                {userName && userName !== 'Loading...' && userName !== 'Profile not found' && userName !== 'Error' && userName !== 'Error fetching' ? userName.split(' ').map(name => name[0]).join('').toUpperCase().substring(0,2): ''}
               </div>
               <button className="ml-2 flex items-center text-sm">
                 {userName} <ChevronDown className="ml-1 h-4 w-4" />
