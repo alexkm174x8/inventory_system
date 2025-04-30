@@ -1,9 +1,7 @@
-// VentaViewDetails.tsx
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import {Card, CardContent} from "@/components/ui/card"
 
-// Definir la interfaz de Venta (asegúrate de que coincida con la estructura que guardas)
 interface Venta {
   id: string;
   createdAt: string;
@@ -11,7 +9,7 @@ interface Venta {
     name: string;
     quantity: number;
     unitPrice: number;
-    attributes?: Record<string, string>; // Add attributes property
+    attributes?: Record<string, string>; 
   }[];
   discount: number;
   subtotal: number;
@@ -25,8 +23,6 @@ interface VentaViewDetailsProps {
 
 const VentaViewDetails: React.FC<VentaViewDetailsProps> = ({ venta, onClose }) => {
   const fecha = new Date(venta.createdAt);
-
-  // Helper function to format item name with attributes
   const formatItemWithAttributes = (item: Venta['items'][0]) => {
     if (!item.attributes || Object.keys(item.attributes).length === 0) {
       return item.name;
@@ -53,16 +49,19 @@ const VentaViewDetails: React.FC<VentaViewDetailsProps> = ({ venta, onClose }) =
       <Card className="w-full overflow-hidden">
         <CardContent>
             <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3">
-                <h1 className="text-2xl font-bold">Detalle de Venta #{venta.id}</h1> 
+                <h1 className="text-2xl font-bold">Venta</h1> 
+                <p className="text-lg font-light flex items-center gap-2">
+                  ID #{venta.id}
+                </p>
             </div>
-            <div className="mt-3 ">
+            <div className="mt-3 mb-3">
                 <h2 className="text-base font-semibold">Detalles principales</h2> 
+            </div>
                     <p><strong>Fecha:</strong> {fecha.toLocaleDateString()}</p>
                     <p><strong>Hora:</strong> {fecha.toLocaleTimeString()}</p>
-            </div>
             <div className="mt-3">
                 <h2 className="text-base font-semibold">Productos</h2> 
-                <ul className="mt-2">
+                <ul className="mt-3">
                     {venta.items.map((item, index) => (
                     <li key={index} className="flex justify-between border-b py-1">
                         <div className="flex">
@@ -74,10 +73,12 @@ const VentaViewDetails: React.FC<VentaViewDetailsProps> = ({ venta, onClose }) =
                     ))}
                 </ul>
             </div>
-            <div className="mt-4">
+            <div className="mt-3 mb-3">
                 <p><strong>Subtotal:</strong> MXN ${venta.subtotal}</p>
                 <p><strong>Descuento:</strong> {venta.discount}%</p>
-                <p className="font-bold"><strong>Total:</strong> MXN ${venta.total}</p>
+            </div>
+            <div>
+                <p ><strong>Total:</strong> MXN ${venta.total}</p>
             </div>
             <div className="text-center">
                 <Button type="button" variant="outline" onClick={onClose} className="w-20">
