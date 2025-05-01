@@ -5,6 +5,7 @@ import LoginLogo from './login-logo';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 import { useRouter } from 'next/navigation';
+import LocationSelector from './locationSelection';
 
 interface SaleItem {
   id: number;
@@ -23,6 +24,8 @@ interface Venta {
   total: number;
   locationId: number;
   locationName: string;
+  clientId: number | null; // Added client ID
+  clientName: string; // Added client name
 }
 
 interface SupabaseSale {
@@ -32,6 +35,7 @@ interface SupabaseSale {
   discount_percentage: number;
   location: number;
   created_at: string;
+  client: number | null; // Add client field
   sales_items?: {
     id: number;
     sale_id: number;
@@ -56,6 +60,11 @@ interface Location {
   name: string;
 }
 
+interface Client {
+  id: number;
+  name: string;
+}
+
 const VentasContent: React.FC = () => {
   const router = useRouter();
   const [ventas, setVentas] = useState<Venta[]>([]);
@@ -64,6 +73,9 @@ const VentasContent: React.FC = () => {
   const [dateFilter, setDateFilter] = useState('');
   const [variantAttributes, setVariantAttributes] = useState<Record<number, Record<string, string>>>({});
   const [locations, setLocations] = useState<Record<number, string>>({});
+  const [clients, setClients] = useState<Record<number, string>>({});
+  const [openLocations, setOpenLocations] = useState(false);
+
 
   const fetchLocations = async () => {
     try {
@@ -81,6 +93,27 @@ const VentasContent: React.FC = () => {
       return locationMap;
     } catch (error) {
       console.error('Error fetching locations:', error);
+      return {};
+    }
+  };
+
+  // New function to fetch clients
+  const fetchClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name');
+      
+      if (error) throw error;
+      
+      const clientMap: Record<number, string> = {};
+      data.forEach((client: Client) => {
+        clientMap[client.id] = client.name;
+      });
+      
+      return clientMap;
+    } catch (error) {
+      console.error('Error fetching clients:', error);
       return {};
     }
   };
@@ -125,9 +158,12 @@ const VentasContent: React.FC = () => {
         setLoading(true);
         const userId = await getUserId();
         
-        // Fetch locations first
+        // Fetch locations and clients first
         const locationMap = await fetchLocations();
         setLocations(locationMap);
+        
+        const clientMap = await fetchClients();
+        setClients(clientMap);
         
         const { data: salesData, error: salesError } = await supabase
           .from('sales')
@@ -174,7 +210,9 @@ const VentasContent: React.FC = () => {
             subtotal: subtotal,
             total: sale.total_amount,
             locationId: sale.location,
-            locationName: locationMap[sale.location] || 'Ubicación desconocida'
+            locationName: locationMap[sale.location] || 'Ubicación desconocida',
+            clientId: sale.client,
+            clientName: sale.client ? clientMap[sale.client] || 'Cliente desconocido' : 'Sin cliente'
           };
         });
         
@@ -242,7 +280,9 @@ const VentasContent: React.FC = () => {
             subtotal: subtotal,
             total: sale.total_amount,
             locationId: sale.location,
-            locationName: locations[sale.location] || 'Ubicación desconocida'
+            locationName: locations[sale.location] || 'Ubicación desconocida',
+            clientId: sale.client,
+            clientName: sale.client ? clients[sale.client] || 'Cliente desconocido' : 'Sin cliente'
           };
         });
         
@@ -263,7 +303,8 @@ const VentasContent: React.FC = () => {
     const matchesSearch = searchTerm === '' || 
       venta.items.some(item => 
         item.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      ) ||
+      venta.clientName.toLowerCase().includes(searchTerm.toLowerCase()); // Added client name to search
     
     const matchesDate = dateFilter === '' || 
       new Date(venta.createdAt).toLocaleDateString().includes(dateFilter);
@@ -284,21 +325,53 @@ const VentasContent: React.FC = () => {
     return `${item.name} (${attrString})`;
   };
 
+  const [showModal, setShowModal] = useState(false);
+
+  const handleButtonClick = () => {
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+  };
+
+  const [isDialogOpen, setIsDialogOpen] = useState(true);
+  const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+
+  const handleLocationSelected = (locationId: number) => {
+    setSelectedLocation(locationId);
+    setIsDialogOpen(false); 
+  };
+
   return (
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
           <div className="flex justify-between items-center mb-6">
           <button 
-            onClick={() => router.push("/ventas/agregarventa")}
-            className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
-          >
+            onClick={handleButtonClick}
+            className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'>
             <Plus className="w-4 h-4" />
             Crear venta
           </button>
+          {showModal && (
+            <LocationSelector
+              isOpen={true}
+              onClose={() => {
+                setIsDialogOpen(false);
+                setShowModal(false);
+              }}
+              onLocationSelected={(locationId) => {
+                setSelectedLocation(locationId);
+                setIsDialogOpen(false);
+                setShowModal(false);
+              }}
+            />
+          )}
+
             <div className="flex gap-4">
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Buscar productos..."
+                  placeholder="Buscar productos o clientes..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"/>
@@ -341,7 +414,7 @@ const VentasContent: React.FC = () => {
                           <div>
                             <h2 className="text-lg font-semibold">Venta #{venta.id}</h2>
                             <p className="font-light text-sm mt-2">Ubicación: {venta.locationName}</p>
-                            <p className="font-light text-sm mt-2">Cliente: Público en general</p>
+                            <p className="font-light text-sm mt-2">Cliente: {venta.clientName}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-6 mt-3 text-sm">

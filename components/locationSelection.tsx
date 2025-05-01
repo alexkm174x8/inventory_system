@@ -1,17 +1,17 @@
-"use client"
-import React, { useState, useEffect } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
+"use client";
+import React, { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
   DialogTitle,
-  DialogFooter
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabase';
-import { getUserId } from '@/lib/userId';
-import { Building } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
+import { getUserId } from "@/lib/userId";
+import { Building } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface Location {
   id: number;
@@ -25,40 +25,47 @@ interface LocationSelectorProps {
   onLocationSelected: (locationId: number) => void;
 }
 
-const LocationSelector: React.FC<LocationSelectorProps> = ({ 
-  isOpen, 
-  onClose, 
-  onLocationSelected 
+const LocationSelector: React.FC<LocationSelectorProps> = ({
+  isOpen,
+  onClose,
+  onLocationSelected,
 }) => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
+  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(
+    null
+  );
   const router = useRouter();
+
+  const initiateCheckout = () => {
+    if (selectedLocationId !== null) {
+      onLocationSelected(selectedLocationId);
+      onClose();
+    }
+  };
 
   useEffect(() => {
     const fetchLocations = async () => {
       try {
         setLoading(true);
         const userId = await getUserId();
-        
+
         const { data, error } = await supabase
-          .from('locations')
-          .select('id, name, location')
-          .eq('user_id', userId)
-          .order('name');
-        
-        if (error) {
-          throw error;
-        }
-        
+          .from("locations")
+          .select("id, name, location")
+          .eq("user_id", userId)
+          .order("name");
+
+        if (error) throw error;
+
         setLocations(data || []);
-        
-        // Auto-select the first location if available
+
+        // Auto-select first location
         if (data && data.length > 0 && !selectedLocationId) {
           setSelectedLocationId(data[0].id);
         }
       } catch (error) {
-        console.error('Error fetching locations:', error);
+        console.error("Error fetching locations:", error);
       } finally {
         setLoading(false);
       }
@@ -69,19 +76,13 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
     }
   }, [isOpen]);
 
-  const handleSubmit = () => {
-    if (selectedLocationId !== null) {
-      onLocationSelected(selectedLocationId);
-    }
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Seleccionar sucursal</DialogTitle>
         </DialogHeader>
-        
+
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]"></div>
@@ -89,19 +90,21 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
         ) : locations.length === 0 ? (
           <div className="text-center py-6">
             <p className="text-gray-500 mb-4">No hay sucursales disponibles</p>
-            <p className="text-sm">Por favor, crea una sucursal antes de realizar una venta.</p>
+            <p className="text-sm">
+              Por favor, crea una sucursal antes de realizar una venta.
+            </p>
           </div>
         ) : (
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-1 gap-3">
               {locations.map((location) => (
-                <div 
+                <div
                   key={location.id}
                   onClick={() => setSelectedLocationId(location.id)}
                   className={`flex items-center p-3 border rounded-md cursor-pointer hover:border-blue-500 transition-colors ${
-                    selectedLocationId === location.id 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200'
+                    selectedLocationId === location.id
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200"
                   }`}
                 >
                   <div className="flex-shrink-0 mr-3">
@@ -109,26 +112,26 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
                   </div>
                   <div className="flex-1">
                     <h3 className="font-medium">{location.name}</h3>
-                    <p className="text-sm text-gray-500">{location.location}</p>
+                    <p className="text-sm text-gray-500">
+                      {location.location}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
         )}
-        
+
         <DialogFooter className="sm:justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push('/ventas')}
-          >
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancelar
           </Button>
           <Button
             type="submit"
-            onClick={handleSubmit}
-            disabled={loading || locations.length === 0 || selectedLocationId === null}
+            onClick={() => router.push(`/ventas/agregarventa?locationId=${selectedLocationId}`)}
+            disabled={
+              loading || locations.length === 0 || selectedLocationId === null
+            }
             className="bg-[#1366D9] hover:bg-[#0d4ea6]"
           >
             Continuar
