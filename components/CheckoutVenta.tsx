@@ -645,7 +645,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         
         {/* Client Dropdown */}
         <div className="mb-4">
-          <label htmlFor="client" className="block text-sm font-medium mb-2 flex items-center">
+          <label htmlFor="client" className="text-sm font-medium mb-2 flex items-center">
             <Users className="w-4 h-4 mr-1 text-gray-500" />
             Cliente
           </label>
