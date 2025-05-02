@@ -1,14 +1,11 @@
 'use client';
-import ClientesContent from "@/components/ClientesContent";
+import EmpleadosContent from "@/components/EmpleadosContent";
+
 export default function InventarioPage() {
 
   return (
     <div className='h-full m-5'>
-      <ClientesContent/>
+      <EmpleadosContent/>
     </div>
   );
 }
-
-
-
-

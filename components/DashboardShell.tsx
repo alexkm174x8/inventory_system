@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   BarChart2, Archive, Users, CircleDollarSign,
-  Store, Settings, LogOut, Bell, ChevronDown, Menu as MenuIcon
+  Store, Settings, LogOut, Bell, ChevronDown, SquareUserRound, UserPlus, Menu as MenuIcon
 } from 'lucide-react';
-import { getUserId, getUUID } from "@/lib/userId";
+import { getUserId, getUUID } from '@/lib/userId';
 import { supabase } from '@/lib/supabase';
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
@@ -18,45 +18,49 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function getUserData() {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        
+        const { data: { session } } = await supabase.auth.getSession();
         if (session?.user?.id) {
           const userId = await getUUID();
-
           const { data: profile, error } = await supabase
             .from('admins')
             .select('name, id, user_id')
-            .eq('id', userId)
+            .eq('id', userId);
 
           if (error) {
-            console.error('Error details:', error)
-            setUserName('Error fetching')
-            return
+            console.error('Error details:', error);
+            setUserName('Error fetching');
+            return;
           }
 
           if (profile && profile.length > 0) {
-            setUserName(profile[0].name)
+            setUserName(profile[0].name);
           } else {
-            setUserName('Profile not found')
+            setUserName('Profile not found');
           }
         }
       } catch (error) {
-        console.error('Unexpected error:', error)
-        setUserName('Error')
+        console.error('Unexpected error:', error);
+        setUserName('Error');
       }
     }
+    getUserData();
+  }, []);
 
-    getUserData()
-  }, [supabase])
-
+  // Define base menu items
   const menuItems = [
-    { label: 'Menú',         href: '/menu',         icon: <BarChart2 /> },
-    { label: 'Inventario',   href: '/inventario',   icon: <Archive /> },
-    { label: 'Clientes',     href: '/clientes',     icon: <Users /> },
-    { label: 'Ventas',       href: '/ventas',       icon: <CircleDollarSign /> },
-    { label: 'Sucursales',   href: '/sucursales',   icon: <Store /> },
-    { label: 'Configuración',href: '/configuracion',icon: <Settings /> },
+    { label: 'Inventario', href: '/inventario', icon: <Archive /> },
+    { label: 'Clientes', href: '/clientes', icon: <Users /> },
+    { label: 'Ventas', href: '/ventas', icon: <CircleDollarSign /> },
+    { label: 'Empleados', href: '/empleados', icon: <SquareUserRound /> },
+    { label: 'Sucursales', href: '/sucursales', icon: <Store /> },
+    { label: 'Configuración', href: '/configuracion', icon: <Settings /> },
   ];
+
+  // Determine current page title based on path prefix
+  const currentMenuItem = menuItems.find(item => 
+    pathname === item.href || pathname.startsWith(item.href + '/')
+  );
+  const pageTitle = currentMenuItem?.label || 'Trade Hub';
 
   return (
     <div className="flex h-screen bg-[#f5f5f5]">
@@ -97,14 +101,14 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           <button className="md:hidden" onClick={() => setIsMobileMenuOpen(o => !o)}>
             <MenuIcon className="h-6 w-6" />
           </button>
-          <h1 className="text-2xl font-bold">
-            {menuItems.find(mi => pathname === mi.href || (pathname === '/menu' && mi.href === '/menu'))?.label}
-          </h1>
+          <h1 className="text-2xl font-bold">{pageTitle}</h1>
           <div className="flex items-center space-x-4">
             <Bell />
             <div className="flex items-center">
               <div className="h-8 w-8 rounded-full bg-[#007aff] text-white flex items-center justify-center">
-                {userName && userName !== 'Loading...' && userName !== 'Profile not found' && userName !== 'Error' && userName !== 'Error fetching' ? userName.split(' ').map(name => name[0]).join('').toUpperCase().substring(0,2): ''}
+                {userName && !['Loading...', 'Profile not found', 'Error', 'Error fetching'].includes(userName)
+                  ? userName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+                  : ''}
               </div>
               <button className="ml-2 flex items-center text-sm">
                 {userName} <ChevronDown className="ml-1 h-4 w-4" />

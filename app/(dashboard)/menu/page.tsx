@@ -2,5 +2,9 @@
 import MenuContent from '@/components/MenuContent';
 
 export default function DashboardHome() {
-  return <MenuContent />;
+  return(
+    <div className='h-full m-5'>
+      <MenuContent/>;
+    </div>
+  )
 }

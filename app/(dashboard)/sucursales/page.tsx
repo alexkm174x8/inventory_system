@@ -4,6 +4,8 @@ import SucursalesContent from "@/components/SucursalesContent";
 export default function InventarioPage() {
 
   return (
-    <SucursalesContent/>
+    <div className='h-full m-5'>
+      <SucursalesContent/>
+    </div> 
   );
 }

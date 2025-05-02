@@ -6,8 +6,10 @@ export default function AgregarProductoPage() {
   const router = useRouter();
 
   return (
-    <CheckoutVenta
+    <div className='h-full m-5'>
+      <CheckoutVenta
         onClose={() => router.push('/ventas')}>
     </CheckoutVenta>
-  );
+    </div>
+  )
 }

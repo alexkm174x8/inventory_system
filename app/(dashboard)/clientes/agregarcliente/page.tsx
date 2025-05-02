@@ -7,9 +7,11 @@ export default function NuevaSucursalPage() {
   const router = useRouter();
 
   return (
-    <AddClient
-      onClose={() => router.push('/clientes')}
-      onSave={() => router.push('/clientes')}
+    <div className='h-full m-5'>
+      <AddClient
+        onClose={() => router.push('/clientes')}
+        onSave={() => router.push('/clientes')}
     />
+    </div>
   );
 }

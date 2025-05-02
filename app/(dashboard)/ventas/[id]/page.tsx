@@ -113,6 +113,8 @@ export default function Page() {
     }
 
     return (
-        <VentaViewDetails venta={venta} onClose={handleClose} />
+        <div className='h-full m-5'>
+            <VentaViewDetails venta={venta} onClose={handleClose} />
+        </div>
     );
 }

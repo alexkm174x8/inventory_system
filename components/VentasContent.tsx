@@ -253,8 +253,8 @@ const VentasContent: React.FC = () => {
             onClick={() => router.push("/ventas/agregarventa")}
             className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
           >
-            <Plus className="w-4 h-4" />
-            Crear venta
+            <Plus className="inline-block w-4 h-4 mr-1" />
+            Agregar Venta
           </button>
             <div className="flex gap-4">
               <div className="relative">
