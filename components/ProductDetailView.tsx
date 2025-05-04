@@ -161,10 +161,10 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
 
   return (
     <div className="h-full">
-      <Card className="w-full overflow-hidden mt-6">
+      <Card className="w-full overflow-hidden">
         <CardContent>
-          <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3 flex-wrap gap-2">
-            <h1 className="text-2xl font-bold">{product.productName}</h1>
+            <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3">
+            <h1 className="text-2xl font-bold  capitalize mb-4">Producto</h1>
             <p className="text-lg font-light flex items-center gap-2">
               ID #{product.id}
             </p>
@@ -173,6 +173,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
           <h2 className=" font-semibold">Detalles principales</h2>
           </div>
           <div className=" mb-3 mt-3">
+            <p><strong>Nombre:</strong> {product.productName}</p>
             <p><strong>Cantidad: </strong> {product.quantity}</p>
             <p><strong>Ubicación:</strong> {product.ubicacion_nombre}</p>
             <p><strong> Fecha de Entrada:</strong> {product.entryDate}</p>

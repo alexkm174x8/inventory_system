@@ -7,7 +7,9 @@ import ProductDetailView from '@/components/ProductDetailView';
 export default function Page() {
   const router = useRouter();
   return (
-    <ProductDetailView onClose={() => router.push('/inventario')} />
+    <div className='h-full m-5'>
+      <ProductDetailView onClose={() => router.push('/inventario')} />
+    </div>
   );
 }
 

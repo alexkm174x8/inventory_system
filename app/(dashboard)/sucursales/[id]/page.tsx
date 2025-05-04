@@ -6,8 +6,10 @@ export default function SucursalDetallePage() {
   const router = useRouter();
 
   return (
-    <SucursalView
+    <div className='h-full m-5'>
+      <SucursalView
       onClose={() => router.push('/sucursales')}
-    />
+      />
+    </div>
   );
 }

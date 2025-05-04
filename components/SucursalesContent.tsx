@@ -49,7 +49,7 @@ const SucursalesContent: React.FC = () => {
           <button onClick={() => router.push("/sucursales/agregarsucursal")}
           className="px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors">
             <Plus className="w-4 h-4" />
-            Agregar sucursal
+            Agregar Sucursal
           </button>
       </div>
 
@@ -66,8 +66,8 @@ const SucursalesContent: React.FC = () => {
           {locations.map((location) => (
             <Link key={location.id} href={`/sucursales/${location.id}`}>
               <div className="cursor-pointer bg-white shadow-sm border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                <h2 className="text-lg font-semibold">{location.name}</h2>
-                <p className="text-sm text-slate-600 mt-1">{location.location}</p>
+                <h2 className="text-lg font-semibold capitalize">{location.name}</h2>
+                <p className="text-sm text-slate-600 mt-1 capitalize">{location.location}</p>
               </div>
             </Link>
           ))}

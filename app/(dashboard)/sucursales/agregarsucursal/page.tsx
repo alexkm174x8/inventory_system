@@ -7,10 +7,13 @@ export default function NuevaSucursalPage() {
   const router = useRouter();
 
   return (
-    <AddSucursal
+    <div className='h-full m-5'>
+      <AddSucursal
       onClose={() => router.push('/sucursales')}
       onSave={() => router.push('/sucursales')}
     />
+    </div>
+
   );
 }
 

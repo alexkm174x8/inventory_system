@@ -4,6 +4,8 @@ import InventarioContent from "@/components/InventarioContent";
 export default function InventarioPage() {
 
   return (
-    <InventarioContent/>
+    <div className='h-full m-5'>
+      <InventarioContent/>
+    </div>
   );
 }

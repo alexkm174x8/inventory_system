@@ -46,13 +46,14 @@ const AddSucursal: React.FC<AddSucursalProps> = ({ onClose, onSave }) => {
 
   return (
     <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md mt-10">
-      <h2 className="text-xl font-semibold mb-4">Agregar nueva sucursal</h2>
+      <h2 className="text-2xl font-bold  capitalize mb-4">Agregar nueva sucursal</h2>
 
       <div className="space-y-4">
         <div>
           <Label htmlFor="name">Nombre</Label>
           <Input
             id="name"
+            className="mt-1"
             value={locationName}
             onChange={(e) => setLocationName(e.target.value)}
             placeholder="Agregue el nombre de la sucursal"
@@ -63,6 +64,7 @@ const AddSucursal: React.FC<AddSucursalProps> = ({ onClose, onSave }) => {
           <Label htmlFor="address">Dirección</Label>
           <Input
             id="address"
+            className="mt-1"
             value={locationAddress}
             onChange={(e) => setLocationAddress(e.target.value)}
             placeholder="Agregue la dirección de la sucursal"

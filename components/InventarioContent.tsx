@@ -177,7 +177,7 @@ const InventarioContent: React.FC = () => {
           className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
         >
           <Plus className="inline-block w-4 h-4 mr-1" />
-          Agregar inventario
+          Agregar Inventario
         </button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white rounded-lg shadow p-10 mb-12 ">
@@ -237,7 +237,7 @@ const InventarioContent: React.FC = () => {
       {/* Tabla */}
       <div className="bg-white rounded-lg border border-[#e6e6e6] shadow-sm mt-8">
         <div className="px-6 py-4 border-b border-[#e6e6e6] flex justify-between items-center">
-          <h2 className="text-lg font-medium text-[#1b1f26]">Lista de Clientes</h2>
+          <h2 className="text-lg font-medium text-[#1b1f26]">Lista de Inventario</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -253,10 +253,10 @@ const InventarioContent: React.FC = () => {
           <tbody className="divide-y divide-[#e6e6e6] text-center">
             {pageData.map(item => (
               <tr key={item.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]">{item.productName}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.caracteristicas.join(', ')}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]  capitalize">{item.productName}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]  capitalize">{item.caracteristicas.join(', ')}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.quantity}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.ubicacion_nombre}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]  capitalize">{item.ubicacion_nombre}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.entryDate}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <button

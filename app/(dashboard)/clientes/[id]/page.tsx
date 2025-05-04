@@ -7,6 +7,8 @@ import ClientView from '@/components/ClientView';
 export default function Page() {
   const router = useRouter();
   return (
-    <ClientView onClose={() => router.push('/clientes')} />
+    <div className='h-full m-5'>
+      <ClientView onClose={() => router.push('/clientes')} />
+    </div>
   );
 }
