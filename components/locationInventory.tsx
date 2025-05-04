@@ -5,6 +5,8 @@ import { Eye, SlidersHorizontal, ChevronLeft, ChevronRight, Check, ArrowLeft } f
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 import { useRouter, useParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+
 
 interface InventoryItem {
   id: number; 
@@ -47,7 +49,7 @@ type SupabaseStockItem = {
   user_id: string;
 };
 
-const locationInventory: React.FC = () => {
+const LocationInventory: React.FC = () => {
   const router = useRouter();
   const params = useParams();
   const locationId = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -124,7 +126,7 @@ const locationInventory: React.FC = () => {
           )
         `)
         .eq('user_id', userId)
-        .eq('location_id', locationId)
+        .eq('location', locationId)
         .returns<SupabaseStockItem[]>();
 
       if (error) {
@@ -215,14 +217,7 @@ const locationInventory: React.FC = () => {
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <button 
-            onClick={() => router.push(`/sucursales/${locationId}`)}
-            className="mb-4 flex items-center gap-2 text-[#1366D9] hover:underline"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver a Sucursal
-          </button>
-          <h1 className="text-2xl font-bold text-[#1b1f26]">Inventario - {locationName}</h1>
+          <h1 className="text-2xl font-bold  capitalize mb-4">Inventario {locationName}</h1>
         </div>
         <div className="flex gap-4">
           <button
@@ -247,8 +242,7 @@ const locationInventory: React.FC = () => {
                 <td></td>
               </tr>
               <tr className='text-neutral-400 text-sm'>
-                <td>Diferentes variantes</td>
-                <td>Cantidad</td>
+                <td>Cantidad de productos</td>
               </tr>
             </tbody>
           </table>
@@ -265,7 +259,6 @@ const locationInventory: React.FC = () => {
               </tr>
               <tr className='text-neutral-400 text-sm'>
                 <td>Cantidad total de artículos</td>
-                <td>Unidades</td>
               </tr>
             </tbody>
           </table>
@@ -274,35 +267,7 @@ const locationInventory: React.FC = () => {
       
       <div className="bg-white rounded-lg border border-[#e6e6e6] shadow-sm mt-8">
         <div className="px-6 py-4 border-b border-[#e6e6e6] flex justify-between items-center">
-          <h2 className="text-lg font-medium text-[#1b1f26]">Inventario en {locationName}</h2>
-          <div className="relative">
-            <button
-              className="border-2 px-3 py-2 flex items-center gap-2 rounded-sm hover:bg-gray-100"
-              onClick={toggleDropdown}
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              {filterStatus}
-            </button>
-            {isDropdownOpen && (
-              <div className="absolute top-12 right-0 bg-white shadow-md border rounded-md w-40 z-10">
-                {["Todos"].map((option) => (
-                  <button
-                    key={option}
-                    className={`flex justify-between px-4 py-2 w-full text-left hover:bg-gray-100 ${
-                      filterStatus === option ? "font-regular" : ""
-                    }`}
-                    onClick={() => {
-                      setFilterStatus(option);
-                      setIsDropdownOpen(false);
-                    }}
-                  >
-                    {option}
-                    {filterStatus === option && <span><Check className='w-4 h-4 text-blue-700' /></span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <h2 className="text-lg font-medium text-[#1b1f26] capitalize">Inventario {locationName}</h2>
         </div>
 
         <div className="overflow-x-auto">
@@ -320,8 +285,8 @@ const locationInventory: React.FC = () => {
               {currentData.length > 0 ? (
                 currentData.map((item) => (
                   <tr key={item.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]">{item.productName}</td>
-                    <td className="px-6 py-4 text-sm text-[#667085]">{item.caracteristicas.join(', ')}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]  capitalize">{item.productName}</td>
+                    <td className="px-6 py-4 text-sm text-[#667085]  capitalize">{item.caracteristicas.join(', ')}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.quantity}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.entryDate}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -368,8 +333,16 @@ const locationInventory: React.FC = () => {
           )}
         </div>
       </div>
-    </main>
+      <div className='text-center m-9'>
+        <Button 
+          variant="outline" 
+          onClick={() => router.push(`/sucursales/${locationId}`)}
+        >
+          Cerrar
+        </Button>
+      </div>
+</main>
   );
 };
 
-export default locationInventory;
+export default LocationInventory;

@@ -54,25 +54,17 @@ const SucursalView: React.FC<SucursalViewProps> = ({ onClose }) => {
 
   return (
     <div className="h-full">
-      <button 
-        onClick={() => router.push('/sucursales')}
-        className="mb-4 flex items-center gap-2 text-[#1366D9] hover:underline"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Volver a Sucursales
-      </button>
-      
       <Card className="w-full overflow-hidden mt-6">
         <CardContent>
           <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3 flex-wrap gap-2">
-            <h1 className="text-2xl font-bold">Sucursal {name}</h1>
-            <p className="text-lg font-light flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
+            <h1 className="text-2xl font-bold  capitalize">Sucursal {name}</h1>
+            <p className="text-lg font-light flex items-center gap-2 capitalize">
+              <MapPin className="w-4 h-4 " />
               {address}
             </p>
           </div>
 
-          <div className="flex flex-col lg:flex-row justify-center items-center gap-6 mt-6">
+          <div className="flex flex-col lg:flex-row justify-center items-center gap-6 mt-6 ">
             <button
               onClick={() => router.push(`/sucursales/${id}/inventario`)}
               className="w-full lg:w-1/3 px-6 py-6 flex flex-col items-center gap-4 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors text-2xl"

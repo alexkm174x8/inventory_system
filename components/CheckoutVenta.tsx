@@ -353,7 +353,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
       {/* Products section */}
       <div className="w-3/4 p-8 bg-white rounded-lg h-auto">
 
-        <h1 className="text-2xl font-bold mb-4">Nueva venta</h1>
+        <h1 className="text-2xl font-bold  capitalize mb-4">Nueva Venta</h1>
         
         {/* Search and Filter Bar */}
         <div className="mb-6 flex gap-4">

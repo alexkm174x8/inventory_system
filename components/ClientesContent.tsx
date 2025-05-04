@@ -71,7 +71,7 @@ const ClientesContent = () => {
             className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
           >
             <Plus className="w-4 h-4" />
-            Agregar cliente
+            Agregar Cliente
           </button>
          </div>
       <div className="bg-white rounded-lg border border-[#e6e6e6] shadow-sm mt-8">
@@ -92,7 +92,7 @@ const ClientesContent = () => {
             <tbody className="divide-y divide-[#e6e6e6] text-center">
               {currentData.map(client => (
                 <tr key={client.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]  capitalize">
                     {client.name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">

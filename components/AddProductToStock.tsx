@@ -35,18 +35,18 @@ interface AddProductToStockProps {
 
 const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onClose }) => {
   const [products, setProducts] = useState<Product[]>([]); 
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null); // <-- CAMBIO: Usamos ID
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null); 
   const [attributes, setAttributes] = useState<Attribute[]>([]);
-  const [attributeOptions, setAttributeOptions] = useState<{ [key: number]: OptionData[] }>({}); // <-- CAMBIO: Guarda OptionData[]
-  const [selectedOptions, setSelectedOptions] = useState<{ [key: number]: number | null }>({}); // <-- NUEVO: Guarda la opción seleccionada por atributo {charId: optionId}
+  const [attributeOptions, setAttributeOptions] = useState<{ [key: number]: OptionData[] }>({}); 
+  const [selectedOptions, setSelectedOptions] = useState<{ [key: number]: number | null }>({}); 
   const [quantity, setQuantity] = useState<number | string>('');
-  const [price, setPrice] = useState<number | string>(''); // <-- NUEVO: Estado para guardar el precio
-  const [entryDate, setEntryDate] = useState<string>(''); // Opcional
-  const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([]); // <-- NUEVO: Guarda ubicaciones
-  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null); // <-- NUEVO: Guarda ubicación seleccionada
-  const [isLoading, setIsLoading] = useState(false); // <-- NUEVO: Para feedback
-  const [errorMsg, setErrorMsg] = useState<string | null>(null); // <-- NUEVO: Para errores
-  const [existingPrice, setExistingPrice] = useState<number | null>(null); // <-- NUEVO: Para almacenar el precio existente si la variante ya existe
+  const [price, setPrice] = useState<number | string>('');
+  const [entryDate, setEntryDate] = useState<string>(''); 
+  const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([]); 
+  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null); 
+  const [isLoading, setIsLoading] = useState(false); 
+  const [errorMsg, setErrorMsg] = useState<string | null>(null); 
+  const [existingPrice, setExistingPrice] = useState<number | null>(null); 
 
   useEffect(() => {
     async function loadInitialData() {
@@ -54,15 +54,12 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       try {
         const userId = await getUserId();
         if (!userId) throw new Error("Usuario no autenticado.");
-        // Cargar Productos
         const { data: productsData, error: productsError } = await supabase
           .from('products')
           .select('id, name')
           .eq('user_id', userId);
         if (productsError) throw productsError;
         setProducts(productsData || []);
-
-        // Cargar Ubicaciones (Ajusta el nombre de la tabla si es diferente)
         const { data: ubicacionesData, error: ubicacionesError } = await supabase
           .from('locations')
           .select('id, name') 
@@ -85,7 +82,7 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       if (productId === null) {
         setAttributes([]);
         setAttributeOptions({});
-        setSelectedOptions({}); // Limpiar selecciones previas
+        setSelectedOptions({}); 
         return;
       }
       setIsLoading(true);
@@ -96,13 +93,12 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
           .eq("product_id", productId);
         if (error) throw error;
         setAttributes(data || []);
-        // Limpiar opciones al cambiar de producto antes de cargar las nuevas
         setAttributeOptions({});
         setSelectedOptions({});
       } catch (error: any) {
         console.error("Error fetching attributes:", error);
         setErrorMsg(`Error cargando atributos: ${error.message}`);
-        setAttributes([]); // Limpiar en caso de error
+        setAttributes([]); 
       } finally {
         setIsLoading(false);
       }
@@ -110,42 +106,39 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
     getAttributes(selectedProductId);
   }, [selectedProductId]);
 
-  // --- Carga de Opciones cuando cambian los Atributos ---
   useEffect(() => {
     async function getAttributeOptions() {
       if (attributes.length === 0) {
-        setAttributeOptions({}); // Asegurarse de limpiar si no hay atributos
+        setAttributeOptions({}); 
         return;
       };
 
       setIsLoading(true);
-      setErrorMsg(null); // Limpiar error previo
+      setErrorMsg(null);
       try {
         let optionsMap: { [key: number]: OptionData[] } = {};
         const initialSelectedOptions: { [key: number]: number | null } = {};
 
         for (const attribute of attributes) {
-          if (!attribute.characteristics_id) continue; // Saltar si falta id
+          if (!attribute.characteristics_id) continue; 
 
           const { data, error } = await supabase
           .from("characteristics_options")
-          .select("id, values") // <-- CAMBIO: Pedimos 'id' (option_id) además de 'values'
+          .select("id, values") 
           .eq("characteristics_id", attribute.characteristics_id)
 
           if (error) {
             console.error(`Error fetching options for ${attribute.name}:`, error);
-            setErrorMsg(`Error cargando opciones para ${attribute.name}.`); // Mostrar error específico
-            optionsMap[attribute.characteristics_id] = []; // Poner array vacío si falla
-            continue; // Continuar con el siguiente atributo
+            setErrorMsg(`Error cargando opciones para ${attribute.name}.`); 
+            optionsMap[attribute.characteristics_id] = []; 
+            continue; 
           }
-
-          // Mapear a la interfaz OptionData
           const optionsData: OptionData[] = (data || []).map(opt => ({ id: opt.id, value: opt.values }));
           optionsMap[attribute.characteristics_id] = optionsData;
-          initialSelectedOptions[attribute.characteristics_id] = null; // Inicializar selección
+          initialSelectedOptions[attribute.characteristics_id] = null; 
         }
         setAttributeOptions(optionsMap);
-        setSelectedOptions(initialSelectedOptions); // Resetear selecciones al cargar nuevas opciones
+        setSelectedOptions(initialSelectedOptions);
 
       } catch (error: any) {
         console.error("Unexpected error fetching attribute options:", error);
@@ -156,32 +149,23 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
     }
 
     getAttributeOptions();
-  }, [attributes]); // Ejecutar cuando cambie la lista de atributos
+  }, [attributes]);
 
-  // --- Handler para Cambios en Dropdowns de Opciones ---
   const handleOptionChange = (characteristicId: number, optionIdStr: string) => {
     const optionId = optionIdStr ? parseInt(optionIdStr, 10) : null;
     setSelectedOptions(prev => ({
       ...prev,
       [characteristicId]: optionId,
     }));
-    
-    // Limpiar precio existente cuando se cambia alguna opción
     setExistingPrice(null);
     
-    // Verificar si esta combinación ya existe para cargar el precio
     checkExistingVariant();
   };
-  
-  // --- Verificar si la variante ya existe y cargar su precio ---
   const checkExistingVariant = async () => {
-    // Solo verificar si tenemos producto seleccionado y al menos una opción seleccionada
     if (!selectedProductId) return;
     
     const selectedOptionIds = Object.values(selectedOptions).filter(id => id !== null) as number[];
     if (selectedOptionIds.length === 0) return;
-    
-    // Solo proceder si tenemos todas las opciones necesarias seleccionadas
     if (attributes.length > 0 && selectedOptionIds.length !== attributes.length) return;
     
     setIsLoading(true);
@@ -191,7 +175,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
 
       const optionsArrayLiteral = `{${selectedOptionIds.join(',')}}`;
       
-      // Buscar la variante
       const { data: rpcResult, error: searchError } = await supabase
         .rpc('find_variant_by_options', {
           p_user_id: userId,
@@ -204,24 +187,19 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         return;
       }
       
-      // Si encontramos la variante, buscar su precio
       if (rpcResult && rpcResult.length > 0 && rpcResult[0].variant_id) {
         const varianteId = rpcResult[0].variant_id;
-        
-        // Buscar si tiene precio en stock
         const { data: stockData, error: stockError } = await supabase
           .from('stock')
           .select('price')
           .eq('variant_id', varianteId)
-          .eq('location', selectedLocationId || -1) // Usar -1 u otro valor que no exista si no hay ubicación seleccionada
+          .eq('location', selectedLocationId || -1) 
           .maybeSingle();
           
         if (stockError) {
           console.error("Error buscando precio en stock:", stockError);
           return;
         }
-        
-        // Si encontramos precio, establecerlo
         if (stockData && stockData.price) {
           setExistingPrice(stockData.price);
           setPrice(stockData.price);
@@ -239,20 +217,14 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       setIsLoading(false);
     }
   };
-  
-  // Verificar existencia cuando cambia la ubicación
   useEffect(() => {
     if (selectedLocationId) {
       checkExistingVariant();
     }
   }, [selectedLocationId]);
-
-  // --- Lógica Principal para Guardar Stock ---
   const handleSaveStock = async () => {
     setErrorMsg(null);
     setIsLoading(true);
- 
-    // 1. --- Validaciones ---
     if (!selectedProductId) {
       setErrorMsg("Por favor, selecciona un producto.");
       setIsLoading(false);
@@ -275,16 +247,12 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       setIsLoading(false);
       return;
     }
-    
-    // Validar precio
     const priceNum = parseFloat(price.toString());
     if (isNaN(priceNum) || priceNum <= 0) {
       setErrorMsg("Por favor, ingresa un precio válido (mayor a 0).");
       setIsLoading(false);
       return;
     }
- 
-    // --- Iniciar Proceso de Guardado ---
     try {
       const userId = await getUserId();
       if (!userId) throw new Error("Usuario no autenticado.");
@@ -293,48 +261,37 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       const selectedOptionIds = Object.values(selectedOptions).filter(id => id !== null) as number[];
 
       const optionsArrayLiteral = `{${selectedOptionIds.join(',')}}`;
- 
-      // 2. --- Buscar Variante Existente usando RPC ---
       const { data: rpcResult, error: searchError } = await supabase
         .rpc('find_variant_by_options', {
           p_user_id: userId,
           p_product_id: selectedProductId,
-          p_option_ids: optionsArrayLiteral // <-- PASAMOS EL STRING '{36,38}'
+          p_option_ids: optionsArrayLiteral 
         });
  
         if (searchError) {
-          // Si sigue fallando, el problema podría estar en la definición SQL de la función RPC
           console.error("Error buscando variante via RPC:", searchError);
           throw new Error(`Error al buscar variante (RPC): ${searchError.message}. Verifica la función y el formato del array.`);
         }
  
-      // Verificar si la RPC encontró algo
       const foundVariant = rpcResult && rpcResult.length > 0 ? rpcResult[0] : null;
  
       if (foundVariant && foundVariant.variant_id) {
-        // --- 3a. Variante YA EXISTÍA ---
         varianteId = foundVariant.variant_id;
  
       } else {
-        // --- 3b. Variante NO EXISTÍA, hay que crearla ---
- 
-        // INSERTAR en 'producto_variantes' (ajusta el nombre si es diferente)
         const { data: newVariantData, error: variantInsertError } = await supabase
-          .from('productVariants') // <-- VERIFICA ESTE NOMBRE DE TABLA
+          .from('productVariants') 
           .insert({
             product_id: selectedProductId,
             user_id: userId
-            // ,sku: 'GENERAR_SKU_AQUI' // Opcional
           })
-          .select('variant_id') // Pedir el ID generado
-          .single(); // Esperamos solo una fila
+          .select('variant_id') 
+          .single();
  
         if (variantInsertError || !newVariantData?.variant_id) {
           throw new Error(`Error creando la nueva variante: ${variantInsertError?.message || 'No se obtuvo ID'}`);
         }
-        varianteId = newVariantData.variant_id; // Guardar el ID recién creado
- 
-        // Si hay opciones seleccionadas, INSERTAR en 'variante_opciones'
+        varianteId = newVariantData.variant_id; 
         if (selectedOptionIds.length > 0) {
           const varianteOpcionesPayload = selectedOptionIds.map(optId => ({
             variant_id: varianteId,
@@ -342,12 +299,10 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
           }));
  
           const { error: optionsInsertError } = await supabase
-            .from('optionVariants') // <-- VERIFICA ESTE NOMBRE DE TABLA
+            .from('optionVariants') 
             .insert(varianteOpcionesPayload);
  
           if (optionsInsertError) {
-            // Error crítico: Se creó la variante pero no se pudieron vincular las opciones.
-            // Intentar borrar la variante huérfana (Rollback manual simple)
             console.error("Error vinculando opciones, intentando eliminar variante huérfana...");
             await supabase.from('producto_variantes').delete().eq('variant_id', varianteId);
             throw new Error(`Error vinculando opciones: ${optionsInsertError.message}`);
@@ -386,16 +341,15 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         console.log("Stock actualizado.");
  
       } else {
-        // --- 4b. NO EXISTE Stock: Hacer INSERT ---
         console.log("Insertando nuevo registro de stock.");
         const { error: insertError } = await supabase
-          .from('stock') // <-- VERIFICA ESTE NOMBRE DE TABLA
+          .from('stock') 
           .insert({
             variant_id: varianteId,
             location: selectedLocationId,
             stock: quantityNum,
-            price: priceNum, // <-- NUEVO: Guardar precio
-            user_id: userId, // <-- ¡ASEGÚRATE QUE TIENES ESTA COLUMNA 'user_id' EN TU TABLA 'stock'!
+            price: priceNum, 
+            user_id: userId, 
             added_at: new Date().toISOString()
           });
  
@@ -411,7 +365,7 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       setPrice('');
       setEntryDate('');
       setSelectedLocationId(null);
-      onClose(); // Cerrar
+      onClose(); 
  
     } catch (error: any) {
       console.error("Error detallado en handleSaveStock:", error);
@@ -421,12 +375,10 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
     }
   }; 
   return (
-    <div className="h-full">
-      <Card className="w-full">
+    <div>
+      <Card className="w-full ">
         <CardContent className="p-6">
-          <h1 className="text-2xl font-bold mb-4">Agregar Inventario</h1>
-
-           {/* --- Selector de Producto --- */}
+            <h1 className="text-2xl font-bold  capitalize mb-4">Agregar Inventario</h1>
           <div className="mb-4">
             <Label htmlFor="product-select">Producto</Label>
             <select
@@ -446,13 +398,12 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
               ))}
             </select>
           </div>
-          {/* --- Selectores de Atributos/Opciones (si existen) --- */}
           {isLoading && attributes.length === 0 && selectedProductId && <div>Cargando atributos...</div>}
           {attributes.length > 0 && (
             <div className="mb-4 border p-4 rounded-md">
               <h2 className="font-semibold mb-2">Selecciona Opciones</h2>
               {attributes.map((attribute) => {
-                if (!attribute.characteristics_id) return null; // Seguridad
+                if (!attribute.characteristics_id) return null; 
                 const options = attributeOptions[attribute.characteristics_id] || [];
                 const currentSelection = selectedOptions[attribute.characteristics_id];
 
@@ -464,7 +415,7 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
                     <select
                       id={`attribute-${attribute.characteristics_id}`}
                       className="w-full border shadow-xs rounded-[8px] p-1.5 mt-1 text-[#737373]"
-                      value={currentSelection ?? ""} // Usar el estado para el valor
+                      value={currentSelection ?? ""} 
                       onChange={(e) => handleOptionChange(attribute.characteristics_id, e.target.value)}
                       disabled={isLoading}
                     >
@@ -473,12 +424,12 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
                       </option>
                       {options.length > 0 ? (
                         options.map((option) => (
-                          <option key={option.id} value={option.id}> {/* Valor es option.id */}
-                            {option.value} {/* Texto es option.value */}
+                          <option key={option.id} value={option.id}> 
+                            {option.value}
                           </option>
                         ))
                       ) : (
-                         !isLoading && <option value="" disabled>No hay opciones</option>
+                        !isLoading && <option value="" disabled>No hay opciones</option>
                       )}
                     </select>
                   </div>
@@ -487,8 +438,7 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
             </div>
           )}
 
-           {/* --- Selector de Ubicación --- */}
-           <div className="mb-4">
+          <div className="mb-4">
             <Label htmlFor="location-select">Ubicación</Label>
             <select
               id="location-select"
@@ -507,8 +457,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
               ))}
             </select>
           </div>
-
-          {/* --- Cantidad --- */}
           <div className="mb-4">
             <Label htmlFor="quantity">Cantidad a agregar</Label>
             <Input
@@ -519,11 +467,10 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
               placeholder="Cantidad"
               className="mt-1"
               disabled={isLoading}
-              min="1" // Añadir validación mínima en HTML
+              min="1" 
             />
           </div>
           
-          {/* --- Precio --- */}
           <div className="mb-4">
             <Label htmlFor="price">
               {existingPrice !== null ? "Precio (valor existente)" : "Precio"}
@@ -536,7 +483,7 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="Precio del producto"
                 className="mt-1"
-                disabled={isLoading || existingPrice !== null} // Disable if there's an existing price
+                disabled={isLoading || existingPrice !== null} 
                 min="0.01"
                 step="0.01"
               />
@@ -561,22 +508,18 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
               className="mt-1 text-[#737373]"
             />
           </div>
-
-           {/* --- Mensaje de Error --- */}
-           {errorMsg && <p className="text-red-500 text-sm mb-4">{errorMsg}</p>}
-
-          {/* --- Botones --- */}
+          {errorMsg && <p className="text-red-500 text-sm mb-4">{errorMsg}</p>}
           <div className="flex justify-end gap-4 mt-6">
             <Button variant="outline" type="button" onClick={onClose} disabled={isLoading}>
               Cancelar
             </Button>
             <Button type="button" onClick={handleSaveStock} className="bg-blue-500 hover:bg-blue-600" disabled={isLoading}>
-              {isLoading ? 'Guardando...' : 'Guardar'}
+              {isLoading ? 'Actualizando...' : 'Guardar'}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+    </CardContent>
+  </Card>
+</div>
   );
 };
 

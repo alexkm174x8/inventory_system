@@ -53,11 +53,12 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
     <div className="h-full">
       <Card className="w-full">
         <CardContent className="p-6">
-            <h1 className="text-2xl font-bold mb-4">Agregar nuevo cliente</h1>
+            <h1 className="text-2xl font-bold  capitalize mb-4">Agregar nuevo cliente</h1>
             <div className="mb-4">
                 <Label htmlFor="clientName">Nombre</Label>
                 <Input
                     id="clientName"
+                    className="mt-1"
                     value={clientName}
                     placeholder="Agregue el nombre del cliente"
                     onChange={(e) => setClientnName(e.target.value )}
@@ -67,6 +68,7 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
                 <Label htmlFor="phone">Número telefónico</Label>
                 <Input
                     id="phone"
+                    className="mt-1"
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
                     placeholder="Agregue el número del cliente"

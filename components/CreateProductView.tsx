@@ -53,8 +53,6 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
           await insertOptions(attributesData, nonEmptyAttributes); // Insert options with correct IDs
         }
       }
-  
-      // Update local state
       onSaveProduct({
         name: productName,
         image: productImage,
@@ -231,7 +229,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
       <Card className="w-full max-w-3xl mx-auto">
         <CardContent className="p-6 ">
           <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-            <h1 className="text-2xl font-bold">Nuevo Producto</h1>
+            <h1 className="text-2xl font-bold  capitalize mb-4">Nuevo Producto</h1>
           </div>
           <div
             className={`mt-4 flex-col items-center rounded-lg border border-dashed py-8 cursor-pointer transition-all ${
@@ -290,18 +288,17 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
             </div>
           </div>
 
-          <div className="space-y-6 mt-6">
-            <div className="space-y-2">
-              <Label htmlFor="product-name">Nombre</Label>
-              <Input
-                id="product-name"
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                placeholder="Nombre del producto"
-              />
-            </div>
+          <div className="space-y-2 mt-6">
+            <Label htmlFor="product-name">Nombre</Label>
+            <Input
+              id="product-name"
+              value={productName}
+              onChange={(e) => setProductName(e.target.value)}
+              placeholder="Nombre del producto"
+            />
 
-            <div className="space-y-6">
+            <div className="space-y-2">
+            <Label htmlFor="product-name">Detalles</Label>
               {attributes.map((attribute, attrIndex) => (
                 <div key={attrIndex} className="space-y-4 p-4 border rounded-lg">
                   <div className="space-y-2">

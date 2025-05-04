@@ -4,6 +4,8 @@ import VentasContent from "@/components/VentasContent";
 export default function InventarioPage() {
 
   return (
-    <VentasContent/>
+    <div className='h-full m-5'>
+        <VentasContent/>
+    </div>
   );
 }
