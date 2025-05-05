@@ -14,6 +14,10 @@ interface Venta {
   discount: number;
   subtotal: number;
   total: number;
+  locationId?: number;
+  locationName?: string;
+  clientId?: number | null;
+  clientName?: string;
 }
 
 interface VentaViewDetailsProps {
@@ -57,8 +61,14 @@ const VentaViewDetails: React.FC<VentaViewDetailsProps> = ({ venta, onClose }) =
             <div className="mt-3 mb-3">
                 <h2 className="text-base font-semibold">Detalles principales</h2> 
             </div>
-                    <p><strong>Fecha:</strong> {fecha.toLocaleDateString()}</p>
-                    <p><strong>Hora:</strong> {fecha.toLocaleTimeString()}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <p><strong>Fecha:</strong> {fecha.toLocaleDateString()}</p>
+              <p><strong>Hora:</strong> {fecha.toLocaleTimeString()}</p>
+              {venta.locationName && (
+                <p><strong>Ubicación:</strong> {venta.locationName}</p>
+              )}
+              <p><strong>Cliente:</strong> {venta.clientName || 'Sin cliente'}</p>
+            </div>
             <div className="mt-3">
                 <h2 className="text-base font-semibold">Productos</h2> 
                 <ul className="mt-3">
@@ -78,9 +88,9 @@ const VentaViewDetails: React.FC<VentaViewDetailsProps> = ({ venta, onClose }) =
                 <p><strong>Descuento:</strong> {venta.discount}%</p>
             </div>
             <div>
-                <p ><strong>Total:</strong> MXN ${venta.total}</p>
+                <p><strong>Total:</strong> MXN ${venta.total}</p>
             </div>
-            <div className="text-center">
+            <div className="text-center mt-4">
                 <Button type="button" variant="outline" onClick={onClose} className="w-20">
                     Cerrar
                 </Button>

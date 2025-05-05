@@ -1,9 +1,10 @@
 "use client"
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Minus, Image, Trash2, Search, Filter } from 'lucide-react';
+import { Plus, Minus, Image, Trash2, Search, Filter, Building, Users } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 
@@ -28,7 +29,23 @@ interface StockItem {
   variant_id: number;
   location: number;
   stock: number;
+  price: number;
   added_at: string;
+}
+
+interface Location {
+  id: number;
+  name: string;
+  location: string;
+}
+
+// New Client interface
+interface Client {
+  id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  user_id: number;
 }
 
 // Interface for cart items
@@ -46,15 +63,24 @@ interface ProductoCarrito {
 // Props for the component
 interface CheckoutVentaProps {
   onClose: () => void;
+  locationId: number;
 }
 
-const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
+const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) => {
+  // State for location info
+  const [locationInfo, setLocationInfo] = useState<Location | null>(null);
+  
   // State for products, variants, stock and cart
   const [loading, setLoading] = useState<boolean>(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [productVariants, setProductVariants] = useState<ProductVariant[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [variantAttributes, setVariantAttributes] = useState<Record<number, Record<string, string>>>({});
+  
+  // New state for clients
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [loadingClients, setLoadingClients] = useState<boolean>(true);
   
   const [cantidades, setCantidades] = useState<Record<number, number>>({});
   const [descuento, setDescuento] = useState<number>(0);
@@ -66,6 +92,67 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<string[]>([]);
 
+  // Fetch clients from database
+  useEffect(() => {
+    const fetchClients = async () => {
+      setLoadingClients(true);
+      try {
+        const userId = await getUserId();
+        
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('user_id', userId);
+        
+        if (error) throw error;
+        
+        // Check if we have a "Cliente General" in the data
+        // If not, we'll create a default client object
+        let clienteGeneral = data?.find(client => 
+          client.name.toLowerCase() === 'cliente general' || 
+          client.name.toLowerCase() === 'general'
+        );
+        
+        if (clienteGeneral) {
+          setSelectedClientId(clienteGeneral.id);
+        } else if (data && data.length > 0) {
+          // If no "Cliente General", select the first client
+          setSelectedClientId(data[0].id);
+        }
+        
+        setClients(data || []);
+      } catch (error) {
+        console.error('Error fetching clients:', error);
+      } finally {
+        setLoadingClients(false);
+      }
+    };
+    
+    fetchClients();
+  }, []);
+
+  // Fetch location information
+  useEffect(() => {
+    const fetchLocationInfo = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('locations')
+          .select('id, name, location')
+          .eq('id', locationId)
+          .single();
+        
+        if (error) throw error;
+        setLocationInfo(data);
+      } catch (error) {
+        console.error('Error fetching location info:', error);
+      }
+    };
+
+    if (locationId) {
+      fetchLocationInfo();
+    }
+  }, [locationId]);
+
   // Fetch product data from Supabase
   useEffect(() => {
     const fetchProductData = async () => {
@@ -74,35 +161,53 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         // Get user ID
         const userId = await getUserId();
         
-        // Fetch products for this user
-        const { data: productsData, error: productsError } = await supabase
-          .from('products')
-          .select('*')
-          .eq('user_id', userId);
-        
-        if (productsError) throw productsError;
-        
-        // Fetch product variants for these products
-        const { data: variantsData, error: variantsError } = await supabase
-          .from('productVariants')
-          .select('*')
-          .in('product_id', productsData.map(p => p.id));
-        
-        if (variantsError) throw variantsError;
-        
-        // Fetch stock information for these variants
+        // First, fetch stock items for the selected location
+        // This is the key change - we only get stock from the specified location
         const { data: stockData, error: stockError } = await supabase
           .from('stock')
           .select('*')
-          .in('variant_id', variantsData.map(v => v.variant_id));
+          .eq('location', locationId)
+          .eq('user_id', userId);
         
         if (stockError) throw stockError;
+        
+        // If there's no stock at this location, set empty arrays and return early
+        if (!stockData || stockData.length === 0) {
+          setStockItems([]);
+          setProductVariants([]);
+          setProducts([]);
+          setLoading(false);
+          return;
+        }
+        
+        // Extract variant IDs from stock to fetch only relevant variants
+        const variantIds = stockData.map(item => item.variant_id);
+        
+        // Fetch only the product variants that exist in this location's stock
+        const { data: variantsData, error: variantsError } = await supabase
+          .from('productVariants')
+          .select('*')
+          .in('variant_id', variantIds);
+        
+        if (variantsError) throw variantsError;
+        
+        // Extract product IDs to fetch only relevant products
+        const productIds = variantsData.map(variant => variant.product_id);
+        
+        // Fetch only the products that have variants in this location's stock
+        const { data: productsData, error: productsError } = await supabase
+          .from('products')
+          .select('*')
+          .in('id', productIds)
+          .eq('user_id', userId);
+        
+        if (productsError) throw productsError;
         
         // Manually fetch variant attributes since we had issues with the RPC function
         const { data: optionVariantsData, error: optionVariantsError } = await supabase
           .from('optionVariants')
           .select('*')
-          .in('variant_id', variantsData.map(v => v.variant_id));
+          .in('variant_id', variantIds);
         
         if (optionVariantsError) throw optionVariantsError;
         
@@ -160,8 +265,10 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
       }
     };
     
-    fetchProductData();
-  }, []);
+    if (locationId) {
+      fetchProductData();
+    }
+  }, [locationId]);
 
   // Filter products based on search and category
   const filteredProducts = useMemo(() => {
@@ -223,25 +330,43 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
 
   // Add product to cart
   const agregarAlCarrito = (variantId: number) => {
+    // Find the basic variant info (for name, sku, image etc.)
     const variant = productVariants.find(v => v.variant_id === variantId);
-    if (!variant) return;
-    
+    if (!variant) {
+      console.error("Variant details not found for ID:", variantId);
+      alert("Error: No se encontraron detalles del producto.");
+      return;
+    }
+
+    // Find the corresponding stock item for this variant
+    const stockItem = stockItems.find(item => item.variant_id === variantId);
+
+    // Check if we found a stock item and it has a valid price
+    if (!stockItem || typeof stockItem.price !== 'number') {
+        console.error("Stock information (including price) not found for variant ID:", variantId);
+        alert(`Error: Precio no encontrado en el inventario para ${formatVariantName(variantId)}. No se puede agregar.`);
+        return;
+    }
+
+    const unitPrice = stockItem.price;
     const variantName = formatVariantName(variantId);
-    
+
     setVentaItems(prev => {
       const existe = prev.find(item => item.variant_id === variantId);
       if (existe) {
+        // Update quantity if item already exists
         return prev.map(item =>
           item.variant_id === variantId
-            ? { ...item, quantity: cantidades[variantId] }
+            ? { ...item, quantity: cantidades[variantId], unitPrice: unitPrice }
             : item
         );
       }
+      // Add new item
       return [...prev, {
         id: Date.now(), // Just for React key
         variant_id: variantId,
         name: variantName,
-        unitPrice: variant.price,
+        unitPrice: unitPrice,
         quantity: cantidades[variantId],
         image: variant.image_url,
         sku: variant.sku,
@@ -281,7 +406,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
     try {
       const userId = await getUserId();
       
-      // Create new sale record
+      // Create new sale record - now includes the location ID and client ID
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert([
@@ -289,7 +414,9 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
             user_id: userId,
             total_amount: total < 0 ? 0 : total,
             discount_percentage: descuento,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            location: locationId,
+            client: selectedClientId // Add the selected client ID
           }
         ])
         .select();
@@ -313,9 +440,12 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
       
       if (itemsError) throw itemsError;
       
-      // Update stock levels
+      // Update stock levels - specifically for the selected location
       for (const item of ventaItems) {
-        const stockItem = stockItems.find(s => s.variant_id === item.variant_id);
+        const stockItem = stockItems.find(s => 
+          s.variant_id === item.variant_id && s.location === locationId
+        );
+        
         if (stockItem) {
           const { error: stockError } = await supabase
             .from('stock')
@@ -335,8 +465,12 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
     }
   };
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-full">Cargando productos...</div>;
+  if (loading || loadingClients) {
+    return(
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]"></div>
+      </div>
+    )
   }
 
   // Group variants by product for better organization
@@ -352,8 +486,16 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
     <div className="flex">
       {/* Products section */}
       <div className="w-3/4 p-8 bg-white rounded-lg h-auto">
-
-        <h1 className="text-2xl font-bold  capitalize mb-4">Nueva Venta</h1>
+        {/* Location header */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Nueva venta</h1>
+          {locationInfo && (
+            <div className="flex items-center rounded-full bg-blue-50 px-3 py-1">
+              <Building className="w-4 h-4 text-blue-700 mr-2" />
+              <span className="text-blue-700 font-medium">{locationInfo.name}</span>
+            </div>
+          )}
+        </div>
         
         {/* Search and Filter Bar */}
         <div className="mb-6 flex gap-4">
@@ -383,7 +525,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
         </div>
         
         {/* Products Display */}
-        {filteredProducts.length === 0 ? (
+        {products.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="text-gray-500">No hay productos disponibles en esta sucursal</p>
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-gray-500">No se encontraron productos</p>
           </div>
@@ -393,22 +539,34 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
             .map(([productId, variants]) => {
               const product = products.find(p => p.id === Number(productId));
               if (!product) return null;
-              
+           
               return (
                 <div key={productId} className="mb-8">
                   <h2 className="text-xl font-semibold mb-3">{product.name}</h2>
                   <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 justify-items-center">
                     {variants.map(variant => {
-                      const stock = getAvailableStock(variant.variant_id);
+                      // --- Find the stock item for this variant ---
+                      const stockItem = stockItems.find(
+                        item => item.variant_id === variant.variant_id && item.location === locationId
+                      );
+                      const stock = stockItem ? stockItem.stock : 0;
+                      // --- Get the price from the stock item ---
+                      const displayPrice = stockItem ? stockItem.price : null;
                       const variantName = formatVariantName(variant.variant_id);
-                      
+           
                       return (
                         <Card key={variant.variant_id} className='border border-gray-300 rounded-lg w-full hover:shadow-md transition-shadow'>
                           <CardContent className="text-center flex flex-col items-center gap-y-2 p-4">
                             <h3 className="font-semibold">{variantName}</h3>
-                            <p className="text-sm font-light">MXN ${variant.price}.00</p>
-                            <p className="text-xs text-gray-500">SKU: {variant.sku}</p>
-                            
+           
+                            {displayPrice !== null ? (
+                              <p className="text-sm font-light">MXN ${displayPrice.toFixed(2)}</p>
+                            ) : (
+                              <p className="text-sm font-light text-red-500">Precio no disponible</p>
+                            )}
+           
+                            {/* <p className="text-xs text-gray-500">SKU: {variant.sku}</p> */}
+           
                             {variant.image_url ? (
                               <img src={variant.image_url} alt={variantName} className='w-24 h-24 object-cover rounded mx-auto'/>
                             ) : (
@@ -416,10 +574,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
                                 <Image className="w-12 h-12 text-[#1366D9]" />
                               </div>
                             )}
-                            
+           
+                            {/* Quantity Input - Uses 'stock' variable derived from stockItem */}
                             <div className="flex items-center border border-gray-300 rounded-md overflow-hidden w-full bg-white">
-                              <button 
-                                onClick={() => disminuir(variant.variant_id)} 
+                              <button
+                                onClick={() => disminuir(variant.variant_id)}
                                 className="p-2 text-gray-700 hover:bg-gray-200 transition"
                                 disabled={stock <= 0}
                               >
@@ -431,31 +590,37 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
                                 onChange={(e) => {
                                   let valor = Number(e.target.value);
                                   if (valor < 1) valor = 1;
+                                  // Use 'stock' variable derived from stockItem for max value
                                   if (valor > stock) valor = stock;
                                   setCantidades(prev => ({ ...prev, [variant.variant_id]: valor }));
                                 }}
                                 className="w-full text-center outline-none bg-transparent appearance-none"
                                 disabled={stock <= 0}
+                                // Hide arrows in number input for cleaner look
+                                style={{ MozAppearance: 'textfield', appearance: 'textfield' }}
                               />
-                              <button 
-                                onClick={() => aumentar(variant.variant_id)} 
+                              <button
+                                onClick={() => aumentar(variant.variant_id)}
                                 className="p-2 text-gray-700 hover:bg-gray-200 transition"
-                                disabled={stock <= 0}
+                                // Use 'stock' variable derived from stockItem
+                                disabled={stock <= 0 || (cantidades[variant.variant_id] || 1) >= stock}
                               >
                                 <Plus />
                               </button>
                             </div>
-                            
+           
+                            {/* Stock Status Display - Uses 'stock' variable derived from stockItem */}
                             <div className={`text-xs ${stock > 5 ? 'text-green-600' : stock > 0 ? 'text-orange-500' : 'text-red-500'}`}>
                               {stock > 0 ? `Stock: ${stock}` : 'Sin stock'}
                             </div>
-                            
-                            <button 
-                              onClick={() => agregarAlCarrito(variant.variant_id)} 
-                              className={`w-full h-10 rounded-sm ${stock <= 0 ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#1366D9] hover:bg-[#0d4ea6]'} text-white text-sm font-semibold shadow-lg transition-colors`}
-                              disabled={stock <= 0}
+           
+                            {/* Add Button - Disabled if no stock OR if price is unavailable */}
+                            <button
+                              onClick={() => agregarAlCarrito(variant.variant_id)}
+                              className={`w-full h-10 rounded-sm ${stock <= 0 || displayPrice === null ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#1366D9] hover:bg-[#0d4ea6]'} text-white text-sm font-semibold shadow-lg transition-colors`}
+                              disabled={stock <= 0 || displayPrice === null}
                             >
-                              {stock <= 0 ? 'Sin stock' : 'Agregar'}
+                              {stock <= 0 ? 'Sin stock' : (displayPrice === null ? 'Precio no disp.' : 'Agregar')}
                             </button>
                           </CardContent>
                         </Card>
@@ -477,6 +642,35 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose }) => {
       {/* Checkout sidebar */}
       <div className="w-1/4 p-4 bg-white mx-4 h-full rounded-lg">
         <h1 className="text-xl font-bold mb-4">Resumen de venta</h1>
+        
+        {/* Client Dropdown */}
+        <div className="mb-4">
+          <label htmlFor="client" className="text-sm font-medium mb-2 flex items-center">
+            <Users className="w-4 h-4 mr-1 text-gray-500" />
+            Cliente
+          </label>
+          
+          {clients.length > 0 ? (
+            <Select 
+              value={selectedClientId?.toString() || ""} 
+              onValueChange={(value) => setSelectedClientId(Number(value))}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccionar cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map(client => (
+                  <SelectItem key={client.id} value={client.id.toString()}>
+                    {client.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-sm text-gray-500">No hay clientes disponibles</p>
+          )}
+        </div>
+        
         {ventaItems.length === 0 ? (
           <p className="text-sm font-light">No hay productos agregados</p>
         ) : (

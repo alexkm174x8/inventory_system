@@ -1,15 +1,21 @@
-'use client';
-import CheckoutVenta from '@/components/CheckoutVenta';
-import { useRouter } from 'next/navigation';
+"use client";
 
-export default function AgregarProductoPage() {
-  const router = useRouter();
+import { useSearchParams } from 'next/navigation';
+import CheckoutVenta from '@/components/CheckoutVenta';
+
+export default function AgregarVentaPage() {
+  const searchParams = useSearchParams();
+  const locationId = searchParams.get('locationId');
+
+  if (!locationId) return <div>Falta seleccionar una sucursal</div>;
 
   return (
-    <div className='h-full m-5'>
+    <div className="p-6">
       <CheckoutVenta
-        onClose={() => router.push('/ventas')}>
-    </CheckoutVenta>
+        locationId={parseInt(locationId)}
+        onClose={() => window.history.back()}
+      />
     </div>
-  )
+  );
 }
+
