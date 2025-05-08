@@ -6,6 +6,7 @@ import {Card, CardContent} from "@/components/ui/card";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { getUserId } from '@/lib/userId';
 
 interface AddEmployeeProps {
   onClose: () => void;
@@ -23,12 +24,20 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [salary, setSalary] = useState('');
-  const [role, setRole] = useState('')
+  const [role, setRole] = useState('');
   const [phone, setPhone] = useState('');
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{
+    name?: string;
+    email?: string;
+    salary?: string;
+    role?: string;
+    phone?: string;
+    locationId?: string;
+    general?: string;
+  }>({});
   const [locationsLoading, setLocationsLoading] = useState(true);
   const [locationsError, setLocationsError] = useState<string | null>(null);
 
@@ -37,9 +46,11 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
       setLocationsLoading(true);
       setLocationsError(null);
       try {
+        const userId = await getUserId();
         const { data, error } = await supabase
           .from('locations')
-          .select('id, name, location');
+          .select('id, name, location')
+          .eq('user_id', userId);
         if (error) throw error;
         setLocations(data || []);
       } catch (err: any) {
@@ -53,18 +64,68 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
     fetchLocations();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+  const validateForm = () => {
+    let isValid = true;
+    const newErrors: typeof errors = {};
 
-    if (!selectedLocationId) {
-      setError('Por favor, selecciona una sucursal.');
-      setLoading(false);
-      return;
+    if (!name.trim()) {
+      newErrors.name = 'El nombre es obligatorio';
+      isValid = false;
+    } else if (!/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/.test(name)) {
+      newErrors.name = 'El nombre solo puede contener letras (incluyendo acentos) y espacios';
+      isValid = false;
     }
 
+    if (!email.trim()) {
+      newErrors.email = 'El email es obligatorio';
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'El formato del email no es válido';
+      isValid = false;
+    }
+
+    if (!salary.trim()) {
+      newErrors.salary = 'El salario es obligatorio';
+      isValid = false;
+    } else if (isNaN(parseFloat(salary))) {
+      newErrors.salary = 'El salario debe ser un número';
+      isValid = false;
+    }
+
+    if (!role) {
+      newErrors.role = 'El rol es obligatorio';
+      isValid = false;
+    }
+
+    if (!phone.trim()) {
+      newErrors.phone = 'El teléfono es obligatorio';
+      isValid = false;
+    } else if (isNaN(parseInt(phone))) {
+      newErrors.phone = 'El teléfono debe ser un número';
+      isValid = false;
+    }
+
+    if (!selectedLocationId) {
+      newErrors.locationId = 'La sucursal es obligatoria';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      return; 
+    }
+
+    setLoading(true);
+    
     try {
+      const userId = await getUserId();
+
       const { error } = await supabase
         .from('employees')
         .insert([
@@ -72,9 +133,10 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
             name,
             email,
             salary: parseFloat(salary),
-            role, // El valor de 'role' ya es 'admin' o 'empleado'
+            role,
             phone: parseInt(phone),
             location_id: selectedLocationId,
+            user_id: userId,
           },
         ]);
 
@@ -86,9 +148,12 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
       setLoading(false);
       onEmployeeAdded();
       onClose();
+     
     } catch (err: any) {
       console.error('Error al agregar empleado:', err);
-      setError(err.message);
+      setErrors({ general: err.message }); 
+      setLoading(false);
+    } finally {
       setLoading(false);
     }
   };
@@ -98,71 +163,80 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
          <Card className="w-full">
            <CardContent className="p-6">
                <h1 className="text-2xl font-bold  capitalize mb-4">Agregar empleado</h1>
-  
+
           <div className="mb-4">
             <Label htmlFor="name">Nombre</Label>
             <Input
               id="name"
               value={name}
-              className="mt-1"
+              className={`mt-1 ${errors.name ? 'border-red-500' : ''}`}
               placeholder="Nombre del empleado"
               onChange={(e) => setName(e.target.value)}
               required
             />
+            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
           </div>
-  
+
           <div className="mb-4">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
-              className="mt-1"
+              className={`mt-1 ${errors.email ? 'border-red-500' : ''}`}
               value={email}
               placeholder="Correo electrónico"
               onChange={(e) => setEmail(e.target.value)}
+              required
             />
+            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
           </div>
-  
+
           <div className="mb-4">
             <Label htmlFor="salary">Salario</Label>
             <Input
               id="salary"
               type="number"
-              className="mt-1"
+              className={`mt-1 ${errors.salary ? 'border-red-500' : ''}`}
               value={salary}
               placeholder="Salario"
               onChange={(e) => setSalary(e.target.value)}
+              required
             />
+            {errors.salary && <p className="text-red-500 text-xs mt-1">{errors.salary}</p>}
           </div>
-  
+
           <div className="mb-4">
             <Label htmlFor="phone">Teléfono</Label>
             <Input
               id="phone"
               type="tel"
-              className="mt-1"
+              className={`mt-1 ${errors.phone ? 'border-red-500' : ''}`}
               value={phone}
               placeholder="Número telefónico"
               onChange={(e) => setPhone(e.target.value)}
+              required
             />
+            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
           </div>
-  
+
           <div className="mb-4">
             <Label htmlFor="role">Rol</Label>
             <select
               id="role"
-              className="w-full border shadow-xs rounded-[8px] p-1.5 mt-1 text-[#737373]"
+              className={`w-full border shadow-xs rounded-[8px] p-1.5 mt-1 text-[#737373] ${errors.role ? 'border-red-500' : ''}`}
               value={role}
-              onChange={(e) => setRole(e.target.value as 'admin' | 'empleado')}
+              onChange={(e) => setRole(e.target.value)}
               required
             >
-              <option value="empleado">Empleado</option>
-              <option value="admin">Admin</option>
+              <option value="">Seleccionar rol</option>
+              <option value="Inventario">Inventario</option>
+              <option value="Ventas">Ventas</option>
             </select>
+            {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role}</p>}
           </div>
-  
+
           <div className="mb-4">
-            <Label htmlFor="locationId" className="block text-gray-700 text-sm font-bold mb-2">Sucursal:</Label>
+            <Label htmlFor="locationId" className="block text-sm font-bold mb-2">Sucursal:</Label>
             {locationsLoading ? (
               <p>Cargando sucursales...</p>
             ) : locationsError ? (
@@ -170,7 +244,7 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
             ) : (
               <select
                 id="locationId"
-                className="w-full border shadow-xs rounded-[8px] p-1.5 mt-1 text-[#737373]"
+                className={`w-full border shadow-xs rounded-[8px] p-1.5 mt-1 text-[#737373] ${errors.locationId ? 'border-red-500' : ''}`}
                 value={selectedLocationId === null ? '' : selectedLocationId}
                 onChange={(e) => setSelectedLocationId(parseInt(e.target.value))}
                 required
@@ -183,21 +257,24 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
                 ))}
               </select>
             )}
+            {errors.locationId && <p className="text-red-500 text-xs mt-1">{errors.locationId}</p>}
           </div>
-  
+
+          {errors.general && <p className="text-red-500 text-xs mt-2">{errors.general}</p>}
+
           <div className="flex justify-end gap-4 mt-6">
             <Button variant="outline" type="button" onClick={onClose} disabled={loading}>
               Cancelar
             </Button>
             <Button type="button" onClick={handleSubmit} disabled={loading} className="bg-blue-500 hover:bg-blue-600">
-              {loading ? 'Actualizando...' : 'Guardar'}
+              {loading ? 'Guardar' : 'Guardar'}
             </Button>
           </div>
         </CardContent>
       </Card>
     </div>
   );
-  
+
 };
 
 export default AddEmployee;

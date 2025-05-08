@@ -5,30 +5,25 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { getUserId } from '@/lib/userId';
 
-interface Employee {
+interface Negocio {
   id: number;
   name: string;
-  email: string;
-  salary: number;
-  role: string;
-  phone: number;
-  location_id: number;
-  location_name: string
+  billingDay: number;
+  billingAmount: string;
 }
 
-export default function EmpleadosContent() {
+export default function NegociosContent() {
 
 const router = useRouter();
-const [employees, setEmployees] = useState<Employee[]>([]);
-const [locationMap, setLocationMap] = useState<Record<number, string>>({});
+const [negocios, setNegocios] = useState<Negocio[]>([]);
 const [loading, setLoading] = useState(true);
 const [error, setError] = useState<string | null>(null);
 const [currentPage, setCurrentPage] = useState(1);
 const itemsPerPage = 6;
-const totalPages = Math.ceil(employees.length / itemsPerPage);
+const totalPages = Math.ceil(negocios.length / itemsPerPage);
 const startIndex = (currentPage - 1) * itemsPerPage;
-const currentData = employees.slice(startIndex, startIndex + itemsPerPage);
-const loadEmployeesAndLocations = async () => {
+const currentData = negocios.slice(startIndex, startIndex + itemsPerPage);
+const loadNegocios = async () => {
 
 setLoading(true);
 setError(null);
@@ -36,35 +31,24 @@ setError(null);
 try {
   const userId = await getUserId();
   if (!userId) throw new Error('Usuario no autenticado.');
-  const { data: employees, error: empError } = await supabase
-    .from('employees')
-    .select('id, name, email, salary, role, phone, location_id')
+  const { data: negocios, error: empError } = await supabase
+    .from('admins')
+    .select('user_id, name, billing_day, billing_amount')
     .eq('user_id', userId);
   if (empError) throw empError;
-  const { data: locations, error: locError } = await supabase
-    .from('locations')
-    .select('id, name')
-    .eq('user_id', userId);
-  if (locError) throw locError;
-  const locMap: Record<number, string> = {};
-  locations?.forEach(loc => {
-    if (loc.id != null && loc.name) locMap[loc.id] = loc.name;
-  });
-  setLocationMap(locMap);
-  
-  setEmployees(
-    (employees || []).map(emp => ({
-      id: emp.id,
-      name: emp.name,
-      email: emp.email,
-      salary: emp.salary,
-      role: emp.role,
-      phone: emp.phone,
-      location_id: emp.location_id,
-      location_name: locMap[emp.location_id]
-  }))
 
-);
+  setNegocios(
+    (negocios || []).map(neg => ({
+      id:               neg.user_id,   
+      name:             neg.name,
+      billingDay:       neg.billing_day,     
+      billingAmount:    String(neg.billing_amount),
+    }))
+  );
+  
+
+
+
   } catch (err: any) {
     console.error(err);
     setError(err.message);
@@ -74,29 +58,29 @@ try {
 };
 
 useEffect(() => {
-  loadEmployeesAndLocations();
+    loadNegocios();
 }, []);
 
 return (
   <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
     <div className="flex gap-4 mb-9">
       <button
-      onClick={() => router.push('/dashboard/empleados/agregarempleado')}
+      onClick={() => router.push('/dashboard-superadmin/negocios/agregarnegocio')}
       className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
       >
         <Plus className="w-4 h-4" />
-        Agregar Empleado
+        Agregar Negocio
       </button>
     </div>
     <div className="bg-white rounded-lg border border-[#e6e6e6] shadow-sm mt-8">
       <div className="px-6 py-4 border-b border-[#e6e6e6] flex justify-between items-center">
-        <h2 className="text-lg font-medium text-[#1b1f26]">Lista de Empleados</h2>
+        <h2 className="text-lg font-medium text-[#1b1f26]">Lista de Negocios</h2>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="bg-[#f5f5f5] text-center">
-            {['Nombre','Email','Salario','Rol','Sucursal','Acciones'].map(h => (
+            {['Nombre','Cobro mensual','Fecha de cobro','Acciones'].map(h => (
             <th key={h} className="px-3 py-3 text-xs font-medium text-[#667085] uppercase tracking-wider">
             {h}
             </th>
@@ -104,16 +88,14 @@ return (
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e6e6e6] text-center">
-          {currentData.map(emp => (
-            <tr key={emp.id}>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26] capitalize">{emp.name}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{emp.email}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]"> ${emp.salary} MXN</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26] capitalize">{emp.role}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26] capitalize">{locationMap[emp.location_id] ?? 'Desconocida'}</td>
+          {currentData.map(neg => (
+            <tr key={neg.id}>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26] capitalize">{neg.name}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">$ {neg.billingAmount} MXN</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{neg.billingDay} de cada mes</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm">
                 <button
-                  onClick={() => router.push(`/dashboard/empleados/${emp.id}`)}
+                  onClick={() => router.push(`/dashboard-superadmin/negocios/${neg.id}`)}
                   className="text-indigo-600 hover:text-indigo-900"
                 >
                   <Eye className="w-4 h-4 mx-auto" />
@@ -147,4 +129,3 @@ return (
   </main>
   );
 }
-

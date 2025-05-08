@@ -29,42 +29,65 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
   const [productImage, setProductImage] = useState<string | null>(null);
   const [fileName, setFileName] = useState("");
   const [productName, setProductName] = useState('');
+  const [productNameError, setProductNameError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [attributes, setAttributes] = useState<Attribute[]>([{ name: '', options: [''] }]);
+  const [attributeErrors, setAttributeErrors] = useState<string[]>([]);
+
+  const validateForm = () => {
+    let valid = true;
+
+    // Validar nombre de producto
+    if (!productName.trim()) {
+      setProductNameError('El nombre del producto es obligatorio.');
+      valid = false;
+    } else {
+      setProductNameError('');
+    }
+
+    // Validar atributos
+    const newAttrErrors = attributes.map(attr => {
+      if (attr.name.trim() && !attr.options.some(opt => opt.trim())) {
+        valid = false;
+        return 'Debe ingresar al menos una opción para este atributo.';
+      }
+      return '';
+    });
+    setAttributeErrors(newAttrErrors);
+
+    return valid;
+  };
 
   const handleSaveProduct = async () => {
-    if (!productName) {
-      alert('Por favor complete todos los campos.');
+    if (!validateForm()) {
       return;
     }
-  
+
     try {
-      const insertedId = await insertProduct(); // Insert product and get ID
+      const insertedId = await insertProduct(); 
       if (!insertedId) {
         console.error("No se pudo obtener el ID del producto");
         return;
       }
-  
-      // Check if there are any non-empty attributes
+
       const nonEmptyAttributes = attributes.filter(attribute => attribute.name.trim() !== '');
       if (nonEmptyAttributes.length > 0) {
         const attributesData = await insertAttribute(insertedId, nonEmptyAttributes);
         if (attributesData && attributesData.length > 0) {
-          await insertOptions(attributesData, nonEmptyAttributes); // Insert options with correct IDs
+          await insertOptions(attributesData, nonEmptyAttributes);
         }
       }
+
       onSaveProduct({
         name: productName,
         image: productImage,
-        attributes: attributes,
+        attributes,
       });
-  
-      console.log("Producto guardado con éxito");
-  
-      // Clear form
+
       setProductName('');
       setProductImage(null);
       setAttributes([{ name: '', options: [''] }]);
+      setAttributeErrors([]);
       onClose();
     } catch (error) {
       console.error("Error al guardar el producto:", error);
@@ -296,9 +319,13 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
               onChange={(e) => setProductName(e.target.value)}
               placeholder="Nombre del producto"
             />
+            {productNameError && (
+              <p className="text-red-600 text-sm mt-1">{productNameError}</p>
+            )}
 
-            <div className="space-y-2">
-            <Label htmlFor="product-name">Detalles</Label>
+
+<div className="space-y-2">
+              <Label htmlFor="product-name">Detalles</Label>
               {attributes.map((attribute, attrIndex) => (
                 <div key={attrIndex} className="space-y-4 p-4 border rounded-lg">
                   <div className="space-y-2">
@@ -334,10 +361,14 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
                         onClick={() => removeOption(attrIndex, optionIndex)}
                         className="ml-2 mt-5"
                       >
-                        <Trash2 className="text-red-600" /> 
+                        <Trash2 className="text-red-600" />
                       </Button>
                     </div>
                   ))}
+
+                  {attributeErrors[attrIndex] && (
+                    <p className="text-red-600 text-sm">{attributeErrors[attrIndex]}</p>
+                  )}
 
                   <Button
                     type="button"
@@ -348,7 +379,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
                     <PlusIcon className="w-4 h-4 mr-2" />
                     Agregar opción
                   </Button>
-                  
+
                   <Button
                     type="button"
                     variant="destructive"
@@ -377,7 +408,11 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
             <Button variant="outline" type="button" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="button" onClick={handleSaveProduct} className="bg-blue-500 hover:bg-blue-600">
+            <Button
+              type="button"
+              onClick={handleSaveProduct}
+              className="bg-blue-500 hover:bg-blue-600"
+            >
               Agregar
             </Button>
           </div>

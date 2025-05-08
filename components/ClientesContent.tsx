@@ -67,7 +67,7 @@ const ClientesContent = () => {
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
          <div className="flex gap-4 mb-9">
           <button
-            onClick={() => router.push("/clientes/agregarcliente")}
+            onClick={() => router.push("/dashboard/clientes/agregarcliente")}
             className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
           >
             <Plus className="w-4 h-4" />
@@ -106,7 +106,7 @@ const ClientesContent = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <button
-                    onClick={() => router.push(`/clientes/${client.id}`)}
+                    onClick={() => router.push(`/dashboard/clientes/${client.id}`)}
                     className="text-indigo-600 hover:text-indigo-900"
                   >
                     <Eye className="w-4 h-4 mx-auto" />

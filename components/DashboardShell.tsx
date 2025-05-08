@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase';
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const segment = pathname.split('/')[1] || 'menu';
+  const segment = pathname.split('/')[1] || 'dashboard/menu';
 
   const [userName, setUserName] = useState('Cargando…');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -46,17 +46,15 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
     getUserData();
   }, []);
 
-  // Define base menu items
   const menuItems = [
-    { label: 'Inventario', href: '/inventario', icon: <Archive /> },
-    { label: 'Clientes', href: '/clientes', icon: <Users /> },
-    { label: 'Ventas', href: '/ventas', icon: <CircleDollarSign /> },
-    { label: 'Empleados', href: '/empleados', icon: <SquareUserRound /> },
-    { label: 'Sucursales', href: '/sucursales', icon: <Store /> },
-    { label: 'Configuración', href: '/configuracion', icon: <Settings /> },
+    { label: 'Inventario', href: '/dashboard/inventario', icon: <Archive /> },
+    { label: 'Clientes', href: '/dashboard/clientes', icon: <Users /> },
+    { label: 'Ventas', href: '/dashboard/ventas', icon: <CircleDollarSign /> },
+    { label: 'Empleados', href: '/dashboard/empleados', icon: <SquareUserRound /> },
+    { label: 'Sucursales', href: '/dashboard/sucursales', icon: <Store /> },
+    { label: 'Configuración', href: '/dashboard/configuracion', icon: <Settings /> },
   ];
 
-  // Determine current page title based on path prefix
   const currentMenuItem = menuItems.find(item => 
     pathname === item.href || pathname.startsWith(item.href + '/')
   );

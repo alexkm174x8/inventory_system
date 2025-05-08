@@ -128,7 +128,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           </Button>
           <Button
             type="submit"
-            onClick={() => router.push(`/ventas/agregarventa?locationId=${selectedLocationId}`)}
+            onClick={() => router.push(`/dashboard/ventas/agregarventa?locationId=${selectedLocationId}`)}
             disabled={
               loading || locations.length === 0 || selectedLocationId === null
             }

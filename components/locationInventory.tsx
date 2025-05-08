@@ -221,7 +221,7 @@ const LocationInventory: React.FC = () => {
         </div>
         <div className="flex gap-4">
           <button
-            onClick={() => router.push('/inventario')}
+            onClick={() => router.push('/dashboard/inventario')}
             className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
           >
             <Eye className="w-4 h-4" />
@@ -292,7 +292,7 @@ const LocationInventory: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         className="text-indigo-600 hover:text-indigo-900"
-                        onClick={() => router.push(`/inventario/producto/${item.variant_id}`)}
+                        onClick={() => router.push(`/dashboard/inventario/producto/${item.variant_id}`)}
                       >
                         <Eye className="w-4 h-4 mx-auto" />
                       </button>
@@ -336,7 +336,7 @@ const LocationInventory: React.FC = () => {
       <div className='text-center m-9'>
         <Button 
           variant="outline" 
-          onClick={() => router.push(`/sucursales/${locationId}`)}
+          onClick={() => router.push(`/dashboard/sucursales/${locationId}`)}
         >
           Cerrar
         </Button>

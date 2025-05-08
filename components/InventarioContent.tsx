@@ -166,14 +166,14 @@ const InventarioContent: React.FC = () => {
     <main className="flex-1 overflow-y-auto p-4 bg-[#f5f5f5]">
       <div className="flex gap-4 mb-6">
         <button
-          onClick={() => router.push('/inventario/crearproducto')}
+          onClick={() => router.push('/dashboard/inventario/crearproducto')}
           className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
         >
           <Plus className="w-4 h-4" />
           Crear producto
         </button>
         <button
-          onClick={() => router.push('/inventario/agregarinventario')}
+          onClick={() => router.push('/dashboard/inventario/agregarinventario')}
           className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
         >
           <Plus className="inline-block w-4 h-4 mr-1" />
@@ -260,7 +260,7 @@ const InventarioContent: React.FC = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.entryDate}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <button
-                    onClick={() => router.push(`/inventario/${item.id}`)}
+                    onClick={() => router.push(`/dashboard/inventario/${item.id}`)}
                     className="text-indigo-600 hover:text-indigo-900"
                   >
                     <Eye className="w-4 h-4 mx-auto" />

@@ -448,7 +448,7 @@ const VentasContent: React.FC = () => {
                       <div className="mx-3 border-t border-slate-200 pb-3 pt-2 px-1 flex justify-between items-center">
                         <p className="text-sm text-slate-600 font-medium">Total: ${venta.total} MXN</p>
                         <button 
-                          onClick={() => router.push(`/ventas/${venta.id}`)}
+                          onClick={() => router.push(`/dashboard/ventas/${venta.id}`)}
                           className="text-blue-600 text-sm font-medium hover:text-blue-800"
                         >
                           Ver más

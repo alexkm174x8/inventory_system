@@ -12,41 +12,52 @@ interface Location {
   name: string;
   location: string;
   created_at: string;
-  user_id: number;
 }
 
-const SucursalesContent: React.FC = () => {
+export default function SucursalesContent() {
   const [locations, setLocations] = useState<Location[]>([]);
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const loadLocations = async () => {
 
-  useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        setLoading(true);
-        const userId = await getUserId();
-        const { data, error } = await supabase
-          .from('locations')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false });
+  setLoading(true);
+  setError(null);
+  try {
+    const userId = await getUserId();
+    if (!userId) throw new Error('Usuario no autenticado.');
+    const { data: locations, error: locError } = await supabase
+      .from('locations')
+      .select('id, name, location, created_at')
+      .eq('user_id', userId)
+    if (locError) throw locError;
 
-        if (error) throw error;
-        setLocations(data || []);
-      } catch (error) {
-        console.error('Error fetching locations:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    setLocations( 
+      (locations || []).map(location => ({
+      id: location.id, 
+      name: location.name,
+      location: location.location, 
+      created_at: location.created_at
 
-    fetchLocations();
-  }, []);
+    }))
+
+    );
+  } catch (err: any) {
+    console.error(err);
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+useEffect(() => {
+  loadLocations()
+}, [])
 
   return (
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
       <div className="mb-6">
-          <button onClick={() => router.push("/sucursales/agregarsucursal")}
+          <button onClick={() => router.push("/dashboard/sucursales/agregarsucursal")}
           className="px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors">
             <Plus className="w-4 h-4" />
             Agregar Sucursal
@@ -64,7 +75,7 @@ const SucursalesContent: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {locations.map((location) => (
-            <Link key={location.id} href={`/sucursales/${location.id}`}>
+            <Link key={location.id} href={`/dashboard/sucursales/${location.id}`}>
               <div className="cursor-pointer bg-white shadow-sm border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                 <h2 className="text-lg font-semibold capitalize">{location.name}</h2>
                 <p className="text-sm text-slate-600 mt-1 capitalize">{location.location}</p>
@@ -77,5 +88,4 @@ const SucursalesContent: React.FC = () => {
   );
 };
 
-export default SucursalesContent;
 
