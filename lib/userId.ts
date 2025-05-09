@@ -33,3 +33,22 @@ export async function getUserId() {
     return null;
   }
 }
+
+export async function getUserRole() {
+  const userId = await getUUID();
+
+  if (userId) {
+    const { data: profile, error } = await supabase
+      .from('admins')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error details:', error);
+      return null;
+    }
+
+    return profile?.role;
+  }
+}
