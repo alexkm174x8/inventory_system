@@ -39,7 +39,7 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
 
         if (error || !data) {
           alert('Cliente no encontrado');
-          router.push('/clientes');
+          router.push('/dashboard/clientes');
           return;
         }
 
@@ -50,7 +50,7 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
         setClientComprasTot(data.total_compras.toString());
       } catch (err) {
         console.error('Error al cargar el cliente', err);
-        router.push('/clientes');
+        router.push('/dashboard/clientes');
       } finally {
         setLoading(false);
       }
@@ -85,7 +85,7 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
           </div>
           <div >
             <p><strong>Número de compras: </strong> {clientComprasNum}</p>
-            <p><strong>Total de compras: </strong> ${clientComprasTot}</p>
+            <p><strong>Total de compras: </strong> ${clientComprasTot} MXN</p>
           </div>
           <div className="text-center mt-6">
             <Button variant="outline" onClick={onClose}>

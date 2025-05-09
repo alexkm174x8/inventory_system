@@ -34,12 +34,14 @@ const LocationEmployees: React.FC = () => {
 
   const loadEmployeesByLocation = async () => {
     try {
+      const userId = await getUserId();
       setError(null);
       setLoading(true);
       const { data, error: empError } = await supabase
         .from('employees')
         .select('id, name, email, salary, role, phone, location_id')
-        .eq('location_id', locationId);
+        .eq('location_id', locationId)
+        .eq('user_id', userId);
 
       if (empError) throw empError;
 
@@ -133,13 +135,12 @@ const LocationEmployees: React.FC = () => {
                 <tr key={emp.id}>
                   <td className="px-6 py-4 text-sm font-medium text-[#1b1f26] capitalize">{emp.name}</td>
                   <td className="px-6 py-4 text-sm text-[#667085]">{emp.email}</td>
-                  <td className="px-6 py-4 text-sm text-[#667085]">{emp.salary}</td>
+                  <td className="px-6 py-4 text-sm text-[#667085]">${emp.salary} MXN</td>
                   <td className="px-6 py-4 text-sm text-[#667085] capitalize">{emp.role}</td>
                   <td className="px-6 py-4 text-sm text-[#667085]">{emp.phone}</td>
                   <td className="px-6 py-4 text-sm">
                     <button
                       aria-label={`Ver detalles de ${emp.name}`}
-                      onClick={() => router.push(`/empleados/${emp.id}`)}
                       className="text-indigo-600 hover:text-indigo-900"
                     >
                       <Eye className="w-4 h-4 mx-auto" />
@@ -181,7 +182,7 @@ const LocationEmployees: React.FC = () => {
     <div className='text-center m-9'>
       <Button 
         variant="outline" 
-        onClick={() => router.push(`/sucursales/${locationId}`)}
+        onClick={() => router.push(`/dashboard/sucursales/${locationId}`)}
       >
         Cerrar
       </Button>

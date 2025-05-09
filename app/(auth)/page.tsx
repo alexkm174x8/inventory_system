@@ -56,7 +56,7 @@ export default function LoginPage() {
         }
 
         if (data.user) {
-          router.push("/menu")
+          router.push("/dashboard/menu")
         }
       } catch (error) {
         console.error("Login error:", error)
@@ -64,8 +64,6 @@ export default function LoginPage() {
       }
     }
   }
-
-  // --- Helper function to toggle password visibility ---
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword)
   }
@@ -88,7 +86,6 @@ export default function LoginPage() {
               </label>
               <Input
                 id="email"
-                // Consider using type="email" for better semantics and mobile keyboards
                 type="email" 
                 placeholder="Ingresa tu correo electrónico"
                 value={email}
@@ -97,24 +94,20 @@ export default function LoginPage() {
                   if (emailError) setEmailError("")
                 }}
                 className={emailError ? "border-red-500" : ""}
-                // Add required attribute for basic HTML validation (optional)
                 required
               />
               {emailError && <p className="text-xs text-red-500">{emailError}</p>}
             </div>
 
-            {/* --- Password Input Section --- */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label htmlFor="password" className="text-lg font-medium">
                   Contraseña
                 </label>
               </div>
-              {/* --- Wrap Input and Button for positioning --- */}
               <div className="relative"> 
                 <Input
                   id="password"
-                  // --- 3. Dynamically set the type ---
                   type={showPassword ? "text" : "password"} 
                   placeholder="Ingresa tu contraseña"
                   value={password}
@@ -122,21 +115,18 @@ export default function LoginPage() {
                     setPassword(e.target.value)
                     if (passwordError) setPasswordError("")
                   }}
-                  // Add padding-right to prevent text from overlapping the icon
                   className={`${passwordError ? "border-red-500" : ""} pr-10`} 
                   required
                 />
-                {/* --- 2. Add the toggle button --- */}
+
                 <Button
-                  type="button" // Prevent form submission
-                  variant="ghost" // Use ghost variant for less emphasis
-                  size="icon" // Make it icon-sized
-                  // --- Position the button inside the input field ---
+                  type="button" 
+                  variant="ghost" 
+                  size="icon" 
                   className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-gray-500 hover:text-gray-700" 
-                  onClick={togglePasswordVisibility} // --- 4. Add onClick handler ---
-                  aria-label={showPassword ? "Hide password" : "Show password"} // Accessibility
+                  onClick={togglePasswordVisibility} 
+                  aria-label={showPassword ? "Hide password" : "Show password"} 
                 >
-                  {/* --- Conditionally render the icon --- */}
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
                   ) : (
@@ -144,7 +134,6 @@ export default function LoginPage() {
                   )}
                 </Button>
               </div>
-              {/* --- Error message and Forgot Password Link --- */}
               {passwordError && <p className="text-xs text-red-500">{passwordError}</p>}
               <div className="text-right">
                 <Link href="#" className="text-xs text-blue-500 hover:underline">
@@ -152,7 +141,6 @@ export default function LoginPage() {
                 </Link>
               </div>
             </div>
-            {/* --- Rest of the form --- */}
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
               Iniciar Sesión
             </Button>

@@ -17,33 +17,64 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
   const [clientName, setClientnName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{
+      name?: string;
+      phone?: string;
+      general?: string;
+    }>({});
 
-  const handleSave = async () => {
-    if (!clientName.trim() || !clientPhone.trim()) {
-      alert('Por favor, completa todos los campos.');
-      return;
+  const validateForm = () => {
+    let isValid = true;
+    const newErrors: typeof errors = {};
+
+    if (!clientName.trim()) {
+      newErrors.name = 'El nombre es obligatorio';
+      isValid = false;
+    } else if (!/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/.test(clientName)) {
+      newErrors.name =
+        'El nombre solo puede contener letras y espacios';
+      isValid = false;
     }
 
+    if (!clientPhone.trim()) {
+      newErrors.phone = 'El teléfono es obligatorio';
+      isValid = false;
+    } else if (isNaN(parseInt(clientPhone))) {
+      newErrors.phone = 'El teléfono debe ser un número';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
+  
     try {
       setLoading(true);
       const userId = await getUserId();
-
       const { error } = await supabase
         .from('clients')
-        .insert({
-        name: clientName,
-        phone: clientPhone,
-        num_compras: 0,
-        total_compras: 0,
-        user_id: userId,
-  });
+        .insert([
+          {
+            name: clientName,
+            phone: clientPhone,
+            num_compras: 0,
+            total_compras: 0,
+            user_id: userId,
+        }])
 
-      if (error) throw error;
+      if (error)
+        throw error
 
-      onSave(); 
-    } catch (error) {
-      console.error(error);
-      alert('Error al guardar el cliente');
+      onSave();
+    } catch (err) {
+      console.error(err);
+      setErrors(prev => ({
+        ...prev,
+        general: 'Error al guardar el cliente',
+      }));
     } finally {
       setLoading(false);
     }
@@ -58,22 +89,41 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
                 <Label htmlFor="clientName">Nombre</Label>
                 <Input
                     id="clientName"
-                    className="mt-1"
+                    className={`mt-1 ${
+                      errors.name ? 'border-red-500' : ''
+                    }`}
                     value={clientName}
                     placeholder="Agregue el nombre del cliente"
                     onChange={(e) => setClientnName(e.target.value )}
                 />
+                {errors.name && (
+              <p className="text-red-500 text-xs mt-1">
+                {errors.name}
+              </p>
+            )}
             </div>
-            <div>
-                <Label htmlFor="phone">Número telefónico</Label>
+            <div className="mb-4">
+                <Label htmlFor="phone">Teléfono</Label>
                 <Input
                     id="phone"
-                    className="mt-1"
+                    className={`mt-1 ${
+                      errors.phone ? 'border-red-500' : ''
+                    }`}
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
                     placeholder="Agregue el número del cliente"
                 />
+                {errors.name && (
+             <p className="text-red-500 text-xs mt-1">
+                {errors.phone}
+              </p>
+            )}
             </div>
+            {errors.general && (
+            <p className="text-red-500 text-xs mt-2">
+              {errors.general}
+            </p>
+          )}
             <div className="flex justify-end gap-3 pt-4">
                 <Button variant="outline" onClick={onClose} disabled={loading}>
                     Cancelar
