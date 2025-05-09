@@ -6,6 +6,8 @@ import { getUserId } from '@/lib/userId';
 import { useRouter, useParams } from 'next/navigation'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface InventoryItem {
   id: number;
@@ -18,6 +20,8 @@ interface InventoryItem {
   unitPrice?: number;
   imageUrl?: string | null;
   attributes?: any[];
+  price?: number; // Add price field
+  location_id?: number; // Add location id field
 }
 
 type SupabaseStockItem = {
@@ -25,7 +29,9 @@ type SupabaseStockItem = {
   variant_id: number;
   stock: number;
   added_at: string;
-  locations: { name: string } | null;
+  price: number; // Make sure price is included
+  location: number; // Add location field
+  locations: { name: string; id: number } | null;
   productVariants: {
     product_id: number;
     products: {
@@ -57,10 +63,17 @@ interface ProductDetailPageParams {
 
 const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
   const router = useRouter();
-  const { id: productId } = useParams<ProductDetailPageParams>(); // Obtén el id aquí
+  const { id: productId } = useParams<ProductDetailPageParams>();
   const [product, setProduct] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // New states for editing
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedQuantity, setEditedQuantity] = useState<number | string>('');
+  const [editedPrice, setEditedPrice] = useState<number | string>('');
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadProductDetails = async () => {
@@ -82,8 +95,10 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
             id,
             variant_id,
             stock,
+            price,
             added_at,
-            locations ( name ),
+            location,
+            locations ( name, id ),
             productVariants (
               products (
                 name,
@@ -117,16 +132,21 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
             };
           });          
           
-
-          setProduct({
+          const productData = {
             id: data.id,
             variant_id: data.variant_id,
             productName: prod?.name ?? '—',
             quantity: data.stock,
             entryDate: new Date(data.added_at).toLocaleDateString(),
             ubicacion_nombre: loc,
-            caracteristicas: chars
-          });
+            caracteristicas: chars,
+            price: data.price, // Store price
+            location_id: data.location // Store location id
+          };
+
+          setProduct(productData);
+          setEditedQuantity(data.stock);
+          setEditedPrice(data.price || 0);
         } else {
           setError('Producto no encontrado.');
         }
@@ -140,6 +160,107 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
 
     loadProductDetails();
   }, [productId]);
+
+  // Function to handle entering edit mode
+  const handleEditClick = () => {
+    setIsEditing(true);
+    setUpdateError(null);
+  };
+
+  // Function to handle canceling edit
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    if (product) {
+      setEditedQuantity(product.quantity);
+      setEditedPrice(product.price || 0);
+    }
+    setUpdateError(null);
+  };
+
+  // Function to handle saving edited data
+  const handleSaveEdit = async () => {
+    if (!product) return;
+    
+    setUpdateLoading(true);
+    setUpdateError(null);
+    
+    const quantityNum = parseInt(editedQuantity.toString(), 10);
+    const priceNum = parseFloat(editedPrice.toString());
+    
+    if (isNaN(quantityNum) || quantityNum < 0) {
+      setUpdateError('La cantidad debe ser un número mayor o igual a 0.');
+      setUpdateLoading(false);
+      return;
+    }
+    
+    if (isNaN(priceNum) || priceNum <= 0) {
+      setUpdateError('El precio debe ser un número mayor a 0.');
+      setUpdateLoading(false);
+      return;
+    }
+    
+    try {
+      const userId = await getUserId();
+      if (!userId) throw new Error('Usuario no autenticado.');
+      
+      const { error: updateError } = await supabase
+        .from('stock')
+        .update({
+          stock: quantityNum,
+          price: priceNum,
+        })
+        .eq('id', product.id)
+        .eq('user_id', userId);
+      
+      if (updateError) throw updateError;
+      
+      // Update local state
+      setProduct({
+        ...product,
+        quantity: quantityNum,
+        price: priceNum
+      });
+      
+      setIsEditing(false);
+      alert('Producto actualizado correctamente.');
+    } catch (err: any) {
+      console.error('Error al actualizar el producto:', err);
+      setUpdateError(`Error al actualizar: ${err.message}`);
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
+  // Function to handle deleting product
+  const handleDelete = async () => {
+    if (!product) return;
+    
+    const confirmDelete = window.confirm('¿Estás seguro que deseas eliminar este producto del inventario? Esta acción no se puede deshacer.');
+    if (!confirmDelete) return;
+    
+    setUpdateLoading(true);
+    
+    try {
+      const userId = await getUserId();
+      if (!userId) throw new Error('Usuario no autenticado.');
+      
+      const { error: deleteError } = await supabase
+        .from('stock')
+        .delete()
+        .eq('id', product.id)
+        .eq('user_id', userId);
+      
+      if (deleteError) throw deleteError;
+      
+      alert('Producto eliminado correctamente.');
+      onClose(); // Close the detail view
+    } catch (err: any) {
+      console.error('Error al eliminar el producto:', err);
+      setUpdateError(`Error al eliminar: ${err.message}`);
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -163,42 +284,113 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
     <div className="h-full">
       <Card className="w-full overflow-hidden">
         <CardContent>
-            <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3">
-            <h1 className="text-2xl font-bold  capitalize mb-4">Producto</h1>
+          <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3">
+            <h1 className="text-2xl font-bold capitalize mb-4">Producto</h1>
             <p className="text-lg font-light flex items-center gap-2">
               ID #{product.id}
             </p>
           </div>
-          <div className="mt-3 mb-3 ">
-          <h2 className=" font-semibold">Detalles principales</h2>
+          <div className="mt-3 mb-3">
+            <h2 className="font-semibold">Detalles principales</h2>
           </div>
-          <div className=" mb-3 mt-3">
+          <div className="mb-3 mt-3">
             <p><strong>Nombre:</strong> {product.productName}</p>
-            <p><strong>Cantidad: </strong> {product.quantity}</p>
+            
+            {isEditing ? (
+              <>
+                <div className="my-2">
+                  <Label htmlFor="quantity">Cantidad</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    value={editedQuantity}
+                    onChange={(e) => setEditedQuantity(e.target.value)}
+                    className="mt-1"
+                    min="0"
+                  />
+                </div>
+                <div className="my-2">
+                  <Label htmlFor="price">Precio (MXN)</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    value={editedPrice}
+                    onChange={(e) => setEditedPrice(e.target.value)}
+                    className="mt-1"
+                    min="0.01"
+                    step="0.01"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <p><strong>Cantidad: </strong> {product.quantity}</p>
+                <p><strong>Precio: </strong> {product.price?.toFixed(2)} MXN</p>
+              </>
+            )}
+            
             <p><strong>Ubicación:</strong> {product.ubicacion_nombre}</p>
-            <p><strong> Fecha de Entrada:</strong> {product.entryDate}</p>
+            <p><strong>Fecha de Entrada:</strong> {product.entryDate}</p>
           </div>
           {product.caracteristicas.length > 0 && (
-          <div>
-            <div className="mb-3 mt-3">
-            <h2 className="font-semibold">Características</h2>
+            <div>
+              <div className="mb-3 mt-3">
+                <h2 className="font-semibold">Características</h2>
+              </div>
+              <ul>
+                {product.caracteristicas.map((char, index) => (
+                  <li key={index}>
+                    <p className='text-lg'>
+                      <strong>{char.name}:</strong> {char.value}
+                    </p>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul>
-              {product.caracteristicas.map((char, index) => (
-                <li key={index}>
-                  <p className='text-lg'>
-                    <strong>{char.name}:</strong> {char.value}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+          )}
 
-          <div className="text-center mt-6">
-            <Button variant="outline" onClick={onClose}>
-              Cerrar
-            </Button>
+          {updateError && (
+            <div className="text-red-500 my-2">{updateError}</div>
+          )}
+
+          <div className="flex flex-wrap justify-center gap-3 mt-6">
+            {isEditing ? (
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancelEdit} 
+                  disabled={updateLoading}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  className="bg-blue-500 hover:bg-blue-600" 
+                  onClick={handleSaveEdit} 
+                  disabled={updateLoading}
+                >
+                  {updateLoading ? 'Guardando...' : 'Guardar'}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={onClose}>
+                  Cerrar
+                </Button>
+                <Button 
+                  className="bg-blue-500 hover:bg-blue-600" 
+                  onClick={handleEditClick}
+                >
+                  Editar
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleDelete}
+                  disabled={updateLoading}
+                >
+                  Eliminar
+                </Button>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
