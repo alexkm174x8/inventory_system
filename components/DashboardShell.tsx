@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   BarChart2, Archive, Users, CircleDollarSign,
   Store, Settings, LogOut, Bell, ChevronDown, SquareUserRound, UserPlus, Menu as MenuIcon
@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const segment = pathname.split('/')[1] || 'dashboard/menu';
 
   const [userName, setUserName] = useState('Cargando…');
@@ -46,6 +47,20 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
     getUserData();
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error.message);
+        return;
+      }
+      // Redirect to home page after successful logout
+      router.push('/');
+    } catch (error) {
+      console.error('Unexpected error during logout:', error);
+    }
+  };
+
   const menuItems = [
     { label: 'Inventario', href: '/dashboard/inventario', icon: <Archive /> },
     { label: 'Clientes', href: '/dashboard/clientes', icon: <Users /> },
@@ -73,7 +88,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="flex-1 px-2 overflow-y-auto">
           {menuItems.map(item => {
-            const isActive = pathname === item.href || (item.href === '/menu' && segment === 'menu');
+            const isActive = pathname === item.href || (item.href === '/dashboard/menu' && segment === 'menu');
             return (
               <Link
                 key={item.href}
@@ -88,7 +103,10 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           })}
         </nav>
         <div className="p-4 border-t">
-          <button className="flex items-center w-full px-4 py-2 text-sm hover:bg-[#f5f5f5]">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center w-full px-4 py-2 text-sm text-[#667085] hover:bg-[#f5f5f5] hover:text-red-600 transition-colors"
+          >
             <LogOut className="mr-3 h-5 w-5" /> Cerrar Sesión
           </button>
         </div>
