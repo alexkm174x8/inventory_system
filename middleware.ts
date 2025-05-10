@@ -50,7 +50,7 @@ export async function middleware(request: NextRequest) {
 
   // If user is signed in and trying to access auth page
   if (session && path === '/') {
-    return NextResponse.redirect(new URL('/menu', request.url))
+    return NextResponse.redirect(new URL('/dashboard/menu', request.url))
   }
 
   return response
