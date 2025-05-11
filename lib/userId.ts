@@ -60,26 +60,30 @@ export async function getUserId(): Promise<string> {
 
 export async function getUserRole() {
   try {
-    const userId = await getUserId();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
 
-    if (!userId) {
-      return null;
+    if (sessionError) {
+      console.error('Error getting session:', sessionError)
+      return null
     }
 
-    const { data: profile, error } = await supabase
-      .from('admins')
-      .select('role')
-      .eq('user_id', userId)
-      .single();
+    if (!session?.user?.id) {
+      return null
+    }
+
+    const { data: role, error } = await supabase
+      .rpc('get_user_role', {
+        auth_user_id: session.user.id
+      })
 
     if (error) {
-      console.error('Error getting user role:', error);
-      return null;
+      console.error('Error getting user role:', error)
+      return null
     }
 
-    return profile?.role;
+    return role
   } catch (error) {
-    console.error('Error in getUserRole:', error);
-    return null;
+    console.error('Error in getUserRole:', error)
+    return null
   }
 }

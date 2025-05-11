@@ -5,7 +5,7 @@ import {
   BarChart2, Archive, Users, CircleDollarSign,
   Store, Settings, LogOut, Bell, ChevronDown, SquareUserRound, UserPlus, Menu as MenuIcon
 } from 'lucide-react';
-import { getUserId } from '@/lib/userId';
+import { getUserId, getUserRole } from '@/lib/userId';
 import { supabase } from '@/lib/supabase';
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
@@ -16,6 +16,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   const [userName, setUserName] = useState('Cargando…');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -31,6 +32,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       } else if (event === 'SIGNED_OUT') {
         setUserName('No autenticado');
         setIsLoading(false);
+        setUserRole(null);
         router.push('/');
       }
     });
@@ -46,6 +48,12 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           setUserName('Error al obtener ID');
           setIsLoading(false);
           return;
+        }
+
+        // Get user role
+        const role = await getUserRole();
+        if (mounted) {
+          setUserRole(role);
         }
 
         const { data: profile, error } = await supabase
@@ -88,6 +96,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       } else {
         setUserName('No autenticado');
         setIsLoading(false);
+        setUserRole(null);
         router.push('/');
       }
     });
@@ -111,7 +120,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
     }
   };
 
-  const menuItems = [
+  const allMenuItems = [
     { label: 'Inventario', href: '/dashboard/inventario', icon: <Archive /> },
     { label: 'Clientes', href: '/dashboard/clientes', icon: <Users /> },
     { label: 'Ventas', href: '/dashboard/ventas', icon: <CircleDollarSign /> },
@@ -120,10 +129,25 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
     { label: 'Configuración', href: '/dashboard/configuracion', icon: <Settings /> },
   ];
 
+  // Filter menu items based on user role
+  const menuItems = userRole === 'admin' 
+    ? allMenuItems 
+    : allMenuItems.filter(item => ['Inventario', 'Ventas'].includes(item.label));
+
   const currentMenuItem = menuItems.find(item => 
     pathname === item.href || pathname.startsWith(item.href + '/')
   );
   const pageTitle = currentMenuItem?.label || 'Trade Hub';
+
+  // Redirect if user tries to access unauthorized page
+  useEffect(() => {
+    if (!isLoading && userRole && currentMenuItem) {
+      const isAuthorized = menuItems.some(item => item.href === pathname || pathname.startsWith(item.href + '/'));
+      if (!isAuthorized) {
+        router.push('/dashboard/inventario');
+      }
+    }
+  }, [isLoading, userRole, pathname, menuItems, router]);
 
   return (
     <div className="flex h-screen bg-[#f5f5f5]">
