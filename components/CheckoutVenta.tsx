@@ -452,6 +452,31 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       
       if (itemsError) throw itemsError;
       
+      // Update client statistics if a client was selected
+      if (selectedClientId) {
+        // First get current client data
+        const { data: clientData, error: clientFetchError } = await supabase
+          .from('clients')
+          .select('num_compras, total_compras')
+          .eq('id', selectedClientId)
+          .eq('user_id', userId)
+          .single();
+
+        if (clientFetchError) throw clientFetchError;
+
+        // Then update with new values
+        const { error: clientError } = await supabase
+          .from('clients')
+          .update({
+            num_compras: (clientData?.num_compras || 0) + 1,
+            total_compras: (clientData?.total_compras || 0) + (total < 0 ? 0 : total)
+          })
+          .eq('id', selectedClientId)
+          .eq('user_id', userId);
+        
+        if (clientError) throw clientError;
+      }
+      
       // Update stock levels - specifically for the selected location
       for (const item of ventaItems) {
         const stockItem = stockItems.find(s => 

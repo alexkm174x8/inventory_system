@@ -102,7 +102,7 @@ const ClientesContent = () => {
                     {client.num_compras}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">
-                    {client.total_compras}
+                    ${parseFloat(client.total_compras.toString()).toLocaleString('es-MX')} MXN
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <button
