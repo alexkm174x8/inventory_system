@@ -138,12 +138,13 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   };
 
   const allMenuItems = [
+    { label: 'Menú', href: '/dashboard/menu', icon: <BarChart2 /> },
     { label: 'Inventario', href: '/dashboard/inventario', icon: <Archive /> },
     { label: 'Clientes', href: '/dashboard/clientes', icon: <Users /> },
     { label: 'Ventas', href: '/dashboard/ventas', icon: <CircleDollarSign /> },
     { label: 'Empleados', href: '/dashboard/empleados', icon: <SquareUserRound /> },
     { label: 'Sucursales', href: '/dashboard/sucursales', icon: <Store /> },
-    { label: 'Configuración', href: '/dashboard/configuracion', icon: <Settings /> },
+    //{ label: 'Configuración', href: '/dashboard/configuracion', icon: <Settings /> },
   ];
 
   // Filter menu items based on user role
