@@ -24,6 +24,7 @@ interface Venta {
     clientId: number | null;
     clientName: string;
     locationId: number;
+    employeeName: string;
 }
 
 
@@ -39,35 +40,36 @@ export default function Page() {
                 setLoading(true);
                 const userId = await getUserId();
 
-                const { data: saleData, error: salesError } = await supabase
+                const { data: venta, error } = await supabase
                     .from('sales')
                     .select(`
-            *,
-            sales_items:sales_items(
-              *,
-              variant:variant_id(
-                *,
-                product:product_id(*)
-              )
-            ),
-            clients:client(id, name)
-          `)
+                        *,
+                        sales_items:sales_items(
+                            *,
+                            variant:variant_id(
+                                *,
+                                product:product_id(*)
+                            )
+                        ),
+                        clients:client(id, name)
+                    `)
                     .eq('id', parseInt(id as string, 10)) 
                     .eq('user_id', userId)
                     .single();
 
-                if (salesError) throw salesError;
+                if (error) throw error;
 
-                if (!saleData) {
+                if (!venta) {
                     setError("Venta no encontrada");
                     setLoading(false);
                     return;
                 }
-                const variantAttributes: Record<number, Record<string, string>> = {}; 
+
+                const variantAttributes: Record<number, Record<string, string>> = {};
                 const transformedSale: Venta = {
-                    id: saleData.id.toString(),
-                    createdAt: saleData.created_at,
-                    items: saleData.sales_items?.map((item: any) => {
+                    id: venta.id.toString(),
+                    createdAt: venta.created_at,
+                    items: venta.sales_items?.map((item: any) => {
                         let itemAttributes: Record<string, string> = {};
                         if (item.variant?.product?.characteristics_options) {
                             itemAttributes = item.variant.product.characteristics_options.reduce((acc: Record<string, string>, option: any) => {
@@ -85,12 +87,13 @@ export default function Page() {
                             attributes: itemAttributes, 
                         };
                     }) || [],
-                    discount: saleData.discount_percentage || 0,
-                    subtotal: saleData.total_amount, 
-                    total: saleData.total_amount,
-                    clientId: saleData.client,
-                    clientName: saleData.clients?.name || 'Sin cliente',
-                    locationId: saleData.location
+                    discount: venta.discount_percentage || 0,
+                    subtotal: venta.total_amount, 
+                    total: venta.total_amount,
+                    clientId: venta.client,
+                    clientName: venta.clients?.name || 'Sin cliente',
+                    locationId: venta.location,
+                    employeeName: venta.salesman || 'Empleado no registrado'
                 };
                 setVenta(transformedSale);
                 setLoading(false);

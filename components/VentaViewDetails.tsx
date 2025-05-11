@@ -18,6 +18,7 @@ interface Venta {
   locationName?: string;
   clientId?: number | null;
   clientName?: string;
+  employeeName: string;
 }
 
 interface VentaViewDetailsProps {
@@ -68,6 +69,7 @@ const VentaViewDetails: React.FC<VentaViewDetailsProps> = ({ venta, onClose }) =
                 <p><strong>Ubicación:</strong> {venta.locationName}</p>
               )}
               <p><strong>Cliente:</strong> {venta.clientName || 'Sin cliente'}</p>
+              <p><strong>Vendedor:</strong> {venta.employeeName}</p>
             </div>
             <div className="mt-3">
                 <h2 className="text-base font-semibold">Productos</h2> 
