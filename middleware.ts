@@ -50,7 +50,55 @@ export async function middleware(request: NextRequest) {
 
   // If user is signed in and trying to access auth page
   if (session && path === '/') {
-    return NextResponse.redirect(new URL('/dashboard/menu', request.url))
+    // Get user role to determine where to redirect
+    const { data: userRole } = await supabase
+      .rpc('get_user_role', {
+        auth_user_id: session.user.id
+      })
+
+    if (userRole === 'employee') {
+      return NextResponse.redirect(new URL('/dashboard/inventario', request.url))
+    } else if (userRole === 'admin') {
+      return NextResponse.redirect(new URL('/dashboard/menu', request.url))
+    } else if (userRole === 'superadmin') {
+      return NextResponse.redirect(new URL('/dashboard-superadmin', request.url))
+    }
+  }
+
+  // Check role-based access if user is authenticated and not on a public path
+  if (session && !isPublicPath) {
+    try {
+      const { data: hasAccess, error } = await supabase
+        .rpc('check_path_access', {
+          auth_user_id: session.user.id,
+          request_path: path
+        })
+
+      if (error) {
+        console.error('Error checking path access:', error)
+        return NextResponse.redirect(new URL('/', request.url))
+      }
+
+      if (!hasAccess) {
+        // Get user role to determine where to redirect
+        const { data: userRole } = await supabase
+          .rpc('get_user_role', {
+            auth_user_id: session.user.id
+          })
+
+        // Redirect to appropriate page based on role
+        if (userRole === 'employee') {
+          return NextResponse.redirect(new URL('/dashboard/inventario', request.url))
+        } else if (userRole === 'admin') {
+          return NextResponse.redirect(new URL('/dashboard/menu', request.url))
+        } else if (userRole === 'superadmin') {
+          return NextResponse.redirect(new URL('/dashboard-superadmin', request.url))
+        }
+      }
+    } catch (error) {
+      console.error('Error in middleware:', error)
+      return NextResponse.redirect(new URL('/', request.url))
+    }
   }
 
   return response

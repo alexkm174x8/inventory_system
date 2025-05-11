@@ -5,7 +5,7 @@ import {
   BarChart2, Archive, Users, CircleDollarSign,
   Store, Settings, LogOut, Bell, ChevronDown, SquareUserRound, UserPlus, Menu as MenuIcon
 } from 'lucide-react';
-import { getUserId, getUUID } from '@/lib/userId';
+import { getUserId } from '@/lib/userId';
 import { supabase } from '@/lib/supabase';
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
@@ -15,37 +15,88 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
   const [userName, setUserName] = useState('Cargando…');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function getUserData() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+    let mounted = true;
+
+    // Set up session listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (session?.user?.id) {
-          const userId = await getUUID();
-          const { data: profile, error } = await supabase
-            .from('admins')
-            .select('name, id, user_id')
-            .eq('id', userId);
+          await getUserData(session.user.id);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUserName('No autenticado');
+        setIsLoading(false);
+        router.push('/');
+      }
+    });
 
-          if (error) {
-            console.error('Error details:', error);
-            setUserName('Error fetching');
-            return;
-          }
+    async function getUserData(userId: string) {
+      if (!mounted) return;
 
-          if (profile && profile.length > 0) {
-            setUserName(profile[0].name);
-          } else {
-            setUserName('Profile not found');
+      try {
+        setIsLoading(true);
+        const effectiveUserId = await getUserId();
+        
+        if (!effectiveUserId) {
+          setUserName('Error al obtener ID');
+          setIsLoading(false);
+          return;
+        }
+
+        const { data: profile, error } = await supabase
+          .from('admins')
+          .select('name, id, user_id')
+          .eq('user_id', effectiveUserId)
+          .single();
+
+        if (error) {
+          console.error('Error fetching profile:', error);
+          if (mounted) {
+            setUserName('Error al cargar perfil');
+            setIsLoading(false);
           }
+          return;
+        }
+
+        if (profile && mounted) {
+          setUserName(profile.name);
+          setIsLoading(false);
+        } else if (mounted) {
+          setUserName('Perfil no encontrado');
+          setIsLoading(false);
         }
       } catch (error) {
-        console.error('Unexpected error:', error);
-        setUserName('Error');
+        console.error('Error getting user data:', error);
+        if (mounted) {
+          setUserName('Error al obtener datos');
+          setIsLoading(false);
+        }
       }
     }
-    getUserData();
-  }, []);
+
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+
+      if (session?.user?.id) {
+        getUserData(session.user.id);
+      } else {
+        setUserName('No autenticado');
+        setIsLoading(false);
+        router.push('/');
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [router]);
 
   const handleLogout = async () => {
     try {
@@ -54,7 +105,6 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         console.error('Error signing out:', error.message);
         return;
       }
-      // Redirect to home page after successful logout
       router.push('/');
     } catch (error) {
       console.error('Unexpected error during logout:', error);
@@ -122,7 +172,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             <Bell />
             <div className="flex items-center">
               <div className="h-8 w-8 rounded-full bg-[#007aff] text-white flex items-center justify-center">
-                {userName && !['Loading...', 'Profile not found', 'Error', 'Error fetching'].includes(userName)
+                {!isLoading && userName && !['Error de sesión', 'No autenticado', 'Error al cargar perfil', 'Perfil no encontrado', 'Error al obtener ID', 'Error inesperado', 'Error al obtener datos'].includes(userName)
                   ? userName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
                   : ''}
               </div>
