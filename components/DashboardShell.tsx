@@ -56,11 +56,28 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           setUserRole(role);
         }
 
-        const { data: profile, error } = await supabase
-          .from('admins')
-          .select('name, id, user_id')
-          .eq('user_id', effectiveUserId)
-          .single();
+        let profile;
+        let error;
+
+        if (role === 'employee') {
+          // Fetch employee profile
+          const result = await supabase
+            .from('employees')
+            .select('name, auth_id')
+            .eq('auth_id', userId)
+            .single();
+          profile = result.data;
+          error = result.error;
+        } else {
+          // Fetch admin profile
+          const result = await supabase
+            .from('admins')
+            .select('name, id, user_id')
+            .eq('user_id', effectiveUserId)
+            .single();
+          profile = result.data;
+          error = result.error;
+        }
 
         if (error) {
           console.error('Error fetching profile:', error);

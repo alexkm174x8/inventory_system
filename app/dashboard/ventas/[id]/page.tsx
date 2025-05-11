@@ -21,6 +21,9 @@ interface Venta {
     discount: number;
     subtotal: number;
     total: number;
+    clientId: number | null;
+    clientName: string;
+    locationId: number;
 }
 
 
@@ -46,9 +49,10 @@ export default function Page() {
                 *,
                 product:product_id(*)
               )
-            )
+            ),
+            clients:client(id, name)
           `)
-                    .eq('id', parseInt(id, 10)) 
+                    .eq('id', parseInt(id as string, 10)) 
                     .eq('user_id', userId)
                     .single();
 
@@ -84,6 +88,9 @@ export default function Page() {
                     discount: saleData.discount_percentage || 0,
                     subtotal: saleData.total_amount, 
                     total: saleData.total_amount,
+                    clientId: saleData.client,
+                    clientName: saleData.clients?.name || 'Sin cliente',
+                    locationId: saleData.location
                 };
                 setVenta(transformedSale);
                 setLoading(false);
