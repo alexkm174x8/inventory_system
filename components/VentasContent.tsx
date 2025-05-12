@@ -71,6 +71,7 @@ const VentasContent: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [locationFilter, setLocationFilter] = useState<number | null>(null);
   const [variantAttributes, setVariantAttributes] = useState<Record<number, Record<string, string>>>({});
   const [locations, setLocations] = useState<Record<number, string>>({});
   const [clients, setClients] = useState<Record<number, string>>({});
@@ -79,9 +80,11 @@ const VentasContent: React.FC = () => {
 
   const fetchLocations = async () => {
     try {
+      const userId = await getUserId();
       const { data, error } = await supabase
         .from('locations')
-        .select('id, name');
+        .select('id, name')
+        .eq('user_id', userId);
       
       if (error) throw error;
       
@@ -304,12 +307,20 @@ const VentasContent: React.FC = () => {
       venta.items.some(item => 
         item.name.toLowerCase().includes(searchTerm.toLowerCase())
       ) ||
-      venta.clientName.toLowerCase().includes(searchTerm.toLowerCase()); // Added client name to search
+      venta.clientName.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesDate = dateFilter === '' || 
-      new Date(venta.createdAt).toLocaleDateString().includes(dateFilter);
+    const saleDate = new Date(venta.createdAt);
+    const filterDate = dateFilter ? new Date(dateFilter) : null;
     
-    return matchesSearch && matchesDate;
+    const matchesDate = !filterDate || 
+      (saleDate.getUTCFullYear() === filterDate.getUTCFullYear() &&
+       saleDate.getUTCMonth() === filterDate.getUTCMonth() &&
+       saleDate.getUTCDate() === filterDate.getUTCDate());
+    
+    const matchesLocation = locationFilter === null || 
+      (locationFilter !== null && Number(venta.locationId) === Number(locationFilter));
+    
+    return matchesSearch && matchesDate && matchesLocation;
   });
 
   // Helper function to format product name with attributes
@@ -376,6 +387,23 @@ const VentasContent: React.FC = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"/>
                 <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
+              </div>
+              
+              <div className="relative">
+                <select
+                  value={locationFilter === null ? '' : locationFilter}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setLocationFilter(value === '' ? null : Number(value));
+                  }}
+                  className="pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Todas las ubicaciones</option>
+                  {Object.entries(locations).map(([id, name]) => (
+                    <option key={id} value={id}>{name}</option>
+                  ))}
+                </select>
+                <Filter className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
               </div>
               
               <div className="relative">

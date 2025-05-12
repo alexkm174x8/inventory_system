@@ -1,64 +1,171 @@
 import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   BarChart2, Archive, Users, CircleDollarSign,
   Store, Settings, LogOut, Bell, ChevronDown, SquareUserRound, UserPlus, Menu as MenuIcon
 } from 'lucide-react';
-import { getUserId, getUUID } from '@/lib/userId';
+import { getUserId, getUserRole } from '@/lib/userId';
 import { supabase } from '@/lib/supabase';
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const segment = pathname.split('/')[1] || 'dashboard/menu';
 
   const [userName, setUserName] = useState('Cargando…');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    async function getUserData() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+    let mounted = true;
+
+    // Set up session listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (session?.user?.id) {
-          const userId = await getUUID();
-          const { data: profile, error } = await supabase
+          await getUserData(session.user.id);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUserName('No autenticado');
+        setIsLoading(false);
+        setUserRole(null);
+        router.push('/');
+      }
+    });
+
+    async function getUserData(userId: string) {
+      if (!mounted) return;
+
+      try {
+        setIsLoading(true);
+        const effectiveUserId = await getUserId();
+        
+        if (!effectiveUserId) {
+          setUserName('Error al obtener ID');
+          setIsLoading(false);
+          return;
+        }
+
+        // Get user role
+        const role = await getUserRole();
+        if (mounted) {
+          setUserRole(role);
+        }
+
+        let profile;
+        let error;
+
+        if (role === 'employee') {
+          // Fetch employee profile
+          const result = await supabase
+            .from('employees')
+            .select('name, auth_id')
+            .eq('auth_id', userId)
+            .single();
+          profile = result.data;
+          error = result.error;
+        } else {
+          // Fetch admin profile
+          const result = await supabase
             .from('admins')
             .select('name, id, user_id')
-            .eq('id', userId);
+            .eq('user_id', effectiveUserId)
+            .single();
+          profile = result.data;
+          error = result.error;
+        }
 
-          if (error) {
-            console.error('Error details:', error);
-            setUserName('Error fetching');
-            return;
+        if (error) {
+          console.error('Error fetching profile:', error);
+          if (mounted) {
+            setUserName('Error al cargar perfil');
+            setIsLoading(false);
           }
+          return;
+        }
 
-          if (profile && profile.length > 0) {
-            setUserName(profile[0].name);
-          } else {
-            setUserName('Profile not found');
-          }
+        if (profile && mounted) {
+          setUserName(profile.name);
+          setIsLoading(false);
+        } else if (mounted) {
+          setUserName('Perfil no encontrado');
+          setIsLoading(false);
         }
       } catch (error) {
-        console.error('Unexpected error:', error);
-        setUserName('Error');
+        console.error('Error getting user data:', error);
+        if (mounted) {
+          setUserName('Error al obtener datos');
+          setIsLoading(false);
+        }
       }
     }
-    getUserData();
-  }, []);
 
-  const menuItems = [
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+
+      if (session?.user?.id) {
+        getUserData(session.user.id);
+      } else {
+        setUserName('No autenticado');
+        setIsLoading(false);
+        setUserRole(null);
+        router.push('/');
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [router]);
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error.message);
+        return;
+      }
+      router.push('/');
+    } catch (error) {
+      console.error('Unexpected error during logout:', error);
+    }
+  };
+
+  const allMenuItems = [
+    { label: 'Menú', href: '/dashboard/menu', icon: <BarChart2 /> },
     { label: 'Inventario', href: '/dashboard/inventario', icon: <Archive /> },
     { label: 'Clientes', href: '/dashboard/clientes', icon: <Users /> },
     { label: 'Ventas', href: '/dashboard/ventas', icon: <CircleDollarSign /> },
     { label: 'Empleados', href: '/dashboard/empleados', icon: <SquareUserRound /> },
     { label: 'Sucursales', href: '/dashboard/sucursales', icon: <Store /> },
-    { label: 'Configuración', href: '/dashboard/configuracion', icon: <Settings /> },
+    //{ label: 'Configuración', href: '/dashboard/configuracion', icon: <Settings /> },
   ];
+
+  // Filter menu items based on user role
+  const menuItems = userRole === 'admin' 
+    ? allMenuItems 
+    : allMenuItems.filter(item => ['Inventario', 'Ventas'].includes(item.label));
 
   const currentMenuItem = menuItems.find(item => 
     pathname === item.href || pathname.startsWith(item.href + '/')
   );
   const pageTitle = currentMenuItem?.label || 'Trade Hub';
+
+  // Redirect if user tries to access unauthorized page
+  useEffect(() => {
+    if (!isLoading && userRole && currentMenuItem) {
+      const isAuthorized = menuItems.some(item => item.href === pathname || pathname.startsWith(item.href + '/'));
+      if (!isAuthorized) {
+        router.push('/dashboard/inventario');
+      }
+    }
+  }, [isLoading, userRole, pathname, menuItems, router]);
 
   return (
     <div className="flex h-screen bg-[#f5f5f5]">
@@ -73,7 +180,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="flex-1 px-2 overflow-y-auto">
           {menuItems.map(item => {
-            const isActive = pathname === item.href || (item.href === '/menu' && segment === 'menu');
+            const isActive = pathname === item.href || (item.href === '/dashboard/menu' && segment === 'menu');
             return (
               <Link
                 key={item.href}
@@ -88,7 +195,10 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           })}
         </nav>
         <div className="p-4 border-t">
-          <button className="flex items-center w-full px-4 py-2 text-sm hover:bg-[#f5f5f5]">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center w-full px-4 py-2 text-sm text-[#667085] hover:bg-[#f5f5f5] hover:text-red-600 transition-colors"
+          >
             <LogOut className="mr-3 h-5 w-5" /> Cerrar Sesión
           </button>
         </div>
@@ -104,7 +214,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             <Bell />
             <div className="flex items-center">
               <div className="h-8 w-8 rounded-full bg-[#007aff] text-white flex items-center justify-center">
-                {userName && !['Loading...', 'Profile not found', 'Error', 'Error fetching'].includes(userName)
+                {!isLoading && userName && !['Error de sesión', 'No autenticado', 'Error al cargar perfil', 'Perfil no encontrado', 'Error al obtener ID', 'Error inesperado', 'Error al obtener datos'].includes(userName)
                   ? userName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
                   : ''}
               </div>

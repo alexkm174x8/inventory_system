@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '@/lib/supabase';
-import { getUserId } from '@/lib/userId';
+import { getUserId, getUserRole } from '@/lib/userId';
 
 interface ProductVariant {
   variant_id: number; 
@@ -392,21 +392,32 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       return;
     }
 
-    // Validate stock levels before proceeding
-    for (const item of ventaItems) {
-      const stockItem = stockItems.find(s => s.variant_id === item.variant_id);
-      const availableStock = stockItem ? stockItem.stock : 0;
-      
-      if (item.quantity > availableStock) {
-        alert(`No hay suficiente stock para ${item.name}. Stock disponible: ${availableStock}`);
-        return;
-      }
-    }
-
     try {
       const userId = await getUserId();
+      const role = await getUserRole();
       
-      // Create new sale record - now includes the location ID and client ID
+      // Get the current user's name
+      let userName = '';
+      if (role === 'employee') {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+          const { data: employeeData } = await supabase
+            .from('employees')
+            .select('name')
+            .eq('auth_id', session.user.id)
+            .single();
+          userName = employeeData?.name || 'Empleado no registrado';
+        }
+      } else {
+        const { data: adminData } = await supabase
+          .from('admins')
+          .select('name')
+          .eq('user_id', userId)
+          .single();
+        userName = adminData?.name || 'Admin no registrado';
+      }
+      
+      // Create new sale record
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert([
@@ -416,7 +427,8 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
             discount_percentage: descuento,
             created_at: new Date().toISOString(),
             location: locationId,
-            client: selectedClientId // Add the selected client ID
+            client: selectedClientId,
+            salesman: userName
           }
         ])
         .select();
@@ -439,6 +451,31 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         .insert(saleItems);
       
       if (itemsError) throw itemsError;
+      
+      // Update client statistics if a client was selected
+      if (selectedClientId) {
+        // First get current client data
+        const { data: clientData, error: clientFetchError } = await supabase
+          .from('clients')
+          .select('num_compras, total_compras')
+          .eq('id', selectedClientId)
+          .eq('user_id', userId)
+          .single();
+
+        if (clientFetchError) throw clientFetchError;
+
+        // Then update with new values
+        const { error: clientError } = await supabase
+          .from('clients')
+          .update({
+            num_compras: (clientData?.num_compras || 0) + 1,
+            total_compras: (clientData?.total_compras || 0) + (total < 0 ? 0 : total)
+          })
+          .eq('id', selectedClientId)
+          .eq('user_id', userId);
+        
+        if (clientError) throw clientError;
+      }
       
       // Update stock levels - specifically for the selected location
       for (const item of ventaItems) {

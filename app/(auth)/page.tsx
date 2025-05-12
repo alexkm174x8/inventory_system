@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 // Import icons (assuming you use lucide-react, common with shadcn/ui)
-import { Eye, EyeOff } from "lucide-react" 
+import { Eye, EyeOff, Loader2 } from "lucide-react" 
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,7 +19,8 @@ export default function LoginPage() {
   const [emailError, setEmailError] = useState("")
   const [passwordError, setPasswordError] = useState("")
   // --- 1. Add state for password visibility ---
-  const [showPassword, setShowPassword] = useState(false) 
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,6 +45,7 @@ export default function LoginPage() {
 
     if (isValid) {
       try {
+        setIsLoading(true)
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -61,6 +63,8 @@ export default function LoginPage() {
       } catch (error) {
         console.error("Login error:", error)
         setPasswordError("Error al iniciar sesión. Por favor, intenta de nuevo.")
+      } finally {
+        setIsLoading(false)
       }
     }
   }
@@ -95,6 +99,7 @@ export default function LoginPage() {
                 }}
                 className={emailError ? "border-red-500" : ""}
                 required
+                disabled={isLoading}
               />
               {emailError && <p className="text-xs text-red-500">{emailError}</p>}
             </div>
@@ -117,6 +122,7 @@ export default function LoginPage() {
                   }}
                   className={`${passwordError ? "border-red-500" : ""} pr-10`} 
                   required
+                  disabled={isLoading}
                 />
 
                 <Button
@@ -125,7 +131,8 @@ export default function LoginPage() {
                   size="icon" 
                   className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-gray-500 hover:text-gray-700" 
                   onClick={togglePasswordVisibility} 
-                  aria-label={showPassword ? "Hide password" : "Show password"} 
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  disabled={isLoading}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -141,8 +148,15 @@ export default function LoginPage() {
                 </Link>
               </div>
             </div>
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-              Iniciar Sesión
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Iniciando sesión...
+                </>
+              ) : (
+                "Iniciar Sesión"
+              )}
             </Button>
             <div className="text-center text-sm">
               ¿No tienes una cuenta?{" "}
