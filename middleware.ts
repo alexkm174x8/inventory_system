@@ -48,56 +48,57 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // If user is signed in and trying to access auth page
-  if (session && path === '/') {
-    // Get user role to determine where to redirect
+  // If user is signed in, handle role-based routing
+  if (session) {
+    // Get user role
     const { data: userRole } = await supabase
       .rpc('get_user_role', {
         auth_user_id: session.user.id
       })
 
-    if (userRole === 'employee') {
-      return NextResponse.redirect(new URL('/dashboard/inventario', request.url))
-    } else if (userRole === 'admin') {
-      return NextResponse.redirect(new URL('/dashboard/menu', request.url))
-    } else if (userRole === 'superadmin') {
-      return NextResponse.redirect(new URL('/dashboard-superadmin', request.url))
-    }
-  }
+    // Handle initial login redirect
+    if (path === '/') {
+      if (userRole === 'employee') {
+        const { data: employeeData } = await supabase
+          .from('employees')
+          .select('role')
+          .eq('auth_id', session.user.id)
+          .single()
 
-  // Check role-based access if user is authenticated and not on a public path
-  if (session && !isPublicPath) {
-    try {
-      const { data: hasAccess, error } = await supabase
-        .rpc('check_path_access', {
-          auth_user_id: session.user.id,
-          request_path: path
-        })
-
-      if (error) {
-        console.error('Error checking path access:', error)
-        return NextResponse.redirect(new URL('/', request.url))
-      }
-
-      if (!hasAccess) {
-        // Get user role to determine where to redirect
-        const { data: userRole } = await supabase
-          .rpc('get_user_role', {
-            auth_user_id: session.user.id
-          })
-
-        // Redirect to appropriate page based on role
-        if (userRole === 'employee') {
+        if (employeeData?.role === 'inventario') {
           return NextResponse.redirect(new URL('/dashboard/inventario', request.url))
-        } else if (userRole === 'admin') {
-          return NextResponse.redirect(new URL('/dashboard/menu', request.url))
-        } else if (userRole === 'superadmin') {
-          return NextResponse.redirect(new URL('/dashboard-superadmin', request.url))
+        } else if (employeeData?.role === 'ventas') {
+          return NextResponse.redirect(new URL('/dashboard/ventas', request.url))
+        }
+      } else if (userRole === 'admin') {
+        return NextResponse.redirect(new URL('/dashboard/menu', request.url))
+      } else if (userRole === 'superadmin') {
+        return NextResponse.redirect(new URL('/dashboard-superadmin', request.url))
+      }
+    }
+
+    // Handle protected route access
+    if (path.startsWith('/dashboard/')) {
+      if (userRole === 'employee') {
+        const { data: employeeData } = await supabase
+          .from('employees')
+          .select('role')
+          .eq('auth_id', session.user.id)
+          .single()
+
+        const isInventoryEmployee = employeeData?.role === 'inventario'
+        const isSalesEmployee = employeeData?.role === 'ventas'
+        const isInventoryPath = path.startsWith('/dashboard/inventario')
+        const isSalesPath = path.startsWith('/dashboard/ventas')
+
+        // Redirect if trying to access unauthorized path
+        if (isInventoryEmployee && !isInventoryPath) {
+          return NextResponse.redirect(new URL('/dashboard/inventario', request.url))
+        }
+        if (isSalesEmployee && !isSalesPath) {
+          return NextResponse.redirect(new URL('/dashboard/ventas', request.url))
         }
       }
-    } catch (error) {
-      console.error('Error in middleware:', error)
-      return NextResponse.redirect(new URL('/', request.url))
     }
   }
 
