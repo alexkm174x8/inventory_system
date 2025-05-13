@@ -70,6 +70,9 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   // State for location info
   const [locationInfo, setLocationInfo] = useState<Location | null>(null);
   
+  // Add state for admin status
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  
   // State for products, variants, stock and cart
   const [loading, setLoading] = useState<boolean>(true);
   const [products, setProducts] = useState<Product[]>([]);
@@ -269,6 +272,21 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       fetchProductData();
     }
   }, [locationId]);
+
+  // Add useEffect to check user role
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const role = await getUserRole();
+        setIsAdmin(role === 'admin' || role === 'superadmin');
+      } catch (error) {
+        console.error('Error checking user role:', error);
+        setIsAdmin(false);
+      }
+    };
+    
+    checkUserRole();
+  }, []);
 
   // Filter products based on search and category
   const filteredProducts = useMemo(() => {
@@ -731,33 +749,45 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                 <span>Subtotal:</span>
                 <span>MXN ${subtotal}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span>Descuento:</span>
-                <span>% {descuento}</span>
-              </div>
-              <div className="flex justify-between font-bold">
-                <span>Total:</span>
-                <span>MXN ${total < 0 ? 0 : total}</span>
-              </div>
+              {isAdmin && (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span>Descuento:</span>
+                    <span>% {descuento}</span>
+                  </div>
+                  <div className="flex justify-between font-bold">
+                    <span>Total:</span>
+                    <span>MXN ${total < 0 ? 0 : total}</span>
+                  </div>
+                </>
+              )}
+              {!isAdmin && (
+                <div className="flex justify-between font-bold">
+                  <span>Total:</span>
+                  <span>MXN ${subtotal}</span>
+                </div>
+              )}
             </div>
 
-            {/* Discount input */}
-            <div className="mt-4">
-              <label htmlFor="descuento" className="block text-sm font-medium">Descuento</label>
-              <div className="flex w-full max-w-sm items-center space-x-2">
-                <Input 
-                  type="number"
-                  value={inputDescuento}
-                  onChange={(e) => setInputDescuento(e.target.value)}
-                />
-                <Button 
-                  type="submit"
-                  onClick={() => setDescuento(Number(inputDescuento))}
-                > 
-                  Aplicar
-                </Button>
+            {/* Discount input - only show for admins */}
+            {isAdmin && (
+              <div className="mt-4">
+                <label htmlFor="descuento" className="block text-sm font-medium">Descuento</label>
+                <div className="flex w-full max-w-sm items-center space-x-2">
+                  <Input 
+                    type="number"
+                    value={inputDescuento}
+                    onChange={(e) => setInputDescuento(e.target.value)}
+                  />
+                  <Button 
+                    type="submit"
+                    onClick={() => setDescuento(Number(inputDescuento))}
+                  > 
+                    Aplicar
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Confirm sale button */}
             <button 
