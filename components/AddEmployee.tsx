@@ -140,27 +140,31 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
     try {
       const userId = await getUserId();
 
-      // First create the auth user without role metadata
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email.toLowerCase().trim(), // Normalize email
-        password,
-        options: {
-          data: {
-            role: 'employee'
-          }
-        }
+      // Create the auth user through our API endpoint
+      const response = await fetch('/api/create-employee', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.toLowerCase().trim(),
+          password,
+          role: 'employee'
+        }),
       });
 
+      const { user: authData, error: authError } = await response.json();
+
       if (authError) {
-        if (authError.message.includes('Email')) {
+        if (authError.includes('Email')) {
           setErrors({ email: 'El email no es válido o ya está en uso' });
         } else {
-          throw authError;
+          throw new Error(authError);
         }
         return;
       }
 
-      if (!authData.user?.id) {
+      if (!authData?.id) {
         throw new Error('No se pudo crear el usuario de autenticación');
       }
 
@@ -170,13 +174,13 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
         .insert([
           {
             name,
-            email: email.toLowerCase().trim(), // Normalize email
+            email: email.toLowerCase().trim(),
             salary: parseFloat(salary),
-            role: role.toLowerCase(), // Ensure role is lowercase
+            role: role.toLowerCase(),
             phone: parseInt(phone),
             location_id: selectedLocationId,
             user_id: userId,
-            auth_id: authData.user.id
+            auth_id: authData.id
           },
         ]);
 
