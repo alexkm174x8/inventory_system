@@ -17,6 +17,17 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface EmployeeViewProps {
   onClose: () => void;
@@ -42,6 +53,9 @@ const EmployeeView: React.FC<EmployeeViewProps> = ({ onClose }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchEmployee = async () => {
@@ -153,6 +167,49 @@ const EmployeeView: React.FC<EmployeeViewProps> = ({ onClose }) => {
     }
   };
 
+  const handleDeleteEmployee = async () => {
+    setDeleteLoading(true);
+    setDeleteError(null);
+
+    try {
+      console.log('Attempting to delete employee with ID:', id);
+      const response = await fetch(`/api/delete-employee?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('Delete response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al eliminar el empleado');
+      }
+
+      toast({
+        title: "Éxito",
+        description: `Empleado ${data.deletedEmployee?.name || ''} eliminado exitosamente`,
+      });
+
+      // Close the view and redirect to employees list
+      onClose();
+      router.push('/dashboard/empleados');
+    } catch (error: any) {
+      console.error('Error deleting employee:', error);
+      const errorMessage = error.message || 'Error desconocido al eliminar el empleado';
+      setDeleteError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
+    } finally {
+      setDeleteLoading(false);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -224,6 +281,37 @@ const EmployeeView: React.FC<EmployeeViewProps> = ({ onClose }) => {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+              
+              <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="text-red-600 border-red-600 hover:bg-red-50">
+                    Eliminar Empleado
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Estás seguro de eliminar este empleado?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta acción no se puede deshacer. Se eliminará permanentemente la cuenta de {employeeName} 
+                      y todos sus datos asociados. El empleado ya no podrá acceder al sistema.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  {deleteError && (
+                    <p className="text-sm text-red-500 mt-2">{deleteError}</p>
+                  )}
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={deleteLoading}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteEmployee}
+                      disabled={deleteLoading}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      {deleteLoading ? 'Eliminando...' : 'Sí, eliminar empleado'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
               <p className="text-lg font-light">ID# {employeeId}</p>
             </div>
           </div>
