@@ -8,6 +8,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface InventoryItem {
   id: number;
@@ -64,9 +75,11 @@ interface ProductDetailPageParams {
 const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
   const router = useRouter();
   const { id: productId } = useParams<ProductDetailPageParams>();
+  const { toast } = useToast();
   const [product, setProduct] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
   // New states for editing
   const [isEditing, setIsEditing] = useState(false);
@@ -222,10 +235,19 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
       });
       
       setIsEditing(false);
-      alert('Producto actualizado correctamente.');
+      toast({
+        variant: "success",
+        title: "¡Éxito!",
+        description: "Producto actualizado correctamente",
+      });
     } catch (err: any) {
       console.error('Error al actualizar el producto:', err);
       setUpdateError(`Error al actualizar: ${err.message}`);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al actualizar el producto. Por favor, intenta de nuevo.",
+      });
     } finally {
       setUpdateLoading(false);
     }
@@ -234,9 +256,6 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
   // Function to handle deleting product
   const handleDelete = async () => {
     if (!product) return;
-    
-    const confirmDelete = window.confirm('¿Estás seguro que deseas eliminar este producto del inventario? Esta acción no se puede deshacer.');
-    if (!confirmDelete) return;
     
     setUpdateLoading(true);
     
@@ -252,13 +271,23 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
       
       if (deleteError) throw deleteError;
       
-      alert('Producto eliminado correctamente.');
+      toast({
+        variant: "success",
+        title: "¡Éxito!",
+        description: "Producto eliminado correctamente",
+      });
       onClose(); // Close the detail view
     } catch (err: any) {
       console.error('Error al eliminar el producto:', err);
       setUpdateError(`Error al eliminar: ${err.message}`);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al eliminar el producto. Por favor, intenta de nuevo.",
+      });
     } finally {
       setUpdateLoading(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -384,7 +413,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
                 </Button>
                 <Button 
                   variant="destructive" 
-                  onClick={handleDelete}
+                  onClick={() => setShowDeleteDialog(true)}
                   disabled={updateLoading}
                 >
                   Eliminar
@@ -394,6 +423,27 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente este producto del inventario.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={updateLoading}
+            >
+              {updateLoading ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

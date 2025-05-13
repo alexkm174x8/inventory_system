@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
+import { useToast } from "@/components/ui/use-toast";
 
 interface EmployeeViewProps {
   onClose: () => void;
@@ -13,6 +14,7 @@ interface EmployeeViewProps {
 const EmployeeView: React.FC<EmployeeViewProps> = ({ onClose }) => {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   if (!params?.id) return null;
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -28,7 +30,6 @@ const EmployeeView: React.FC<EmployeeViewProps> = ({ onClose }) => {
   useEffect(() => {
     const fetchEmployee = async () => {
       try {
-        // 1️⃣ Fetch del empleado por id sin filtro adicional
         const { data: empData, error: empErr } = await supabase
           .from('employees')
           .select('id, name, email, salary, role, phone, location_id')
@@ -36,7 +37,11 @@ const EmployeeView: React.FC<EmployeeViewProps> = ({ onClose }) => {
           .single();
 
         if (empErr || !empData) {
-          alert('Empleado no encontrado');
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Empleado no encontrado",
+          });
           router.push('/dashboard/empleados');
           return;
         }
@@ -48,15 +53,28 @@ const EmployeeView: React.FC<EmployeeViewProps> = ({ onClose }) => {
         setEmployeeRole(empData.role);
         setEmployeePhone(empData.phone.toString());
 
-        const { data: locData } = await supabase
+        const { data: locData, error: locError } = await supabase
           .from('locations')
           .select('name')
           .eq('id', empData.location_id)
           .maybeSingle();
 
+        if (locError) {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Error al cargar la información de la sucursal",
+          });
+        }
+
         setEmployeeLocationName(locData?.name ?? 'Desconocida');
       } catch (err) {
         console.error('Error al cargar datos:', err);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Error al cargar los datos del empleado. Por favor, intenta de nuevo.",
+        });
         router.push('/dashboard/empleados');
       } finally {
         setLoading(false);
@@ -64,10 +82,14 @@ const EmployeeView: React.FC<EmployeeViewProps> = ({ onClose }) => {
     };
 
     fetchEmployee();
-  }, [id, router]);
+  }, [id, router, toast]);
 
   if (loading) {
-    return <div>Cargando empleado…</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]"></div>
+      </div>
+    );
   }
 
   return (

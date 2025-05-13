@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
+import { useToast } from "@/components/ui/use-toast";
 
 export interface Product { id: number; name: string; }
 export interface Attribute { characteristics_id: number; name: string; }
@@ -19,6 +20,7 @@ interface AddProductToStockProps {
 }
 
 const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onClose }) => {
+  const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [productError, setProductError] = useState<string>('');
@@ -126,6 +128,11 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         setUbicaciones(ubicacionesData || []);
       } catch (error: any) {
         console.error('Error cargando datos iniciales:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Error al cargar los datos iniciales. Por favor, intenta de nuevo.",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -321,7 +328,11 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         console.log("Nuevo stock insertado.");
       }
 
-      alert("Stock agregado correctamente!");
+      toast({
+        variant: "success",
+        title: "¡Éxito!",
+        description: "Stock agregado correctamente",
+      });
       onSaveStock();
       // limpiar campos
       setSelectedProductId(null);
@@ -333,6 +344,11 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       onClose();
     } catch (error: any) {
       console.error("Error detallado en handleSaveStock:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Error al guardar el stock. Por favor, intenta de nuevo.",
+      });
     } finally {
       setIsLoading(false);
     }

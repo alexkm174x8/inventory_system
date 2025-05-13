@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '@/lib/supabase';
 import { getUserId, getUserRole } from '@/lib/userId';
+import { useToast } from "@/components/ui/use-toast";
 
 interface ProductVariant {
   variant_id: number; 
@@ -68,6 +69,7 @@ interface CheckoutVentaProps {
 }
 
 const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) => {
+  const { toast } = useToast();
   // State for location info
   const [locationInfo, setLocationInfo] = useState<Location | null>(null);
   
@@ -357,7 +359,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     const variant = productVariants.find(v => v.variant_id === variantId);
     if (!variant) {
       console.error("Variant details not found for ID:", variantId);
-      alert("Error: No se encontraron detalles del producto.");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se encontraron detalles del producto.",
+      });
       return;
     }
 
@@ -367,7 +373,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     // Check if we found a stock item and it has a valid price
     if (!stockItem || typeof stockItem.price !== 'number') {
         console.error("Stock information (including price) not found for variant ID:", variantId);
-        alert(`Error: Precio no encontrado en el inventario para ${formatVariantName(variantId)}. No se puede agregar.`);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `Precio no encontrado en el inventario para ${formatVariantName(variantId)}. No se puede agregar.`,
+        });
         return;
     }
 
@@ -411,7 +421,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   // Confirm sale and save to Supabase
   const confirmarVenta = async () => {
     if (ventaItems.length === 0) {
-      alert('No hay productos en el carrito');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No hay productos en el carrito",
+      });
       return;
     }
 
@@ -516,12 +530,20 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         }
       }
       
-      alert('Venta confirmada');
+      toast({
+        variant: "success",
+        title: "¡Éxito!",
+        description: "Venta confirmada correctamente",
+      });
       onClose();
       
     } catch (error) {
       console.error('Error saving sale:', error);
-      alert('Error al guardar la venta');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al guardar la venta",
+      });
     }
   };
 

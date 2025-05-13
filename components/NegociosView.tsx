@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
+import { useToast } from "@/components/ui/use-toast";
 
 interface   NegociosViewProps {
   onClose: () => void;
@@ -13,6 +14,7 @@ interface   NegociosViewProps {
 const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   if (!params?.id) return null;
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -32,7 +34,11 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
           .single();
 
         if (negErr || !negData) {
-          alert('Negocio no encontrado');
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Negocio no encontrado",
+          });
           router.push('/dashboard-superadmin/negocios');
           return;
         }
@@ -44,6 +50,11 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
 
       } catch (err) {
         console.error('Error al cargar datos:', err);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Error al cargar los datos del negocio. Por favor, intenta de nuevo.",
+        });
         router.push('/dashboard-superadmin/negocios');
       } finally {
         setLoading(false);
@@ -51,10 +62,14 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
     };
 
     fetchNegocio();
-  }, [id, router]);
+  }, [id, router, toast]);
 
   if (loading) {
-    return <div>Cargando negocio…</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]"></div>
+      </div>
+    );
   }
 
   return (
