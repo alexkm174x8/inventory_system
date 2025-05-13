@@ -5,7 +5,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  Check
+  Check,
+  Package,
+  AlertCircle,
+  TrendingUp
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
@@ -180,57 +183,50 @@ const InventarioContent: React.FC = () => {
           Agregar Inventario
         </button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white rounded-lg shadow p-10 mb-12 ">
-        <div className="w-full">
-          <table className='table-fixed w-full'>
-            <tbody>
-              <tr>
-                <td><h2 className="whitespace-nowrap text-base font-bold uppercase text-orange-300">Productos Totales</h2></td>
-              </tr>
-              <tr>
-                <td >555</td>
-                <td ></td>
-              </tr>
-              <tr className='text-neutral-400 text-sm'>
-                <td >Ultimos 7 dias</td>
-                <td >Cantidad </td>
-              </tr>
-            </tbody>
-          </table>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        {/* Total Inventory Card */}
+        <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow duration-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-700">Inventario Total</h2>
+            <Package className="w-6 h-6 text-violet-500" />
+          </div>
+          <div className="flex items-baseline">
+            <span className="text-3xl font-bold text-gray-900">
+              {inventory.reduce((sum, item) => sum + item.quantity, 0)}
+            </span>
+            <span className="ml-2 text-sm text-gray-500">unidades</span>
+          </div>
+          <p className="mt-2 text-sm text-gray-500">Total de productos en inventario</p>
         </div>
-        <div className='w-full'>
-          <table className='table-fixed w-full'>
-            <tbody>
-              <tr>
-                <td><h2 className="text-base font-bold uppercase text-violet-300">Inventario Total</h2></td>
-              </tr>
-              <tr>
-                <td >{inventory.reduce((sum, item) => sum + item.quantity, 0)}</td>
-                <td ></td>
-              </tr>
-              <tr className='text-neutral-400 text-sm'>
-                <td ></td>
-                <td >Cantidad </td>
-              </tr>
-            </tbody>
-          </table>
+
+        {/* Products with Stock Card */}
+        <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow duration-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-700">Productos con Stock</h2>
+            <AlertCircle className="w-6 h-6 text-red-500" />
+          </div>
+          <div className="flex items-baseline">
+            <span className="text-3xl font-bold text-gray-900">
+              {inventory.filter(item => item.quantity > 0).length}
+            </span>
+            <span className="ml-2 text-sm text-gray-500">productos</span>
+          </div>
+          <p className="mt-2 text-sm text-gray-500">Productos disponibles actualmente</p>
         </div>
-        <div className='w-full'>
-          <table className='table-fixed w-full'>
-            <tbody>
-              <tr>
-                <td><h2 className="text-base font-bold uppercase text-red-500">Productos con Stock</h2></td>
-              </tr>
-              <tr>
-                <td >{inventory.filter(item => item.quantity > 0).length}</td>
-                <td ></td>
-              </tr>
-              <tr className='text-neutral-400 text-sm'>
-                <td ></td>
-                <td>Cantidad </td>
-              </tr>
-            </tbody>
-          </table>
+
+        {/* Products without Stock Card */}
+        <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow duration-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-700">Productos sin Stock</h2>
+            <TrendingUp className="w-6 h-6 text-orange-500" />
+          </div>
+          <div className="flex items-baseline">
+            <span className="text-3xl font-bold text-gray-900">
+              {inventory.filter(item => item.quantity === 0).length}
+            </span>
+            <span className="ml-2 text-sm text-gray-500">productos</span>
+          </div>
+          <p className="mt-2 text-sm text-gray-500">Productos que necesitan reabastecimiento</p>
         </div>
       </div>
 
