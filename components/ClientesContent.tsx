@@ -11,6 +11,7 @@ interface Client {
   phone: string;
   num_compras: number;
   total_compras: number;
+  discount: number;
 }
 
 const ClientesContent = () => {
@@ -34,7 +35,7 @@ const ClientesContent = () => {
 
       const { data, error } = await supabase
         .from('clients')
-        .select('id, name, phone, num_compras, total_compras')
+        .select('id, name, phone, num_compras, total_compras, discount')
         .eq('user_id', userId);
 
       if (error) throw error;
@@ -82,7 +83,7 @@ const ClientesContent = () => {
           <table className="w-full">
             <thead>
               <tr className="bg-[#f5f5f5] text-center">
-                {['Cliente', 'Teléfono','Compras','Total', 'Acciones'].map(header => (
+                {['Cliente', 'Teléfono', 'Descuento', 'Compras', 'Total', 'Acciones'].map(header => (
                   <th key={header} className="px-3 py-3 text-xs font-medium text-[#667085] uppercase tracking-wider">
                     {header}
                   </th>
@@ -92,11 +93,14 @@ const ClientesContent = () => {
             <tbody className="divide-y divide-[#e6e6e6] text-center">
               {currentData.map(client => (
                 <tr key={client.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]  capitalize">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26] capitalize">
                     {client.name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">
                     {client.phone}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">
+                    {client.discount}%
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">
                     {client.num_compras}

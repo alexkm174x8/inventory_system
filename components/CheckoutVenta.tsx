@@ -46,6 +46,7 @@ interface Client {
   email?: string;
   phone?: string;
   user_id: number;
+  discount: number;
 }
 
 // Interface for cart items
@@ -118,9 +119,13 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         
         if (clienteGeneral) {
           setSelectedClientId(clienteGeneral.id);
+          setDescuento(clienteGeneral.discount || 0);
+          setInputDescuento(clienteGeneral.discount?.toString() || "0");
         } else if (data && data.length > 0) {
           // If no "Cliente General", select the first client
           setSelectedClientId(data[0].id);
+          setDescuento(data[0].discount || 0);
+          setInputDescuento(data[0].discount?.toString() || "0");
         }
         
         setClients(data || []);
@@ -708,7 +713,15 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
           {clients.length > 0 ? (
             <Select 
               value={selectedClientId?.toString() || ""} 
-              onValueChange={(value) => setSelectedClientId(Number(value))}
+              onValueChange={(value) => {
+                const clientId = Number(value);
+                setSelectedClientId(clientId);
+                const selectedClient = clients.find(c => c.id === clientId);
+                if (selectedClient) {
+                  setDescuento(selectedClient.discount || 0);
+                  setInputDescuento(selectedClient.discount?.toString() || "0");
+                }
+              }}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Seleccionar cliente" />
@@ -716,7 +729,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
               <SelectContent>
                 {clients.map(client => (
                   <SelectItem key={client.id} value={client.id.toString()}>
-                    {client.name}
+                    {client.name} {client.discount > 0 ? `(${client.discount}% desc.)` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -772,7 +785,10 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
             {/* Discount input - only show for admins */}
             {isAdmin && (
               <div className="mt-4">
-                <label htmlFor="descuento" className="block text-sm font-medium">Descuento</label>
+                <label htmlFor="descuento" className="block text-sm font-medium">
+                  Descuento {selectedClientId && clients.find(c => c.id === selectedClientId)?.discount ? 
+                    `(Descuento del cliente: ${clients.find(c => c.id === selectedClientId)?.discount}%)` : ''}
+                </label>
                 <div className="flex w-full max-w-sm items-center space-x-2">
                   <Input 
                     type="number"
