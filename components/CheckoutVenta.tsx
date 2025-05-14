@@ -55,6 +55,7 @@ interface ProductoCarrito {
   id: number;
   variant_id: number;
   name: string;
+  type: string[];
   unitPrice: number;
   quantity: number;
   image: string | null;
@@ -72,7 +73,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   const { toast } = useToast();
   // State for location info
   const [locationInfo, setLocationInfo] = useState<Location | null>(null);
-  
+  const [selectedVariantId, setSelectedVariantId] = useState('');
   // Add state for admin status
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   
@@ -212,8 +213,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
           .eq('user_id', userId);
         
         if (productsError) throw productsError;
-        
-        // Manually fetch variant attributes since we had issues with the RPC function
         const { data: optionVariantsData, error: optionVariantsError } = await supabase
           .from('optionVariants')
           .select('*')
@@ -311,29 +310,18 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     return stockItem ? stockItem.stock : 0;
   };
 
-  // Get product name for a variant
-  const getProductName = (variantId: number): string => {
-    const variant = productVariants.find(v => v.variant_id === variantId);
-    if (!variant) return "Unknown Product";
-    
-    const product = products.find(p => p.id === variant.product_id);
-    return product ? product.name : "Unknown Product";
-  };
-
   // Format variant name with attributes
   const formatVariantName = (variantId: number): string => {
-    const baseName = getProductName(variantId);
     const attrs = variantAttributes[variantId];
-    
-    if (!attrs || Object.keys(attrs).length === 0) {
-      return baseName;
-    }
-    
-    const attrString = Object.entries(attrs)
-      .map(([characteristic, value]) => `${value}`)
-      .join(", ");
-    
-    return `${baseName} (${attrString})`;
+    const attrLines = Object.entries(attrs)
+      .map(([characteristicName, value]) => ` ${value}`)
+      .join("\n");
+    return `${attrLines}`;
+  };
+  
+  const getCharacteristicNames = (variantId: number): string[] => {
+    const attrs = variantAttributes[variantId];
+    return Object.keys(attrs);
   };
 
   // Increase quantity respecting stock limits
@@ -383,22 +371,23 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
 
     const unitPrice = stockItem.price;
     const variantName = formatVariantName(variantId);
+    const variantType = getCharacteristicNames(variantId);
 
     setVentaItems(prev => {
       const existe = prev.find(item => item.variant_id === variantId);
       if (existe) {
-        // Update quantity if item already exists
+
         return prev.map(item =>
           item.variant_id === variantId
             ? { ...item, quantity: cantidades[variantId], unitPrice: unitPrice }
             : item
         );
       }
-      // Add new item
       return [...prev, {
-        id: Date.now(), // Just for React key
+        id: Date.now(), 
         variant_id: variantId,
         name: variantName,
+        type: variantType,
         unitPrice: unitPrice,
         quantity: cantidades[variantId],
         image: variant.image_url,
@@ -407,18 +396,12 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       }];
     });
   };
-
-  // Remove from cart
   const eliminarDelCarrito = (variantId: number) => {
     setVentaItems(prev => prev.filter(item => item.variant_id !== variantId));
   };
-
-  // Calculate totals
   const subtotal = ventaItems.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
   const descuentoAplicado = descuento ? subtotal * (descuento / 100) : 0;
   const total = subtotal - descuentoAplicado;
-
-  // Confirm sale and save to Supabase
   const confirmarVenta = async () => {
     if (ventaItems.length === 0) {
       toast({
@@ -432,8 +415,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     try {
       const userId = await getUserId();
       const role = await getUserRole();
-      
-      // Get the current user's name
       let userName = '';
       if (role === 'employee') {
         const { data: { session } } = await supabase.auth.getSession();
@@ -454,7 +435,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         userName = adminData?.name || 'Admin no registrado';
       }
       
-      // Create new sale record
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert([
@@ -472,10 +452,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       
       if (saleError) throw saleError;
       if (!saleData || saleData.length === 0) throw new Error('Failed to create sale');
-      
       const saleId = saleData[0].id;
-      
-      // Create sale items records
       const saleItems = ventaItems.map(item => ({
         sale_id: saleId,
         variant_id: item.variant_id,
@@ -488,10 +465,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         .insert(saleItems);
       
       if (itemsError) throw itemsError;
-      
-      // Update client statistics if a client was selected
       if (selectedClientId) {
-        // First get current client data
         const { data: clientData, error: clientFetchError } = await supabase
           .from('clients')
           .select('num_compras, total_compras')
@@ -500,8 +474,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
           .single();
 
         if (clientFetchError) throw clientFetchError;
-
-        // Then update with new values
         const { error: clientError } = await supabase
           .from('clients')
           .update({
@@ -513,8 +485,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         
         if (clientError) throw clientError;
       }
-      
-      // Update stock levels - specifically for the selected location
       for (const item of ventaItems) {
         const stockItem = stockItems.find(s => 
           s.variant_id === item.variant_id && s.location === locationId
@@ -554,8 +524,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       </div>
     )
   }
-
-  // Group variants by product for better organization
   const variantsByProduct: Record<number, ProductVariant[]> = {};
   productVariants.forEach(variant => {
     if (!variantsByProduct[variant.product_id]) {
@@ -566,9 +534,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
 
   return (
     <div className="flex">
-      {/* Products section */}
       <div className="w-3/4 p-8 bg-white rounded-lg h-auto">
-        {/* Location header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Nueva venta</h1>
           {locationInfo && (
@@ -578,8 +544,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
             </div>
           )}
         </div>
-        
-        {/* Search and Filter Bar */}
         <div className="mb-6 flex gap-4">
           <div className="relative w-full max-w-md">
             <input
@@ -605,8 +569,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
             </select>
           )}
         </div>
-        
-        {/* Products Display */}
         {products.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-gray-500">No hay productos disponibles en esta sucursal</p>
@@ -621,111 +583,164 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
             .map(([productId, variants]) => {
               const product = products.find(p => p.id === Number(productId));
               if (!product) return null;
-           
+              const firstVariant = variants[0];
+              const selectedVariant = variants.find(v => v.variant_id === Number(selectedVariantId));
+              const selectedStockItem = selectedVariant
+                ? stockItems.find(
+                    item => item.variant_id === selectedVariant.variant_id && item.location === locationId
+                  )
+                : null;
+              const selectedStock = selectedStockItem ? selectedStockItem.stock : 0;
+              const selectedDisplayPrice = selectedStockItem ? selectedStockItem.price : null;
+
               return (
                 <div key={productId} className="mb-8">
-                  <h2 className="text-xl font-semibold mb-3">{product.name}</h2>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 justify-items-center">
-                    {variants.map(variant => {
-                      // --- Find the stock item for this variant ---
-                      const stockItem = stockItems.find(
-                        item => item.variant_id === variant.variant_id && item.location === locationId
-                      );
-                      const stock = stockItem ? stockItem.stock : 0;
-                      // --- Get the price from the stock item ---
-                      const displayPrice = stockItem ? stockItem.price : null;
-                      const variantName = formatVariantName(variant.variant_id);
-           
-                      return (
-                        <Card key={variant.variant_id} className='border border-gray-300 rounded-lg w-full hover:shadow-md transition-shadow'>
-                          <CardContent className="text-center flex flex-col items-center gap-y-2 p-4">
-                            <h3 className="font-semibold">{variantName}</h3>
-           
-                            {displayPrice !== null ? (
-                              <p className="text-sm font-light">MXN ${displayPrice.toFixed(2)}</p>
-                            ) : (
-                              <p className="text-sm font-light text-red-500">Precio no disponible</p>
-                            )}
-           
-                            {/* <p className="text-xs text-gray-500">SKU: {variant.sku}</p> */}
-           
-                            {variant.image_url ? (
-                              <img src={variant.image_url} alt={variantName} className='w-24 h-24 object-cover rounded mx-auto'/>
-                            ) : (
-                              <div className="w-24 h-24 flex items-center justify-center bg-gray-100 rounded mx-auto">
-                                <Image className="w-12 h-12 text-[#1366D9]" />
-                              </div>
-                            )}
-           
-                            {/* Quantity Input - Uses 'stock' variable derived from stockItem */}
-                            <div className="flex items-center border border-gray-300 rounded-md overflow-hidden w-full bg-white">
+                  <Card className="border border-gray-300 rounded-lg w-full hover:shadow-md transition-shadow">
+                    <CardContent className="text-center flex flex-col items-center gap-y-2 p-4">
+                      <h2 className="text-xl font-semibold mb-3 capitalize">{product.name}</h2>
+                      <h3 className="mb-2 text-sm text-gray-600">
+                        {variants.length > 0 ? getCharacteristicNames(variants[0].variant_id).join(", ") : ""}
+                      </h3>
+
+                      {/* Botones de variantes */}
+                      <div className="w-full flex flex-wrap gap-2 justify-center">
+                        {variants.map((variant) => {
+                          const idStr = variant.variant_id.toString();
+                          const name = formatVariantName(variant.variant_id);
+                          const isSelected = idStr === selectedVariantId;
+
+                          return (
                               <button
-                                onClick={() => disminuir(variant.variant_id)}
-                                className="p-2 text-gray-700 hover:bg-gray-200 transition"
-                                disabled={stock <= 0}
+                                key={variant.variant_id}
+                                type="button"
+                                onClick={() => setSelectedVariantId(idStr)}
+                                className={`px-4 py-2 rounded-md border transition 
+                                  ${isSelected ? 'bg-[#1366D9] text-white border-indigo-500' : 'bg-white text-gray-700 border-gray-300'}`}
                               >
-                                <Minus />
+                                {name}
                               </button>
-                              <input
-                                type="number"
-                                value={stock <= 0 ? 0 : cantidades[variant.variant_id] || 1}
-                                onChange={(e) => {
-                                  let valor = Number(e.target.value);
-                                  if (valor < 1) valor = 1;
-                                  // Use 'stock' variable derived from stockItem for max value
-                                  if (valor > stock) valor = stock;
-                                  setCantidades(prev => ({ ...prev, [variant.variant_id]: valor }));
-                                }}
-                                className="w-full text-center outline-none bg-transparent appearance-none"
-                                disabled={stock <= 0}
-                                // Hide arrows in number input for cleaner look
-                                style={{ MozAppearance: 'textfield', appearance: 'textfield' }}
-                              />
-                              <button
-                                onClick={() => aumentar(variant.variant_id)}
-                                className="p-2 text-gray-700 hover:bg-gray-200 transition"
-                                // Use 'stock' variable derived from stockItem
-                                disabled={stock <= 0 || (cantidades[variant.variant_id] || 1) >= stock}
-                              >
-                                <Plus />
-                              </button>
-                            </div>
-           
-                            {/* Stock Status Display - Uses 'stock' variable derived from stockItem */}
-                            <div className={`text-xs ${stock > 5 ? 'text-green-600' : stock > 0 ? 'text-orange-500' : 'text-red-500'}`}>
-                              {stock > 0 ? `Stock: ${stock}` : 'Sin stock'}
-                            </div>
-           
-                            {/* Add Button - Disabled if no stock OR if price is unavailable */}
-                            <button
-                              onClick={() => agregarAlCarrito(variant.variant_id)}
-                              className={`w-full h-10 rounded-sm ${stock <= 0 || displayPrice === null ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#1366D9] hover:bg-[#0d4ea6]'} text-white text-sm font-semibold shadow-lg transition-colors`}
-                              disabled={stock <= 0 || displayPrice === null}
-                            >
-                              {stock <= 0 ? 'Sin stock' : (displayPrice === null ? 'Precio no disp.' : 'Agregar')}
-                            </button>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Imagen de la variante seleccionada o placeholder */}
+                      {selectedVariant?.image_url ? (
+                        <img
+                          src={selectedVariant.image_url}
+                          alt={formatVariantName(selectedVariant.variant_id)}
+                          className="w-24 h-24 object-cover rounded mx-auto mt-4"
+                        />
+                      ) : (
+                        <div className="w-24 h-24 flex items-center justify-center bg-gray-100 rounded mx-auto mt-4">
+                          <Image className="w-12 h-12 text-[#1366D9]" />
+                        </div>
+                      )}
+
+                      {/* Siempre visible: cantidad, stock, precio y botón */}
+                      <div className="mt-4 w-full">
+                        {/* Selector de cantidad */}
+                        <div className="flex items-center border border-gray-300 rounded-md overflow-hidden w-full bg-white">
+                          <button
+                            onClick={() => selectedVariant && disminuir(selectedVariant.variant_id)}
+                            className="p-2 text-gray-700 hover:bg-gray-200 transition"
+                            disabled={!selectedVariant || selectedStock <= 0}
+                          >
+                            <Minus />
+                          </button>
+                          <input
+                            type="number"
+                            value={
+                              selectedVariant
+                                ? selectedStock <= 0
+                                  ? 0
+                                  : cantidades[selectedVariant.variant_id] || 1
+                                : ''
+                            }
+                            onChange={(e) => {
+                              if (!selectedVariant) return;
+                              let valor = Number(e.target.value);
+                              if (valor < 1) valor = 1;
+                              if (valor > selectedStock) valor = selectedStock;
+                              setCantidades((prev) => ({ ...prev, [selectedVariant.variant_id]: valor }));
+                            }}
+                            className="w-full text-center outline-none bg-transparent appearance-none"
+                            disabled={!selectedVariant || selectedStock <= 0}
+                            style={{ MozAppearance: 'textfield', appearance: 'textfield' }}
+                            placeholder="Cantidad"
+                          />
+                          <button
+                            onClick={() => selectedVariant && aumentar(selectedVariant.variant_id)}
+                            className="p-2 text-gray-700 hover:bg-gray-200 transition"
+                            disabled={
+                              !selectedVariant ||
+                              selectedStock <= 0 ||
+                              (cantidades[selectedVariant?.variant_id] || 1) >= selectedStock
+                            }
+                          >
+                            <Plus />
+                          </button>
+                        </div>
+
+                        {/* Stock */}
+                        <div
+                          className={`text-xs m-3 ${
+                            selectedVariant
+                              ? selectedStock > 5
+                                ? 'text-green-600'
+                                : selectedStock > 0
+                                ? 'text-orange-500'
+                                : 'text-red-500'
+                              : 'text-gray-400'
+                          }`}
+                        >
+                          {selectedVariant
+                            ? selectedStock > 0
+                              ? `Stock: ${selectedStock} piezas`
+                              : 'Sin stock'
+                            : 'Selecciona una variante'}
+                        </div>
+
+                        {/* Precio */}
+                        <div className="text-sm text-gray-800 font-medium m-3">
+                          {selectedVariant && selectedDisplayPrice !== null
+                            ? `Precio: MXN $${selectedDisplayPrice}`
+                            : 'Precio: —'}
+                        </div>
+
+                        {/* Botón agregar */}
+                        <button
+                          onClick={() => selectedVariant && agregarAlCarrito(selectedVariant.variant_id)}
+                          className={`w-full h-10 rounded-sm ${
+                            !selectedVariant || selectedStock <= 0 || selectedDisplayPrice === null
+                              ? 'bg-gray-300 cursor-not-allowed'
+                              : 'bg-[#1366D9] hover:bg-[#0d4ea6]'
+                          } text-white text-sm font-semibold shadow-lg transition-colors`}
+                          disabled={!selectedVariant || selectedStock <= 0 || selectedDisplayPrice === null}
+                        >
+                          {!selectedVariant
+                            ? 'Selecciona una variante'
+                            : selectedStock <= 0
+                            ? 'Sin stock'
+                            : selectedDisplayPrice === null
+                            ? 'Precio no disp.'
+                            : 'Agregar'}
+                        </button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
                 </div>
               );
             })
         )}
-        
         <div className="text-center mt-10">
           <Button type="button" variant="outline" onClick={onClose} className="w-40 h-10">
             Cancelar 
           </Button>
         </div>
       </div>
-
-      {/* Checkout sidebar */}
       <div className="w-1/4 p-4 bg-white mx-4 h-full rounded-lg">
         <h1 className="text-xl font-bold mb-4">Resumen de venta</h1>
-        
-        {/* Client Dropdown */}
         <div className="mb-4">
           <label htmlFor="client" className="text-sm font-medium mb-2 flex items-center">
             <Users className="w-4 h-4 mr-1 text-gray-500" />
@@ -768,7 +783,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
             <div className="space-y-2">
               {ventaItems.map(item => (
                 <div key={item.id} className="flex text-sm justify-between">
-                  <span className="w-1/3">{item.name} x {item.quantity}</span>
+                  <span className="w-1/3"> {item.type}: {item.name}  x {item.quantity}</span>
                   <div>
                     <span className='px-5'>MXN ${item.unitPrice * item.quantity}</span>
                     <span> 
@@ -803,7 +818,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                 </div>
               )}
             </div>
-
             {/* Discount input - only show for admins */}
             {isAdmin && (
               <div className="mt-4">

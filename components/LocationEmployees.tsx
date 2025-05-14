@@ -133,7 +133,7 @@ const LocationEmployees: React.FC = () => {
             <tbody className="divide-y divide-[#e6e6e6] text-center">
               {currentData.map(emp => (
                 <tr key={emp.id}>
-                  <td className="px-6 py-4 text-sm font-medium text-[#1b1f26] capitalize">{emp.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]  capitalize">{emp.name}</td>
                   <td className="px-6 py-4 text-sm text-[#667085]">{emp.email}</td>
                   <td className="px-6 py-4 text-sm text-[#667085]">${emp.salary} MXN</td>
                   <td className="px-6 py-4 text-sm text-[#667085] capitalize">{emp.role}</td>
@@ -142,6 +142,7 @@ const LocationEmployees: React.FC = () => {
                     <button
                       aria-label={`Ver detalles de ${emp.name}`}
                       className="text-indigo-600 hover:text-indigo-900"
+                      onClick={() => router.push(`/dashboard/sucursales/${id}/empleados/${emp.id}`)}
                     >
                       <Eye className="w-4 h-4 mx-auto" />
                     </button>
