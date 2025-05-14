@@ -5,6 +5,29 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
+import { useToast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface EmployeeViewProps {
 }
@@ -14,6 +37,9 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
   const router = useRouter();
   const employeeIdFromParams = params?.employeeId || params?.id;
   const employeeId = Array.isArray(employeeIdFromParams) ? employeeIdFromParams[0] : employeeIdFromParams;
+  const { toast } = useToast();
+  if (!params?.id) return null;
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [employeeName, setEmployeeName] = useState('');
   const [employeeEmail, setEmployeeEmail] = useState('');
@@ -23,7 +49,14 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
   const [employeePhone, setEmployeePhone] = useState('');
   const [employeeLocationName, setEmployeeLocationName] = useState('');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchEmployee = async () => {
@@ -35,8 +68,6 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
       }
 
       try {
-        setError(null);
-        setLoading(true);
         const { data: empData, error: empErr } = await supabase
           .from('employees')
           .select('id, name, email, salary, role, phone, location_id')
@@ -44,8 +75,13 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
           .single();
 
         if (empErr || !empData) {
-          console.error('Error al cargar el empleado:', empErr?.message || 'Empleado no encontrado');
-          setError('Empleado no encontrado.');
+
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Empleado no encontrado",
+          });
+          router.push('/dashboard/empleados');
           return;
         }
 
@@ -56,37 +92,138 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
         setEmployeeRole(empData.role);
         setEmployeePhone(empData.phone.toString());
 
-        const { data: locData } = await supabase
+        const { data: locData, error: locError } = await supabase
           .from('locations')
           .select('name')
           .eq('id', empData.location_id)
           .maybeSingle();
 
+        if (locError) {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Error al cargar la información de la sucursal",
+          });
+        }
+
         setEmployeeLocationName(locData?.name ?? 'Desconocida');
-      } catch (err: any) {
-        console.error('Error al cargar datos:', err.message || err);
-        setError('Error al cargar la información del empleado.');
-        router.push('/dashboard/empleados'); 
+
+      } catch (err) {
+        console.error('Error al cargar datos:', err);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Error al cargar los datos del empleado. Por favor, intenta de nuevo.",
+        });
+        router.push('/dashboard/empleados');
       } finally {
         setLoading(false);
       }
     };
 
     fetchEmployee();
-  }, [employeeId, router]);
+  }, [id, router, toast]);
+
+  const handlePasswordReset = async () => {
+    if (newPassword !== confirmPassword) {
+      setResetError('Las contraseñas no coinciden');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setResetError('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    setResetLoading(true);
+    setResetError(null);
+
+    try {
+      const response = await fetch('/api/reset-employee-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          employeeId: id,
+          newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al resetear la contraseña');
+      }
+
+      toast({
+        title: "Éxito",
+        description: "Contraseña actualizada exitosamente",
+      });
+
+      // Reset form and close dialog
+      setNewPassword('');
+      setConfirmPassword('');
+      setIsResetDialogOpen(false);
+    } catch (error: any) {
+      setResetError(error.message);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleDeleteEmployee = async () => {
+    setDeleteLoading(true);
+    setDeleteError(null);
+
+    try {
+      console.log('Attempting to delete employee with ID:', id);
+      const response = await fetch(`/api/delete-employee?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('Delete response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al eliminar el empleado');
+      }
+
+      toast({
+        title: "Éxito",
+        description: `Empleado ${data.deletedEmployee?.name || ''} eliminado exitosamente`,
+      });
+
+      // Close the view and redirect to employees list
+      onClose();
+      router.push('/dashboard/empleados');
+    } catch (error: any) {
+      console.error('Error deleting employee:', error);
+      const errorMessage = error.message || 'Error desconocido al eliminar el empleado';
+      setDeleteError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
+    } finally {
+      setDeleteLoading(false);
+      setIsDeleteDialogOpen(false);
+    }
+  };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex justify-center items-center h-full text-red-500">
-        {error}
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]"></div>
       </div>
     );
   }
@@ -96,8 +233,97 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
       <Card className="w-full overflow-hidden mt-6">
         <CardContent>
           <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3">
-            <h1 className="text-2xl font-bold capitalize">{employeeName}</h1>
-            <p className="text-lg font-light">ID# {employeeDbId}</p>
+            <h1 className="text-2xl font-bold capitalize">Empleado</h1>
+            <div className="flex items-center gap-4">
+              <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="text-yellow-600 border-yellow-600 hover:bg-yellow-50">
+                    Resetear Contraseña
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Resetear Contraseña</DialogTitle>
+                    <DialogDescription>
+                      Establece una nueva contraseña para {employeeName}. Asegúrate de comunicarle la nueva contraseña de forma segura.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                      <Input
+                        id="newPassword"
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Ingresa la nueva contraseña"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirma la nueva contraseña"
+                      />
+                    </div>
+                    {resetError && (
+                      <p className="text-sm text-red-500">{resetError}</p>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsResetDialogOpen(false)}
+                      disabled={resetLoading}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={handlePasswordReset}
+                      disabled={resetLoading}
+                      className="bg-yellow-600 hover:bg-yellow-700"
+                    >
+                      {resetLoading ? 'Actualizando...' : 'Actualizar Contraseña'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              
+              <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="text-red-600 border-red-600 hover:bg-red-50">
+                    Eliminar Empleado
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Estás seguro de eliminar este empleado?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta acción no se puede deshacer. Se eliminará permanentemente la cuenta de {employeeName} 
+                      y todos sus datos asociados. El empleado ya no podrá acceder al sistema.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  {deleteError && (
+                    <p className="text-sm text-red-500 mt-2">{deleteError}</p>
+                  )}
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={deleteLoading}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteEmployee}
+                      disabled={deleteLoading}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      {deleteLoading ? 'Eliminando...' : 'Sí, eliminar empleado'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <p className="text-lg font-light">ID# {employeeId}</p>
+            </div>
           </div>
 
           <section className="mt-6">

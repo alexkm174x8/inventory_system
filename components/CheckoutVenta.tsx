@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '@/lib/supabase';
 import { getUserId, getUserRole } from '@/lib/userId';
+import { useToast } from "@/components/ui/use-toast";
 
 interface ProductVariant {
   variant_id: number; 
@@ -46,6 +47,7 @@ interface Client {
   email?: string;
   phone?: string;
   user_id: number;
+  discount: number;
 }
 
 // Interface for cart items
@@ -68,9 +70,13 @@ interface CheckoutVentaProps {
 }
 
 const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) => {
+  const { toast } = useToast();
   // State for location info
   const [locationInfo, setLocationInfo] = useState<Location | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState('');
+  // Add state for admin status
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  
   // State for products, variants, stock and cart
   const [loading, setLoading] = useState<boolean>(true);
   const [products, setProducts] = useState<Product[]>([]);
@@ -116,9 +122,13 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         
         if (clienteGeneral) {
           setSelectedClientId(clienteGeneral.id);
+          setDescuento(clienteGeneral.discount || 0);
+          setInputDescuento(clienteGeneral.discount?.toString() || "0");
         } else if (data && data.length > 0) {
           // If no "Cliente General", select the first client
           setSelectedClientId(data[0].id);
+          setDescuento(data[0].discount || 0);
+          setInputDescuento(data[0].discount?.toString() || "0");
         }
         
         setClients(data || []);
@@ -269,6 +279,21 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     }
   }, [locationId]);
 
+  // Add useEffect to check user role
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const role = await getUserRole();
+        setIsAdmin(role === 'admin' || role === 'superadmin');
+      } catch (error) {
+        console.error('Error checking user role:', error);
+        setIsAdmin(false);
+      }
+    };
+    
+    checkUserRole();
+  }, []);
+
   // Filter products based on search and category
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
@@ -322,7 +347,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     const variant = productVariants.find(v => v.variant_id === variantId);
     if (!variant) {
       console.error("Variant details not found for ID:", variantId);
-      alert("Error: No se encontraron detalles del producto.");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se encontraron detalles del producto.",
+      });
       return;
     }
 
@@ -332,7 +361,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     // Check if we found a stock item and it has a valid price
     if (!stockItem || typeof stockItem.price !== 'number') {
         console.error("Stock information (including price) not found for variant ID:", variantId);
-        alert(`Error: Precio no encontrado en el inventario para ${formatVariantName(variantId)}. No se puede agregar.`);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `Precio no encontrado en el inventario para ${formatVariantName(variantId)}. No se puede agregar.`,
+        });
         return;
     }
 
@@ -371,7 +404,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   const total = subtotal - descuentoAplicado;
   const confirmarVenta = async () => {
     if (ventaItems.length === 0) {
-      alert('No hay productos en el carrito');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No hay productos en el carrito",
+      });
       return;
     }
 
@@ -463,12 +500,20 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         }
       }
       
-      alert('Venta confirmada');
+      toast({
+        variant: "success",
+        title: "¡Éxito!",
+        description: "Venta confirmada correctamente",
+      });
       onClose();
       
     } catch (error) {
       console.error('Error saving sale:', error);
-      alert('Error al guardar la venta');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al guardar la venta",
+      });
     }
   };
 
@@ -705,7 +750,15 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
           {clients.length > 0 ? (
             <Select 
               value={selectedClientId?.toString() || ""} 
-              onValueChange={(value) => setSelectedClientId(Number(value))}
+              onValueChange={(value) => {
+                const clientId = Number(value);
+                setSelectedClientId(clientId);
+                const selectedClient = clients.find(c => c.id === clientId);
+                if (selectedClient) {
+                  setDescuento(selectedClient.discount || 0);
+                  setInputDescuento(selectedClient.discount?.toString() || "0");
+                }
+              }}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Seleccionar cliente" />
@@ -713,7 +766,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
               <SelectContent>
                 {clients.map(client => (
                   <SelectItem key={client.id} value={client.id.toString()}>
-                    {client.name}
+                    {client.name} {client.discount > 0 ? `(${client.discount}% desc.)` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -746,31 +799,49 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                 <span>Subtotal:</span>
                 <span>MXN ${subtotal}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span>Descuento:</span>
-                <span>% {descuento}</span>
-              </div>
-              <div className="flex justify-between font-bold">
-                <span>Total:</span>
-                <span>MXN ${total < 0 ? 0 : total}</span>
-              </div>
+              {isAdmin && (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span>Descuento:</span>
+                    <span>% {descuento}</span>
+                  </div>
+                  <div className="flex justify-between font-bold">
+                    <span>Total:</span>
+                    <span>MXN ${total < 0 ? 0 : total}</span>
+                  </div>
+                </>
+              )}
+              {!isAdmin && (
+                <div className="flex justify-between font-bold">
+                  <span>Total:</span>
+                  <span>MXN ${subtotal}</span>
+                </div>
+              )}
             </div>
-            <div className="mt-4">
-              <label htmlFor="descuento" className="block text-sm font-medium">Descuento</label>
-              <div className="flex w-full max-w-sm items-center space-x-2">
-                <Input 
-                  type="number"
-                  value={inputDescuento}
-                  onChange={(e) => setInputDescuento(e.target.value)}
-                />
-                <Button 
-                  type="submit"
-                  onClick={() => setDescuento(Number(inputDescuento))}
-                > 
-                  Aplicar
-                </Button>
+            {/* Discount input - only show for admins */}
+            {isAdmin && (
+              <div className="mt-4">
+                <label htmlFor="descuento" className="block text-sm font-medium">
+                  Descuento {selectedClientId && clients.find(c => c.id === selectedClientId)?.discount ? 
+                    `(Descuento del cliente: ${clients.find(c => c.id === selectedClientId)?.discount}%)` : ''}
+                </label>
+                <div className="flex w-full max-w-sm items-center space-x-2">
+                  <Input 
+                    type="number"
+                    value={inputDescuento}
+                    onChange={(e) => setInputDescuento(e.target.value)}
+                  />
+                  <Button 
+                    type="submit"
+                    onClick={() => setDescuento(Number(inputDescuento))}
+                  > 
+                    Aplicar
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Confirm sale button */}
             <button 
               className="w-full h-10 mt-6 rounded-sm bg-[#1366D9] text-white text-sm font-semibold shadow-lg hover:bg-[#0d4ea6] transition-colors"
               onClick={confirmarVenta}

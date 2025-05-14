@@ -8,6 +8,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface InventoryItem {
   id: number;
@@ -29,8 +40,8 @@ type SupabaseStockItem = {
   variant_id: number;
   stock: number;
   added_at: string;
-  price: number; // Make sure price is included
-  location: number; // Add location field
+  price: number;
+  location: number;
   locations: { name: string; id: number } | null;
   productVariants: {
     product_id: number;
@@ -60,9 +71,13 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
   const router = useRouter();
   const productIdFromParams = params?.productId || params?.id;
   const productId = Array.isArray(productIdFromParams) ? productIdFromParams[0] : productIdFromParams;
+  const { toast } = useToast();
   const [product, setProduct] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  
+  // States for editing
   const [isEditing, setIsEditing] = useState(false);
   const [editedQuantity, setEditedQuantity] = useState<number | string>('');
   const [editedPrice, setEditedPrice] = useState<number | string>('');
@@ -217,10 +232,19 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
       });
       
       setIsEditing(false);
-      alert('Producto actualizado correctamente.');
+      toast({
+        variant: "success",
+        title: "¡Éxito!",
+        description: "Producto actualizado correctamente",
+      });
     } catch (err: any) {
       console.error('Error al actualizar el producto:', err);
       setUpdateError(`Error al actualizar: ${err.message}`);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al actualizar el producto. Por favor, intenta de nuevo.",
+      });
     } finally {
       setUpdateLoading(false);
     }
@@ -230,30 +254,50 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
   const handleDelete = async () => {
     if (!product) return;
     
-    const confirmDelete = window.confirm('¿Estás seguro que deseas eliminar este producto del inventario? Esta acción no se puede deshacer.');
-    if (!confirmDelete) return;
+    console.log('=== Frontend Delete Process Start ===');
+    console.log('Attempting to delete product:', product.id);
     
     setUpdateLoading(true);
+    setUpdateError(null);
     
     try {
-      const userId = await getUserId();
-      if (!userId) throw new Error('Usuario no autenticado.');
+      const response = await fetch(`/api/delete-product?id=${product.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('Delete API Response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al eliminar el producto');
+      }
+
+      console.log('Product deleted successfully, closing view and redirecting...');
       
-      const { error: deleteError } = await supabase
-        .from('stock')
-        .delete()
-        .eq('id', product.id)
-        .eq('user_id', userId);
-      
-      if (deleteError) throw deleteError;
-      
-      alert('Producto eliminado correctamente.');
-      router.push('/dashboard/inventario'); 
+      toast({
+        title: "¡Éxito!",
+        description: "Producto eliminado correctamente",
+      });
+
+      // Redirect to products list
+      router.push('/dashboard/inventario');
+      router.refresh(); // Force a refresh of the page data
     } catch (err: any) {
-      console.error('Error al eliminar el producto:', err);
-      setUpdateError(`Error al eliminar: ${err.message}`);
+      console.error('Error in frontend delete handler:', err);
+      const errorMessage = err.message || 'Error desconocido al eliminar el producto';
+      setUpdateError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
     } finally {
+      console.log('=== Frontend Delete Process Complete ===');
       setUpdateLoading(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -377,7 +421,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
                 </Button>
                 <Button 
                   variant="destructive" 
-                  onClick={handleDelete}
+                  onClick={() => setShowDeleteDialog(true)}
                   disabled={updateLoading}
                 >
                   Eliminar
@@ -387,6 +431,27 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente este producto del inventario.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={updateLoading}
+            >
+              {updateLoading ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

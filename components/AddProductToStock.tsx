@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
+import { useToast } from "@/components/ui/use-toast";
 
 export interface Product { id: number; name: string; }
 export interface Attribute { characteristics_id: number; name: string; }
@@ -19,6 +20,7 @@ interface AddProductToStockProps {
 }
 
 const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onClose }) => {
+  const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [productError, setProductError] = useState<string>('');
@@ -43,6 +45,69 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
   const [locationError, setLocationError] = useState<string>('');
 
   const [isLoading, setIsLoading] = useState(false);
+
+  // Add new useEffect to check for existing stock
+  useEffect(() => {
+    async function checkExistingStock() {
+      if (!selectedProductId || !selectedLocationId || Object.values(selectedOptions).some(v => v === null)) {
+        setExistingPrice(null);
+        return;
+      }
+
+      try {
+        const userId = await getUserId();
+        if (!userId) return;
+
+        // Get the variant ID first
+        const selectedOptionIds = Object.values(selectedOptions).filter(id => id !== null) as number[];
+        const optionsArrayLiteral = `{${selectedOptionIds.join(',')}}`;
+        
+        const { data: rpcResult, error: searchError } = await supabase
+          .rpc('find_variant_by_options', {
+            p_user_id: userId,
+            p_product_id: selectedProductId,
+            p_option_ids: optionsArrayLiteral 
+          });
+
+        if (searchError) {
+          console.error("Error finding variant:", searchError);
+          return;
+        }
+
+        const variantId = rpcResult?.[0]?.variant_id;
+        if (!variantId) {
+          setExistingPrice(null);
+          return;
+        }
+
+        // Now check for existing stock
+        const { data: stockCheck, error: stockError } = await supabase
+          .from('stock')
+          .select('id, stock, price')
+          .eq('variant_id', variantId)
+          .eq('location', selectedLocationId)
+          .maybeSingle();
+
+        if (stockError) {
+          console.error("Error checking stock:", stockError);
+          return;
+        }
+
+        console.log("Stock check result:", stockCheck); // Debug log
+        if (stockCheck?.price) {
+          console.log("Setting existing price to:", stockCheck.price); // Debug log
+          setExistingPrice(stockCheck.price);
+        } else {
+          setExistingPrice(null);
+        }
+      } catch (error) {
+        console.error("Error in checkExistingStock:", error);
+        setExistingPrice(null);
+      }
+    }
+
+    checkExistingStock();
+  }, [selectedProductId, selectedLocationId, selectedOptions]);
 
   // Validación previa al guardar
   const validateForm = (): boolean => {
@@ -126,6 +191,11 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         setUbicaciones(ubicacionesData || []);
       } catch (error: any) {
         console.error('Error cargando datos iniciales:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Error al cargar los datos iniciales. Por favor, intenta de nuevo.",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -207,7 +277,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       ...prev,
       [characteristicId]: optionId,
     }));
-    setExistingPrice(null);
   };
 
   const handleSaveStock = async () => {
@@ -285,17 +354,32 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         throw new Error(`Error al verificar stock existente: ${stockCheckError.message}`);
       }
 
+      console.log("Final stock check before save:", stockCheck); // Debug log
+      console.log("Current existingPrice state:", existingPrice); // Debug log
+
       if (stockCheck && stockCheck.id) {
         const currentStock = stockCheck.stock || 0;
         const newStockLevel = currentStock + parseInt(quantity.toString(), 10);
 
+        const updateData: {
+          stock: number;
+          added_at: string;
+          price?: number;
+        } = {
+          stock: newStockLevel,
+          added_at: new Date().toISOString()
+        };
+
+        // Only add price to update if it doesn't exist
+        if (!stockCheck.price) {
+          updateData.price = parseFloat(price.toString());
+        }
+
+        console.log("Updating stock with data:", updateData); // Debug log
+
         const { error: updateError } = await supabase
           .from('stock')
-          .update({
-            stock: newStockLevel,
-            ...(stockCheck.price ? {} : { price: parseFloat(price.toString()) }),
-            added_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', stockCheck.id);
 
         if (updateError) {
@@ -321,7 +405,11 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         console.log("Nuevo stock insertado.");
       }
 
-      alert("Stock agregado correctamente!");
+      toast({
+        variant: "success",
+        title: "¡Éxito!",
+        description: "Stock agregado correctamente",
+      });
       onSaveStock();
       // limpiar campos
       setSelectedProductId(null);
@@ -333,6 +421,11 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       onClose();
     } catch (error: any) {
       console.error("Error detallado en handleSaveStock:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Error al guardar el stock. Por favor, intenta de nuevo.",
+      });
     } finally {
       setIsLoading(false);
     }

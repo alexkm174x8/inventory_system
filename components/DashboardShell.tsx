@@ -17,6 +17,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [employeeRole, setEmployeeRole] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -33,6 +34,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         setUserName('No autenticado');
         setIsLoading(false);
         setUserRole(null);
+        setEmployeeRole(null);
         router.push('/');
       }
     });
@@ -60,14 +62,17 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         let error;
 
         if (role === 'employee') {
-          // Fetch employee profile
+          // Fetch employee profile with role
           const result = await supabase
             .from('employees')
-            .select('name, auth_id')
+            .select('name, auth_id, role')
             .eq('auth_id', userId)
             .single();
           profile = result.data;
           error = result.error;
+          if (mounted && profile?.role) {
+            setEmployeeRole(profile.role);
+          }
         } else {
           // Fetch admin profile
           const result = await supabase
@@ -114,6 +119,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         setUserName('No autenticado');
         setIsLoading(false);
         setUserRole(null);
+        setEmployeeRole(null);
         router.push('/');
       }
     });
@@ -147,10 +153,20 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
     //{ label: 'Configuración', href: '/dashboard/configuracion', icon: <Settings /> },
   ];
 
-  // Filter menu items based on user role
-  const menuItems = userRole === 'admin' 
-    ? allMenuItems 
-    : allMenuItems.filter(item => ['Inventario', 'Ventas'].includes(item.label));
+  // Filter menu items based on user role and employee role
+  const menuItems = (() => {
+    if (userRole === 'admin') {
+      return allMenuItems;
+    } else if (userRole === 'employee') {
+      if (employeeRole === 'inventario') {
+        return allMenuItems.filter(item => item.label === 'Inventario');
+      } else if (employeeRole === 'ventas') {
+        return allMenuItems.filter(item => item.label === 'Ventas');
+      }
+      return [];
+    }
+    return [];
+  })();
 
   const currentMenuItem = menuItems.find(item => 
     pathname === item.href || pathname.startsWith(item.href + '/')
@@ -162,10 +178,19 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
     if (!isLoading && userRole && currentMenuItem) {
       const isAuthorized = menuItems.some(item => item.href === pathname || pathname.startsWith(item.href + '/'));
       if (!isAuthorized) {
-        router.push('/dashboard/inventario');
+        // Only redirect if we're not already on the correct page
+        if (userRole === 'employee') {
+          if (employeeRole === 'inventario' && !pathname.startsWith('/dashboard/inventario')) {
+            router.push('/dashboard/inventario');
+          } else if (employeeRole === 'ventas' && !pathname.startsWith('/dashboard/ventas')) {
+            router.push('/dashboard/ventas');
+          }
+        } else if (!pathname.startsWith('/dashboard/menu')) {
+          router.push('/dashboard/menu');
+        }
       }
     }
-  }, [isLoading, userRole, pathname, menuItems, router]);
+  }, [isLoading, userRole, employeeRole, pathname, menuItems, router]);
 
   return (
     <div className="flex h-screen bg-[#f5f5f5]">
