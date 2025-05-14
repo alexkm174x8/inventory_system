@@ -6,6 +6,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
 import { useToast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Eye, EyeOff } from 'lucide-react';
 
 interface   NegociosViewProps {
   onClose: () => void;
@@ -23,14 +37,21 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
   const [negocioId, setNegocioId] = useState('');
   const [negocioBillingAmount, setNegocioBillingAmount] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
     const fetchNegocio = async () => {
       try {
         const { data: negData, error: negErr } = await supabase
           .from('admins')
-          .select('user_id, name, billing_day, billing_amount')
-          .eq('user_id', id)
+          .select('id, user_id, name, billing_day, billing_amount')
+          .eq('id', id)
           .single();
 
         if (negErr || !negData) {
@@ -64,6 +85,104 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
     fetchNegocio();
   }, [id, router, toast]);
 
+  const handleDelete = async () => {
+    if (!id) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete the admin using our new endpoint
+      const response = await fetch('/api/delete-admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          adminId: id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al eliminar el negocio');
+      }
+
+      toast({
+        title: "Éxito",
+        description: "Negocio eliminado exitosamente",
+      });
+      router.push('/dashboard-superadmin/negocios');
+    } catch (err: any) {
+      console.error('Error al eliminar negocio:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Error al eliminar el negocio. Por favor, intenta de nuevo.",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!id) return;
+
+    // Validate passwords
+    if (!newPassword || !confirmPassword) {
+      setPasswordError('Por favor, completa todos los campos');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Las contraseñas no coinciden');
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      // Reset the password using our new admin-specific endpoint
+      const response = await fetch('/api/reset-admin-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          adminId: id,  // Using the UUID directly
+          newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al restablecer la contraseña');
+      }
+
+      toast({
+        title: "Éxito",
+        description: "Contraseña restablecida exitosamente",
+      });
+      setShowResetDialog(false);
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordError('');
+    } catch (err: any) {
+      console.error('Error al restablecer contraseña:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Error al restablecer la contraseña. Por favor, intenta de nuevo.",
+      });
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -92,9 +211,98 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
             <p><strong>Fecha de cobro:</strong> {negocioBillingDay} de cada mes</p>
           </section>
 
-          <div className="text-center mt-6">
+          <section className="mt-6 flex gap-4 justify-center">
+            <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="bg-yellow-500 hover:bg-yellow-600 text-white">
+                  Recuperar Contraseña
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Restablecer Contraseña</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Ingresa la nueva contraseña para el negocio {negocioName}.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                    <div className="relative">
+                      <Input
+                        id="newPassword"
+                        type={showPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+                    <Input
+                      id="confirmPassword"
+                      type={showPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                  {passwordError && (
+                    <p className="text-red-500 text-sm">{passwordError}</p>
+                  )}
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <Button
+                    onClick={handleResetPassword}
+                    disabled={isResettingPassword}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                  >
+                    {isResettingPassword ? 'Restableciendo...' : 'Restablecer'}
+                  </Button>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="bg-red-500 hover:bg-red-600 text-white">
+                  Eliminar
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción no se puede deshacer. Se eliminará permanentemente el negocio {negocioName} y todos sus datos asociados.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <Button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="bg-red-500 hover:bg-red-600 text-white"
+                  >
+                    {isDeleting ? 'Eliminando...' : 'Eliminar'}
+                  </Button>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
             <Button variant="outline" onClick={onClose}>Cerrar</Button>
-          </div>
+          </section>
         </CardContent>
       </Card>
     </div>

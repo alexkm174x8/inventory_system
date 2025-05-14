@@ -2,40 +2,74 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Menu as MenuIcon, LogOut, ChevronDown, Bell, Building2 } from 'lucide-react';
-import { getUserId, getUUID } from '@/lib/userId';
 import { supabase } from '@/lib/supabase';
 
 export default function SuperAdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   
   const [userName, setUserName] = useState('Cargando…');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [superAdminId, setSuperAdminId] = useState<string | null>(null);
 
   useEffect(() => {
       async function getUserData() {
         try {
           const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user?.id) {
-            const userId = await getUUID();
-            const { data: profile, error } = await supabase
-              .from('admins')
-              .select('name, id, user_id')
-              .eq('id', userId);
-  
-            if (error) {
-              console.error('Error details:', error);
-              setUserName('Error fetching');
-              return;
-            }
-  
-            if (profile && profile.length > 0) {
-              setUserName(profile[0].name);
-            } else {
-              setUserName('Profile not found');
-            }
+          if (!session?.user?.id) {
+            console.log('No session or user ID found');
+            setUserName('No session');
+            return;
           }
+
+          console.log('Current user ID:', session.user.id);
+
+          // First check the user's role
+          const { data: userRole, error: roleError } = await supabase
+            .rpc('get_user_role', {
+              auth_user_id: session.user.id
+            });
+
+          if (roleError) {
+            console.error('Error getting user role:', roleError);
+            setUserName('Error getting role');
+            return;
+          }
+
+          console.log('User role:', userRole);
+
+          if (userRole !== 'superadmin') {
+            console.log('User is not a superadmin');
+            setUserName('Not authorized');
+            return;
+          }
+
+          // Get superadmin profile using id_sa
+          const { data: profiles, error } = await supabase
+            .from('super_admin')
+            .select('name')
+            .eq('id_sa', session.user.id);
+
+          if (error) {
+            console.error('Error fetching superadmin:', error);
+            setUserName('Error fetching');
+            return;
+          }
+
+          console.log('Superadmin profiles found:', profiles);
+
+          if (!profiles || profiles.length === 0) {
+            console.log('No superadmin profile found for user ID:', session.user.id);
+            setUserName('No superadmin profile');
+            return;
+          }
+
+          const profile = profiles[0];
+          setUserName(profile.name);
+          setSuperAdminId(session.user.id);
+          
         } catch (error) {
           console.error('Unexpected error:', error);
           setUserName('Error');
@@ -43,6 +77,16 @@ export default function SuperAdminShell({ children }: { children: ReactNode }) {
       }
       getUserData();
     }, []);
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.push('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   const menuItems = [
     { label: 'Negocios', href: '/dashboard-superadmin/negocios', icon: <Building2 /> }
@@ -86,7 +130,10 @@ export default function SuperAdminShell({ children }: { children: ReactNode }) {
           })}
         </nav>
         <div className="p-4 border-t">
-          <button className="flex items-center w-full px-4 py-2 text-sm hover:bg-[#f5f5f5]">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center w-full px-4 py-2 text-sm hover:bg-[#f5f5f5] hover:text-red-600 transition-colors"
+          >
             <LogOut className="mr-3 h-5 w-5" /> Cerrar Sesión
           </button>
         </div>
