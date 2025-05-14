@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { getUserId } from '@/lib/userId';
+import { Eye, EyeOff } from 'lucide-react';
 
 interface AddEmployeeProps {
   onClose: () => void;
@@ -27,6 +28,8 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
   const [role, setRole] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,6 +41,7 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
     phone?: string;
     locationId?: string;
     password?: string;
+    confirmPassword?: string;
     general?: string;
   }>({});
   const [locationsLoading, setLocationsLoading] = useState(true);
@@ -95,6 +99,14 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
       isValid = false;
     } else if (password.length < 6) {
       newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+      isValid = false;
+    }
+
+    if (!confirmPassword.trim()) {
+      newErrors.confirmPassword = 'La confirmación de contraseña es obligatoria';
+      isValid = false;
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Las contraseñas no coinciden';
       isValid = false;
     }
 
@@ -257,17 +269,46 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
 
                <div className="mb-4">
                  <Label htmlFor="password">Contraseña</Label>
-                 <Input
-                   id="password"
-                   type="password"
-                   className={`mt-1 ${errors.password ? 'border-red-500' : ''}`}
-                   value={password}
-                   placeholder="Contraseña inicial"
-                   onChange={(e) => setPassword(e.target.value)}
-                   required
-                 />
+                 <div className="relative">
+                   <Input
+                     id="password"
+                     type={showPassword ? "text" : "password"}
+                     className={`mt-1 pr-10 ${errors.password ? 'border-red-500' : ''}`}
+                     value={password}
+                     placeholder="Contraseña inicial"
+                     onChange={(e) => setPassword(e.target.value)}
+                     required
+                   />
+                   <button
+                     type="button"
+                     onClick={() => setShowPassword(!showPassword)}
+                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                   >
+                     {showPassword ? (
+                       <EyeOff className="h-4 w-4" />
+                     ) : (
+                       <Eye className="h-4 w-4" />
+                     )}
+                   </button>
+                 </div>
                  {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
                </div>
+
+          <div className="mb-4">
+            <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                type={showPassword ? "text" : "password"}
+                className={`mt-1 pr-10 ${errors.confirmPassword ? 'border-red-500' : ''}`}
+                value={confirmPassword}
+                placeholder="Confirma la contraseña"
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
+            {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
+          </div>
 
           <div className="mb-4">
             <Label htmlFor="salary">Salario</Label>
