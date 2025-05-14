@@ -20,8 +20,8 @@ interface InventoryItem {
   unitPrice?: number;
   imageUrl?: string | null;
   attributes?: any[];
-  price?: number; // Add price field
-  location_id?: number; // Add location id field
+  price?: number; 
+  location_id?: number; 
 }
 
 type SupabaseStockItem = {
@@ -53,22 +53,16 @@ type SupabaseStockItem = {
 };
 
 interface ProductDetailViewProps {
-  onClose: () => void;
 }
 
-interface ProductDetailPageParams {
-  id?: string;
-  [key: string]: string | string[] | undefined; 
-}
-
-const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
+const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
+  const params = useParams();
   const router = useRouter();
-  const { id: productId } = useParams<ProductDetailPageParams>();
+  const productIdFromParams = params?.productId || params?.id;
+  const productId = Array.isArray(productIdFromParams) ? productIdFromParams[0] : productIdFromParams;
   const [product, setProduct] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // New states for editing
   const [isEditing, setIsEditing] = useState(false);
   const [editedQuantity, setEditedQuantity] = useState<number | string>('');
   const [editedPrice, setEditedPrice] = useState<number | string>('');
@@ -113,6 +107,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
           .eq('id', productId)
           .single()
           .returns<SupabaseStockItem>();
+          console.log("Iddddd", productId)
 
         if (supaErr) throw supaErr;
 
@@ -140,8 +135,8 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
             entryDate: new Date(data.added_at).toLocaleDateString(),
             ubicacion_nombre: loc,
             caracteristicas: chars,
-            price: data.price, // Store price
-            location_id: data.location // Store location id
+            price: data.price, 
+            location_id: data.location 
           };
 
           setProduct(productData);
@@ -159,7 +154,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
     };
 
     loadProductDetails();
-  }, [productId]);
+  }, [productId, router ]);
 
   // Function to handle entering edit mode
   const handleEditClick = () => {
@@ -253,7 +248,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
       if (deleteError) throw deleteError;
       
       alert('Producto eliminado correctamente.');
-      onClose(); // Close the detail view
+      router.push('/dashboard/inventario'); 
     } catch (err: any) {
       console.error('Error al eliminar el producto:', err);
       setUpdateError(`Error al eliminar: ${err.message}`);
@@ -373,9 +368,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
               </>
             ) : (
               <>
-                <Button variant="outline" onClick={onClose}>
-                  Cerrar
-                </Button>
+                <Button variant="outline" onClick={() => router.back()}>Cerrar</Button>
                 <Button 
                   className="bg-blue-500 hover:bg-blue-600" 
                   onClick={handleEditClick}

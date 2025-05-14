@@ -8,3 +8,4 @@ const EmployeeDetailPage = () => {
 };
 
 export default EmployeeDetailPage;
+
