@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search, Filter, Printer } from 'lucide-react';
 import LoginLogo from './login-logo';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
@@ -354,6 +354,106 @@ const VentasContent: React.FC = () => {
     setIsDialogOpen(false); 
   };
 
+  const handlePrint = (venta: Venta) => {
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    // Format the date
+    const fecha = new Date(venta.createdAt);
+    const formattedDate = fecha.toLocaleDateString();
+    const formattedTime = fecha.toLocaleTimeString();
+
+    // Create the ticket HTML
+    const ticketHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Ticket de Venta #${venta.id}</title>
+          <style>
+            @media print {
+              @page {
+                size: 80mm 297mm;
+                margin: 0;
+              }
+              body {
+                width: 80mm;
+                margin: 0;
+                padding: 5mm;
+                font-family: 'Courier New', monospace;
+                font-size: 12px;
+              }
+              .ticket {
+                width: 100%;
+              }
+              .header {
+                text-align: center;
+                margin-bottom: 10px;
+              }
+              .divider {
+                border-top: 1px dashed #000;
+                margin: 5px 0;
+              }
+              .item {
+                margin: 3px 0;
+              }
+              .total {
+                margin-top: 10px;
+                font-weight: bold;
+              }
+              .footer {
+                text-align: center;
+                margin-top: 20px;
+                font-size: 10px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="ticket">
+            <div class="header">
+              <h2>Ticket de Venta</h2>
+              <p>Venta #${venta.id}</p>
+              <p>${formattedDate} ${formattedTime}</p>
+              <p>Ubicación: ${venta.locationName}</p>
+              <p>Cliente: ${venta.clientName}</p>
+            </div>
+            <div class="divider"></div>
+            <div class="items">
+              ${venta.items.map(item => `
+                <div class="item">
+                  <div>${formatProductWithAttributes(item)}</div>
+                  <div>${item.quantity} x $${item.unitPrice.toFixed(2)} = $${(item.quantity * item.unitPrice).toFixed(2)}</div>
+                </div>
+              `).join('')}
+            </div>
+            <div class="divider"></div>
+            <div class="totals">
+              <div>Subtotal: $${venta.subtotal.toFixed(2)}</div>
+              ${venta.discount > 0 ? `<div>Descuento: ${venta.discount}%</div>` : ''}
+              <div class="total">Total: $${venta.total.toFixed(2)}</div>
+            </div>
+            <div class="footer">
+              <p>¡Gracias por su compra!</p>
+              <p>Vuelva pronto</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Write the ticket HTML to the new window
+    printWindow.document.write(ticketHTML);
+    printWindow.document.close();
+
+    // Wait for content to load then print
+    printWindow.onload = function() {
+      printWindow.print();
+      // Close the window after printing (optional)
+      // printWindow.close();
+    };
+  };
+
   return (
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
           <div className="flex justify-between items-center mb-6">
@@ -436,6 +536,13 @@ const VentasContent: React.FC = () => {
                       key={venta.id} 
                       className="relative flex flex-col bg-white shadow-sm border border-slate-200 rounded-lg w-full hover:shadow-md transition-shadow"
                     >
+                      <button
+                        onClick={() => handlePrint(venta)}
+                        className="absolute top-3 right-3 p-2 text-gray-500 hover:text-blue-600 transition-colors"
+                        title="Imprimir ticket"
+                      >
+                        <Printer className="w-5 h-5" />
+                      </button>
                       <div className="mx-3 mb-0 border-b border-slate-200 pt-3 pb-2 px-1">
                         <div className="flex items-center gap-3">
                           <LoginLogo size={60} />

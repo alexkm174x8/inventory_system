@@ -94,7 +94,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
     }
   };
   
-
+  {/* IMAGE UPLOAD
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -134,6 +134,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
     setProductImage(URL.createObjectURL(file));
     setFileName(file.name);
   };
+  */}
 
   const removeAttribute = (index: number) => {
     setAttributes((prev) => prev.filter((_, i) => i !== index));
@@ -254,6 +255,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
           <div className="flex flex-col md:flex-row justify-between items-start gap-4">
             <h1 className="text-2xl font-bold  capitalize mb-4">Nuevo Producto</h1>
           </div>
+          {/*
           <div
             className={`mt-4 flex-col items-center rounded-lg border border-dashed py-8 cursor-pointer transition-all ${
               isDragging ? "border-blue-500 bg-blue-100" : "border-gray-300"
@@ -310,7 +312,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
               )}
             </div>
           </div>
-
+          */}
           <div className="space-y-2 mt-6">
             <Label htmlFor="product-name">Nombre</Label>
             <Input
@@ -324,7 +326,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
             )}
 
 
-<div className="space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="product-name">Detalles</Label>
               {attributes.map((attribute, attrIndex) => (
                 <div key={attrIndex} className="space-y-4 p-4 border rounded-lg">

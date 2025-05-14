@@ -16,10 +16,12 @@ interface AddClientProps{
 const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
   const [clientName, setClientnName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [clientDiscount, setClientDiscount] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{
       name?: string;
       phone?: string;
+      discount?: string;
       general?: string;
     }>({});
 
@@ -44,6 +46,11 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
       isValid = false;
     }
 
+    if (clientDiscount && (isNaN(parseFloat(clientDiscount)) || parseFloat(clientDiscount) < 0 || parseFloat(clientDiscount) > 100)) {
+      newErrors.discount = 'El descuento debe ser un número entre 0 y 100';
+      isValid = false;
+    }
+
     setErrors(newErrors);
     return isValid;
   };
@@ -60,6 +67,7 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
           {
             name: clientName,
             phone: clientPhone,
+            discount: clientDiscount ? parseFloat(clientDiscount) : 0,
             num_compras: 0,
             total_compras: 0,
             user_id: userId,
@@ -113,9 +121,30 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
                     onChange={(e) => setClientPhone(e.target.value)}
                     placeholder="Agregue el número del cliente"
                 />
-                {errors.name && (
+                {errors.phone && (
              <p className="text-red-500 text-xs mt-1">
                 {errors.phone}
+              </p>
+            )}
+            </div>
+            <div className="mb-4">
+                <Label htmlFor="discount">Descuento (%)</Label>
+                <Input
+                    id="discount"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    className={`mt-1 ${
+                      errors.discount ? 'border-red-500' : ''
+                    }`}
+                    value={clientDiscount}
+                    onChange={(e) => setClientDiscount(e.target.value)}
+                    placeholder="Descuento por defecto (0-100%)"
+                />
+                {errors.discount && (
+             <p className="text-red-500 text-xs mt-1">
+                {errors.discount}
               </p>
             )}
             </div>

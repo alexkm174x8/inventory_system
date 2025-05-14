@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 import { Package, ShoppingCart, Users, MapPin, ArrowLeft } from 'lucide-react';
+import { useToast } from "@/components/ui/use-toast";
 
 interface SucursalViewProps {
   onClose?: () => void;
@@ -15,6 +16,7 @@ interface SucursalViewProps {
 const SucursalView: React.FC<SucursalViewProps> = ({ onClose }) => {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -34,7 +36,11 @@ const SucursalView: React.FC<SucursalViewProps> = ({ onClose }) => {
           .single();
 
         if (error || !data) {
-          alert('Sucursal no encontrada');
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Sucursal no encontrada",
+          });
           router.push('/dashboard/sucursales');
           return;
         }
@@ -43,6 +49,11 @@ const SucursalView: React.FC<SucursalViewProps> = ({ onClose }) => {
         setAddress(data.location);
       } catch (err) {
         console.error('Error al cargar la sucursal', err);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Error al cargar los datos de la sucursal. Por favor, intenta de nuevo.",
+        });
         router.push('/dashboard/sucursales');
       } finally {
         setLoading(false);
@@ -50,7 +61,15 @@ const SucursalView: React.FC<SucursalViewProps> = ({ onClose }) => {
     };
 
     fetchSucursal();
-  }, [id]);
+  }, [id, router, toast]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full">

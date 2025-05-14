@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
+import { useToast } from "@/components/ui/use-toast";
 
 
 interface ClientViewProps {
@@ -15,6 +16,7 @@ interface ClientViewProps {
 const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   if (!params || !params.id) {
     return null;
   }
@@ -41,7 +43,11 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
           .single();
 
         if (clientError || !clientData) {
-          alert('Cliente no encontrado');
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Cliente no encontrado",
+          });
           router.push('/dashboard/clientes');
           return;
         }
@@ -59,7 +65,14 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
           .gte('created_at', firstDayLastMonth.toISOString())
           .lte('created_at', lastDayLastMonth.toISOString());
 
-        if (salesError) throw salesError;
+        if (salesError) {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Error al cargar el historial de ventas",
+          });
+          throw salesError;
+        }
 
         const lastMonthTotal = lastMonthSales?.reduce((sum, sale) => sum + (sale.total_amount || 0), 0) || 0;
         
@@ -71,6 +84,11 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
         setLastMonthTotal(lastMonthTotal);
       } catch (err) {
         console.error('Error al cargar el cliente', err);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Error al cargar los datos del cliente. Por favor, intenta de nuevo.",
+        });
         router.push('/dashboard/clientes');
       } finally {
         setLoading(false);
@@ -78,7 +96,7 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
     };
 
     fetchCliente();
-  }, [id, router]);
+  }, [id, router, toast]);
 
   if (loading) {
     return (
