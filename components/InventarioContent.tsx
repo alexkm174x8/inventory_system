@@ -1,11 +1,11 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import {
   Eye,
-  SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
   Plus,
-  Check,
   Package,
   AlertCircle,
   TrendingUp
@@ -14,58 +14,36 @@ import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 import { useRouter } from 'next/navigation';
 
-interface InventoryItem {
+interface Product {
   id: number;
-  variant_id: number;
-  productName: string;
-  quantity: number;
-  entryDate: string;
-  ubicacion_nombre: string;
-  caracteristicas: string[];
-  unitPrice?: number;
-  imageUrl?: string | null;
-  attributes?: any[];
+  name: string;
+  description: string;
+  user_id: number;
+  variants: Variant[];
 }
 
-type SupabaseStockItem = {
-  id: number;
-  variant_id: number;
+interface Variant {
+  product_id: number;
   stock: number;
+  price: number;
+  location_id: number;
+  location_name?: string;
   added_at: string;
-  locations: { name: string } | null;
-  productVariants: {
-    product_id: number;
-    products: {
-      name: string;
-      product_characteristics: {
-        name: string;
-        characteristics_id: number;
-      }[];
-    } | null;
-    optionVariants: {
-      option_id: number;
-      characteristics_options: {
-        values: string;
-        characteristics_id: number;
-      } | null;
-    }[];
-  } | null;
-  user_id: string;
-};
+}
 
 const InventarioContent: React.FC = () => {
   const router = useRouter();
   const [filterStatus, setFilterStatus] = useState<'Todos' | 'ConStock'>('Todos');
   const [currentPage, setCurrentPage] = useState(1);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [locationMap, setLocationMap] = useState<Record<number, string>>({});
 
   const itemsPerPage = 6;
 
-  const filtered = inventory.filter(item =>
-    filterStatus === 'Todos' ? true : item.quantity > 0
+  const filtered = products.filter(item =>
+    filterStatus === 'Todos' ? true : item.variants.some(v => v.stock > 0)
   );
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -78,75 +56,59 @@ const InventarioContent: React.FC = () => {
     setCurrentPage(1);
   }, [filterStatus]);
 
-  const toggleDropdown = () => {
-    setIsDropdownOpen(open => !open);
-  };
-
-  const loadInventory = async () => {
+  const loadProductsAndLocations = async () => {
     setLoading(true);
     setError(null);
     try {
       const userId = await getUserId();
       if (!userId) throw new Error('Usuario no autenticado.');
 
-      const { data, error: supaErr } = await supabase
-        .from('stock')
-        .select(`
-          id,
-          variant_id,
-          stock,
-          added_at,
-          locations ( name ),
-          productVariants (
-            products (
-              name,
-              product_characteristics ( name, characteristics_id )
-            ),
-            optionVariants (
-              characteristics_options ( values, characteristics_id )
-            )
-          )
-        `)
-        .eq('user_id', userId)
-        .returns<SupabaseStockItem[]>();
+      const { data: products, error: prodError } = await supabase
+        .from('products')
+        .select('id, name, description, user_id')
+        .eq('user_id', userId);
 
-      if (supaErr) throw supaErr;
+      if (prodError) throw prodError;
 
-      const formatted: InventoryItem[] = data.map(item => {
-        const prod = item.productVariants?.products;
-        const opts = item.productVariants?.optionVariants ?? [];
-        const loc  = item.locations?.name ?? '—';
+      const { data: variants, error: varError } = await supabase
+        .from('variants')
+        .select('*')
+        .in('product_id', products?.map(p => p.id) || []);
 
-        const chars = opts.map(o => {
-          const co = o.characteristics_options;
-          const pc = prod?.product_characteristics.find(
-            pc => pc.characteristics_id === co?.characteristics_id
-          );
-          return `${pc?.name ?? 'Cualquiera'}: ${co?.values}`;
-        });
+      if (varError) throw varError;
 
-        return {
-          id: item.id,
-          variant_id: item.variant_id,
-          productName: prod?.name ?? '—',
-          quantity: item.stock,
-          entryDate: new Date(item.added_at).toLocaleDateString(),
-          ubicacion_nombre: loc,
-          caracteristicas: chars
-        };
+      const { data: locations, error: locError } = await supabase
+        .from('locations')
+        .select('id, name')
+        .eq('user_id', userId);
+
+      if (locError) throw locError;
+
+      const locMap: Record<number, string> = {};
+      locations?.forEach(loc => {
+        if (loc.id != null && loc.name) locMap[loc.id] = loc.name;
       });
+      setLocationMap(locMap);
 
-      setInventory(formatted);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message);
+      const productsWithVariants = products?.map(product => ({
+        ...product,
+        variants: variants?.filter(v => v.product_id === product.id).map(v => ({
+          ...v,
+          location_name: locMap[v.location_id]
+        })) || []
+      })) || [];
+
+      setProducts(productsWithVariants);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cargar inventario';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadInventory();
+    loadProductsAndLocations();
   }, []);
 
   if (loading) {
@@ -192,7 +154,7 @@ const InventarioContent: React.FC = () => {
           </div>
           <div className="flex items-baseline">
             <span className="text-3xl font-bold text-gray-900">
-              {inventory.reduce((sum, item) => sum + item.quantity, 0)}
+              {products.reduce((sum, product) => sum + product.variants.reduce((sum, variant) => sum + variant.stock, 0), 0)}
             </span>
             <span className="ml-2 text-sm text-gray-500">unidades</span>
           </div>
@@ -207,7 +169,7 @@ const InventarioContent: React.FC = () => {
           </div>
           <div className="flex items-baseline">
             <span className="text-3xl font-bold text-gray-900">
-              {inventory.filter(item => item.quantity > 0).length}
+              {products.filter(product => product.variants.some(v => v.stock > 0)).length}
             </span>
             <span className="ml-2 text-sm text-gray-500">productos</span>
           </div>
@@ -215,15 +177,14 @@ const InventarioContent: React.FC = () => {
         </div>
 
         {/* Products without Stock Card */}
-
-        <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md border border-[#e6e6e6]  transition-shadow duration-200">
+        <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md border border-[#e6e6e6] transition-shadow duration-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold capitalize">Productos sin Stock</h2>
             <TrendingUp className="w-6 h-6 text-orange-500" />
           </div>
           <div className="flex items-baseline">
             <span className="text-3xl font-bold text-gray-900">
-              {inventory.filter(item => item.quantity === 0).length}
+              {products.filter(product => product.variants.every(v => v.stock === 0)).length}
             </span>
             <span className="ml-2 text-sm text-gray-500">productos</span>
           </div>
@@ -239,53 +200,53 @@ const InventarioContent: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-            <tr className="bg-[#f5f5f5] text-center">
-              {['Producto', 'Características', 'Cantidad', 'Ubicación', 'Fecha', 'Ver más'].map(h => (
-                <th key={h} className="px-3 py-3 text-xs font-medium text-[#667085] uppercase tracking-wider">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#e6e6e6] text-center">
-            {pageData.map(item => (
-              <tr key={item.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085] capitalize">{item.productName}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]  capitalize">{item.caracteristicas.join(', ')}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.quantity}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]  capitalize">{item.ubicacion_nombre}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.entryDate}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <button
-                    onClick={() => router.push(`/dashboard/inventario/${item.id}`)}
-                    className="text-indigo-600 hover:text-indigo-900"
-                  >
-                    <Eye className="w-4 h-4 mx-auto" />
-                  </button>
-                </td>
+              <tr className="bg-[#f5f5f5] text-center">
+                {['Producto', 'Características', 'Cantidad', 'Ubicación', 'Fecha', 'Ver más'].map(h => (
+                  <th key={h} className="px-3 py-3 text-xs font-medium text-[#667085] uppercase tracking-wider">
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {pageData.map(product => (
+                <tr key={product.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085] capitalize">{product.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085] capitalize">{product.variants.map(v => `${v.location_name ?? 'Desconocido'}: ${v.stock}`).join(', ')}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{product.variants.reduce((sum, v) => sum + v.stock, 0)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085] capitalize">{product.variants.map(v => v.location_name).join(', ')}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{product.variants.map(v => new Date(v.added_at).toLocaleDateString()).join(', ')}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => router.push(`/dashboard/inventario/${product.id}`)}
+                      className="text-indigo-600 hover:text-indigo-900"
+                    >
+                      <Eye className="w-4 h-4 mx-auto" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <div className="px-6 py-4 border-t border-[#e6e6e6] flex justify-between items-center">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className={`border-2 px-3 py-2 flex items-center gap-2 rounded-sm ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <ChevronLeft className="w-4 h-4" /> Anterior
-              </button>
-              <span className="text-xs font-medium text-[#667085] uppercase tracking-wider">
-                Página {currentPage} de {totalPages}
-              </span> 
-              <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className={`border-2 px-3 py-2 flex items-center gap-2 rounded-sm ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-              Siguiente <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className={`border-2 px-3 py-2 flex items-center gap-2 rounded-sm ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <ChevronLeft className="w-4 h-4" /> Anterior
+          </button>
+          <span className="text-xs font-medium text-[#667085] uppercase tracking-wider">
+            Página {currentPage} de {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className={`border-2 px-3 py-2 flex items-center gap-2 rounded-sm ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            Siguiente <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </main>

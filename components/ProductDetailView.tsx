@@ -19,6 +19,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 interface InventoryItem {
@@ -31,7 +32,7 @@ interface InventoryItem {
   caracteristicas: { name: string; value: string }[];
   unitPrice?: number;
   imageUrl?: string | null;
-  attributes?: any[];
+  attributes?: { name: string; value: string }[];
   price?: number; 
   location_id?: number; 
 }
@@ -65,15 +66,15 @@ type SupabaseStockItem = {
 };
 
 interface ProductDetailViewProps {
+  onClose: () => void;
 }
 
-const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
+const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
   const params = useParams();
   const router = useRouter();
-  const { id: productId } = useParams<ProductDetailPageParams>();
-  //const productIdFromParams = params?.productId || params?.id;
-  //const productId = Array.isArray(productIdFromParams) ? productIdFromParams[0] : productIdFromParams;
   const { toast } = useToast();
+  const productId = params?.id ? (Array.isArray(params.id) ? params.id[0] : params.id) : null;
+
   const [product, setProduct] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -124,7 +125,6 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
           .eq('id', productId)
           .single()
           .returns<SupabaseStockItem>();
-          console.log("Iddddd", productId)
 
         if (supaErr) throw supaErr;
 
@@ -162,24 +162,23 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
         } else {
           setError('Producto no encontrado.');
         }
-      } catch (err: any) {
-        console.error(err);
-        setError(err.message);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cargar datos';
+        console.error('Error al cargar datos:', errorMessage);
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
     };
 
     loadProductDetails();
-  }, [productId, router ]);
+  }, [productId]);
 
-  // Function to handle entering edit mode
   const handleEditClick = () => {
     setIsEditing(true);
     setUpdateError(null);
   };
 
-  // Function to handle canceling edit
   const handleCancelEdit = () => {
     setIsEditing(false);
     if (product) {
@@ -189,7 +188,6 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
     setUpdateError(null);
   };
 
-  // Function to handle saving edited data
   const handleSaveEdit = async () => {
     if (!product) return;
     
@@ -226,7 +224,6 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
       
       if (updateError) throw updateError;
       
-      // Update local state
       setProduct({
         ...product,
         quantity: quantityNum,
@@ -235,13 +232,13 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
       
       setIsEditing(false);
       toast({
-        variant: "success",
         title: "¡Éxito!",
         description: "Producto actualizado correctamente",
       });
-    } catch (err: any) {
-      console.error('Error al actualizar el producto:', err);
-      setUpdateError(`Error al actualizar: ${err.message}`);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido al actualizar producto';
+      console.error('Error al actualizar el producto:', errorMessage);
+      setUpdateError(errorMessage);
       toast({
         variant: "destructive",
         title: "Error",
@@ -252,12 +249,8 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
     }
   };
 
-  // Function to handle deleting product
   const handleDelete = async () => {
     if (!product) return;
-    
-    console.log('=== Frontend Delete Process Start ===');
-    console.log('Attempting to delete product:', product.id);
     
     setUpdateLoading(true);
     setUpdateError(null);
@@ -271,29 +264,22 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
       });
 
       const data = await response.json();
-      console.log('Delete API Response:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Error al eliminar el producto');
       }
-
-      console.log('Product deleted successfully, closing view and redirecting...');
       
       toast({
         title: "¡Éxito!",
         description: "Producto eliminado correctamente",
       });
 
-      // Close the detail view and redirect to products list
       onClose();
-      router.refresh(); // Force a refresh of the page data
+      router.refresh();
       router.push('/dashboard/inventario');
-      // Redirect to products list
-      //router.push('/dashboard/inventario');
-      //router.refresh(); // Force a refresh of the page data
-    } catch (err: any) {
-      console.error('Error in frontend delete handler:', err);
-      const errorMessage = err.message || 'Error desconocido al eliminar el producto';
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido al eliminar producto';
+      console.error('Error al eliminar el producto:', errorMessage);
       setUpdateError(errorMessage);
       toast({
         variant: "destructive",
@@ -301,7 +287,6 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
         description: errorMessage,
       });
     } finally {
-      console.log('=== Frontend Delete Process Complete ===');
       setUpdateLoading(false);
       setShowDeleteDialog(false);
     }
@@ -418,7 +403,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
                 </>
               ) : (
                 <>
-                  <Button variant="outline" onClick={() => router.back()}>
+                  <Button variant="outline" onClick={onClose}>
                     Cerrar
                   </Button>
                 </>
@@ -470,6 +455,6 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
       </AlertDialog>
     </div>
   );
-}
+};
 
 export default ProductDetailView;

@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { getUserId } from '@/lib/userId';
 
 const EmployeeView: React.FC = () => {
   const { toast } = useToast();

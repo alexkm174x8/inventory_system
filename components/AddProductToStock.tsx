@@ -19,6 +19,12 @@ interface AddProductToStockProps {
   onClose: () => void;
 }
 
+interface StockCheck {
+  id: number;
+  stock: number;
+  price: number | null;
+}
+
 const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onClose }) => {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
@@ -46,7 +52,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
 
   const [isLoading, setIsLoading] = useState(false);
 
-  // Add new useEffect to check for existing stock
   useEffect(() => {
     async function checkExistingStock() {
       if (!selectedProductId || !selectedLocationId || Object.values(selectedOptions).some(v => v === null)) {
@@ -56,9 +61,10 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
 
       try {
         const userId = await getUserId();
-        if (!userId) return;
+        if (!userId) {
+          throw new Error('Usuario no autenticado');
+        }
 
-        // Get the variant ID first
         const selectedOptionIds = Object.values(selectedOptions).filter(id => id !== null) as number[];
         const optionsArrayLiteral = `{${selectedOptionIds.join(',')}}`;
         
@@ -70,8 +76,7 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
           });
 
         if (searchError) {
-          console.error("Error finding variant:", searchError);
-          return;
+          throw new Error(`Error al buscar variante: ${searchError.message}`);
         }
 
         const variantId = rpcResult?.[0]?.variant_id;
@@ -80,7 +85,6 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
           return;
         }
 
-        // Now check for existing stock
         const { data: stockCheck, error: stockError } = await supabase
           .from('stock')
           .select('id, stock, price')
@@ -89,27 +93,28 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
           .maybeSingle();
 
         if (stockError) {
-          console.error("Error checking stock:", stockError);
-          return;
+          throw new Error(`Error al verificar stock: ${stockError.message}`);
         }
 
-        console.log("Stock check result:", stockCheck); // Debug log
         if (stockCheck?.price) {
-          console.log("Setting existing price to:", stockCheck.price); // Debug log
           setExistingPrice(stockCheck.price);
         } else {
           setExistingPrice(null);
         }
-      } catch (error) {
-        console.error("Error in checkExistingStock:", error);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Error desconocido al verificar stock';
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: errorMessage,
+        });
         setExistingPrice(null);
       }
     }
 
     checkExistingStock();
-  }, [selectedProductId, selectedLocationId, selectedOptions]);
+  }, [selectedProductId, selectedLocationId, selectedOptions, toast]);
 
-  // Validación previa al guardar
   const validateForm = (): boolean => {
     let valid = true;
 
@@ -169,42 +174,51 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
     return valid;
   };
 
-  // Carga inicial de productos y ubicaciones
   useEffect(() => {
     async function loadInitialData() {
       setIsLoading(true);
       try {
         const userId = await getUserId();
-        if (!userId) throw new Error("Usuario no autenticado.");
+        if (!userId) {
+          throw new Error("Usuario no autenticado");
+        }
+
         const { data: productsData, error: productsError } = await supabase
           .from('products')
           .select('id, name')
           .eq('user_id', userId);
-        if (productsError) throw productsError;
+
+        if (productsError) {
+          throw new Error(`Error al cargar productos: ${productsError.message}`);
+        }
+
         setProducts(productsData || []);
 
         const { data: ubicacionesData, error: ubicacionesError } = await supabase
           .from('locations')
           .select('id, name')
           .eq('user_id', userId);
-        if (ubicacionesError) throw ubicacionesError;
+
+        if (ubicacionesError) {
+          throw new Error(`Error al cargar ubicaciones: ${ubicacionesError.message}`);
+        }
+
         setUbicaciones(ubicacionesData || []);
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido al cargar datos iniciales';
-        console.error('Error cargando datos iniciales:', errorMessage);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cargar datos iniciales';
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Error al cargar los datos iniciales. Por favor, intenta de nuevo.",
+          description: errorMessage,
         });
       } finally {
         setIsLoading(false);
       }
     }
+
     loadInitialData();
   }, [toast]);
 
-  // Carga atributos al cambiar de producto
   useEffect(() => {
     async function getAttributes(productId: number | null) {
       if (productId === null) {
@@ -213,38 +227,49 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         setSelectedOptions({});
         return;
       }
+
       setIsLoading(true);
       try {
         const { data, error } = await supabase
           .from("product_characteristics")
           .select("characteristics_id, name")
           .eq("product_id", productId);
-        if (error) throw error;
+
+        if (error) {
+          throw new Error(`Error al cargar atributos: ${error.message}`);
+        }
+
         setAttributes(data || []);
         setAttributeOptions({});
         setSelectedOptions({});
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido al cargar atributos';
-        console.error("Error fetching attributes:", errorMessage);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cargar atributos';
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: errorMessage,
+        });
         setAttributes([]);
       } finally {
         setIsLoading(false);
       }
     }
-    getAttributes(selectedProductId);
-  }, [selectedProductId]);
 
-  // Carga opciones de cada atributo
+    getAttributes(selectedProductId);
+  }, [selectedProductId, toast]);
+
   useEffect(() => {
     async function getAttributeOptions() {
       if (attributes.length === 0) {
         setAttributeOptions({});
         return;
       }
+
       setIsLoading(true);
       try {
         const optionsMap: Record<number, OptionData[]> = {};
         const initialSelected: Record<number, number | null> = {};
+
         for (const attribute of attributes) {
           const { data, error } = await supabase
             .from("characteristics_options")
@@ -252,27 +277,32 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
             .eq("characteristics_id", attribute.characteristics_id);
 
           if (error) {
-            console.error(`Error fetching options for ${attribute.name}:`, error);
-            optionsMap[attribute.characteristics_id] = [];
-          } else {
-            optionsMap[attribute.characteristics_id] = (data || []).map(o => ({
-              id: o.id,
-              value: o.values
-            }));
+            throw new Error(`Error al cargar opciones para ${attribute.name}: ${error.message}`);
           }
+
+          optionsMap[attribute.characteristics_id] = (data || []).map(o => ({
+            id: o.id,
+            value: o.values
+          }));
           initialSelected[attribute.characteristics_id] = null;
         }
+
         setAttributeOptions(optionsMap);
         setSelectedOptions(initialSelected);
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Error inesperado al cargar opciones de atributos';
-        console.error("Unexpected error fetching attribute options:", errorMessage);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Error inesperado al cargar opciones de atributos';
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: errorMessage,
+        });
       } finally {
         setIsLoading(false);
       }
     }
+
     getAttributeOptions();
-  }, [attributes]);
+  }, [attributes, toast]);
 
   const handleOptionChange = (characteristicId: number, optionIdStr: string) => {
     const optionId = optionIdStr ? parseInt(optionIdStr, 10) : null;
@@ -283,18 +313,19 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
   };
 
   const handleSaveStock = async () => {
-    // <-- validación primero -->
     if (!validateForm()) return;
 
     setIsLoading(true);
     try {
       const userId = await getUserId();
-      if (!userId) throw new Error("Usuario no autenticado.");
+      if (!userId) {
+        throw new Error("Usuario no autenticado");
+      }
 
       let varianteId: number;
       const selectedOptionIds = Object.values(selectedOptions).filter(id => id !== null) as number[];
-
       const optionsArrayLiteral = `{${selectedOptionIds.join(',')}}`;
+
       const { data: rpcResult, error: searchError } = await supabase
         .rpc('find_variant_by_options', {
           p_user_id: userId,
@@ -303,13 +334,12 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         });
 
       if (searchError) {
-        console.error("Error buscando variante via RPC:", searchError);
-        throw new Error(`Error al buscar variante (RPC): ${searchError.message}. Verifica la función y el formato del array.`);
+        throw new Error(`Error al buscar variante: ${searchError.message}`);
       }
 
       const foundVariant = rpcResult && rpcResult.length > 0 ? rpcResult[0] : null;
 
-      if (foundVariant && foundVariant.variant_id) {
+      if (foundVariant?.variant_id) {
         varianteId = foundVariant.variant_id;
       } else {
         const { data: newVariantData, error: variantInsertError } = await supabase
@@ -322,8 +352,9 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
           .single();
 
         if (variantInsertError || !newVariantData?.variant_id) {
-          throw new Error(`Error creando la nueva variante: ${variantInsertError?.message || 'No se obtuvo ID'}`);
+          throw new Error(`Error al crear variante: ${variantInsertError?.message || 'No se obtuvo ID'}`);
         }
+
         varianteId = newVariantData.variant_id;
 
         if (selectedOptionIds.length > 0) {
@@ -337,12 +368,9 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
             .insert(varianteOpcionesPayload);
 
           if (optionsInsertError) {
-            console.error("Error vinculando opciones, intentando eliminar variante huérfana...");
-            await supabase.from('producto_variantes').delete().eq('variant_id', varianteId);
-            throw new Error(`Error vinculando opciones: ${optionsInsertError.message}`);
+            await supabase.from('productVariants').delete().eq('variant_id', varianteId);
+            throw new Error(`Error al vincular opciones: ${optionsInsertError.message}`);
           }
-        } else {
-          console.log("Producto sin opciones, no se inserta en variante_opciones.");
         }
       }
 
@@ -354,13 +382,10 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         .maybeSingle();
 
       if (stockCheckError) {
-        throw new Error(`Error al verificar stock existente: ${stockCheckError.message}`);
+        throw new Error(`Error al verificar stock: ${stockCheckError.message}`);
       }
 
-      console.log("Final stock check before save:", stockCheck); // Debug log
-      console.log("Current existingPrice state:", existingPrice); // Debug log
-
-      if (stockCheck && stockCheck.id) {
+      if (stockCheck?.id) {
         const currentStock = stockCheck.stock || 0;
         const newStockLevel = currentStock + parseInt(quantity.toString(), 10);
 
@@ -373,12 +398,9 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
           added_at: new Date().toISOString()
         };
 
-        // Only add price to update if it doesn't exist
         if (!stockCheck.price) {
           updateData.price = parseFloat(price.toString());
         }
-
-        console.log("Updating stock with data:", updateData); // Debug log
 
         const { error: updateError } = await supabase
           .from('stock')
@@ -386,11 +408,9 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
           .eq('id', stockCheck.id);
 
         if (updateError) {
-          throw new Error(`Error actualizando stock: ${updateError.message}`);
+          throw new Error(`Error al actualizar stock: ${updateError.message}`);
         }
-        console.log("Stock actualizado.");
       } else {
-        console.log("Insertando nuevo registro de stock.");
         const { error: insertError } = await supabase
           .from('stock')
           .insert({
@@ -403,18 +423,16 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
           });
 
         if (insertError) {
-          throw new Error(`Error insertando nuevo stock: ${insertError.message}`);
+          throw new Error(`Error al insertar stock: ${insertError.message}`);
         }
-        console.log("Nuevo stock insertado.");
       }
 
       toast({
-        variant: "success",
-        title: "¡Éxito!",
+        title: "Éxito",
         description: "Stock agregado correctamente",
       });
+
       onSaveStock();
-      // limpiar campos
       setSelectedProductId(null);
       setSelectedOptions({});
       setQuantity('');
@@ -422,9 +440,8 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       setEntryDate('');
       setSelectedLocationId(null);
       onClose();
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Error al guardar el stock. Por favor, intenta de nuevo.';
-      console.error("Error detallado en handleSaveStock:", errorMessage);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido al guardar stock';
       toast({
         variant: "destructive",
         title: "Error",
@@ -441,152 +458,154 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         <CardContent className="p-6">
           <h1 className="text-lg font-semibold capitalize">Agregar Inventario</h1>
 
-          {/* Producto */}
-          <div className="mb-4">
-            <Label htmlFor="product-select">Producto</Label>
-            <select
-              id="product-select"
-              className="w-full border shadow-xs rounded-[8px] p-1.5 mt-1 text-[#737373]"
-              value={selectedProductId ?? ""}
-              onChange={e => setSelectedProductId(e.target.value ? parseInt(e.target.value, 10) : null)}
-              disabled={isLoading}
-            >
-              <option value="" disabled>
-                {isLoading ? "Cargando productos..." : "Selecciona un producto"}
-              </option>
-              {products.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-            {productError && <p className="text-red-600 text-sm mt-1">{productError}</p>}
-          </div>
-
-          {/* Atributos y opciones */}
-          {attributes.length > 0 && (
-            <div className="mb-4 border p-4 rounded-md">
-              <h2 className="font-semibold mb-2">Selecciona Opciones</h2>
-              {attributes.map(attr => {
-                const opts = attributeOptions[attr.characteristics_id] || [];
-                const sel = selectedOptions[attr.characteristics_id] ?? "";
-                return (
-                  <div key={attr.characteristics_id} className="mb-3">
-                    <Label htmlFor={`attr-${attr.characteristics_id}`}>{attr.name}</Label>
-                    <select
-                      id={`attr-${attr.characteristics_id}`}
-                      className="w-full border shadow-xs rounded-[8px] p-1.5 mt-1 text-[#737373]"
-                      value={sel}
-                      onChange={e => handleOptionChange(attr.characteristics_id, e.target.value)}
-                      disabled={isLoading}
-                    >
-                      <option value="" disabled>
-                        {isLoading && opts.length === 0
-                          ? "Cargando opciones..."
-                          : `Selecciona ${attr.name}`}
-                      </option>
-                      {opts.length > 0
-                        ? opts.map(o => <option key={o.id} value={o.id}>{o.value}</option>)
-                        : !isLoading && <option value="" disabled>No hay opciones</option>}
-                    </select>
-                  </div>
-                );
-              })}
-              {optionsError && <p className="text-red-600 text-sm mt-1">{optionsError}</p>}
+          <form onSubmit={(e) => { e.preventDefault(); handleSaveStock(); }} className="space-y-4 mt-4">
+            <div>
+              <Label htmlFor="product-select">Producto</Label>
+              <select
+                id="product-select"
+                className="w-full border shadow-xs rounded-[8px] p-1.5 mt-1 text-[#737373]"
+                value={selectedProductId ?? ""}
+                onChange={e => setSelectedProductId(e.target.value ? parseInt(e.target.value, 10) : null)}
+                disabled={isLoading}
+              >
+                <option value="" disabled>
+                  {isLoading ? "Cargando productos..." : "Selecciona un producto"}
+                </option>
+                {products.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              {productError && <p className="text-red-600 text-sm mt-1">{productError}</p>}
             </div>
-          )}
 
-          {/* Ubicación */}
-          <div className="mb-4">
-            <Label htmlFor="location-select">Ubicación</Label>
-            <select
-              id="location-select"
-              className="w-full border shadow-xs rounded-[8px] p-1.5 mt-1 text-[#737373]"
-              value={selectedLocationId ?? ""}
-              onChange={e => setSelectedLocationId(e.target.value ? parseInt(e.target.value, 10) : null)}
-              disabled={isLoading || ubicaciones.length === 0}
-            >
-              <option value="" disabled>
-                {isLoading && ubicaciones.length === 0
-                  ? "Cargando ubicaciones..."
-                  : "Selecciona una ubicación"}
-              </option>
-              {ubicaciones.map(loc => (
-                <option key={loc.id} value={loc.id}>{loc.name}</option>
-              ))}
-            </select>
-            {locationError && <p className="text-red-600 text-sm mt-1">{locationError}</p>}
-          </div>
-
-          {/* Cantidad */}
-          <div className="mb-4">
-            <Label htmlFor="quantity">Cantidad a agregar</Label>
-            <Input
-              id="quantity"
-              type="number"
-              value={quantity}
-              onChange={e => setQuantity(e.target.value)}
-              placeholder="Cantidad"
-              className="mt-1"
-              disabled={isLoading}
-              min={1}
-            />
-            {quantityError && <p className="text-red-600 text-sm mt-1">{quantityError}</p>}
-          </div>
-
-          {/* Precio */}
-          <div className="mb-4">
-            <Label htmlFor="price">
-              {existingPrice !== null ? "Precio (valor existente)" : "Precio"}
-            </Label>
-            <div className="relative">
-              <Input
-                id="price"
-                type="number"
-                value={price}
-                onChange={e => setPrice(e.target.value)}
-                placeholder="Precio del producto"
-                className="mt-1"
-                disabled={isLoading || existingPrice !== null}
-                min={0.01}
-                step={0.01}
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
-                MXN
+            {attributes.length > 0 && (
+              <div className="border p-4 rounded-md">
+                <h2 className="font-semibold mb-2">Selecciona Opciones</h2>
+                {attributes.map(attr => {
+                  const opts = attributeOptions[attr.characteristics_id] || [];
+                  const sel = selectedOptions[attr.characteristics_id] ?? "";
+                  return (
+                    <div key={attr.characteristics_id} className="mb-3">
+                      <Label htmlFor={`attr-${attr.characteristics_id}`}>{attr.name}</Label>
+                      <select
+                        id={`attr-${attr.characteristics_id}`}
+                        className="w-full border shadow-xs rounded-[8px] p-1.5 mt-1 text-[#737373]"
+                        value={sel}
+                        onChange={e => handleOptionChange(attr.characteristics_id, e.target.value)}
+                        disabled={isLoading}
+                      >
+                        <option value="" disabled>
+                          {isLoading && opts.length === 0
+                            ? "Cargando opciones..."
+                            : `Selecciona ${attr.name}`}
+                        </option>
+                        {opts.length > 0
+                          ? opts.map(o => <option key={o.id} value={o.id}>{o.value}</option>)
+                          : !isLoading && <option value="" disabled>No hay opciones</option>}
+                      </select>
+                    </div>
+                  );
+                })}
+                {optionsError && <p className="text-red-600 text-sm mt-1">{optionsError}</p>}
               </div>
+            )}
+
+            <div>
+              <Label htmlFor="location-select">Ubicación</Label>
+              <select
+                id="location-select"
+                className="w-full border shadow-xs rounded-[8px] p-1.5 mt-1 text-[#737373]"
+                value={selectedLocationId ?? ""}
+                onChange={e => setSelectedLocationId(e.target.value ? parseInt(e.target.value, 10) : null)}
+                disabled={isLoading || ubicaciones.length === 0}
+              >
+                <option value="" disabled>
+                  {isLoading && ubicaciones.length === 0
+                    ? "Cargando ubicaciones..."
+                    : "Selecciona una ubicación"}
+                </option>
+                {ubicaciones.map(loc => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
+              </select>
+              {locationError && <p className="text-red-600 text-sm mt-1">{locationError}</p>}
             </div>
-            {existingPrice !== null ? (
-              <p className="text-sm text-blue-500 mt-1">
-                Esta variante ya tiene un precio establecido de {existingPrice} MXN.
-              </p>
-            ) : priceError ? (
-              <p className="text-red-600 text-sm mt-1">{priceError}</p>
-            ) : null}
-          </div>
 
-          {/* Fecha de entrada */}
-          <div className="mb-4">
-            <Label htmlFor="entry-date">Fecha de entrada</Label>
-            <Input
-              id="entry-date"
-              type="date"
-              value={entryDate}
-              onChange={e => setEntryDate(e.target.value)}
-              className="mt-1 text-[#737373]"
-            />
-            {dateError && <p className="text-red-600 text-sm mt-1">{dateError}</p>}
-          </div>
+            <div>
+              <Label htmlFor="quantity">Cantidad a agregar</Label>
+              <Input
+                id="quantity"
+                type="number"
+                value={quantity}
+                onChange={e => setQuantity(e.target.value)}
+                placeholder="Cantidad"
+                className="mt-1"
+                disabled={isLoading}
+                min={1}
+              />
+              {quantityError && <p className="text-red-600 text-sm mt-1">{quantityError}</p>}
+            </div>
 
-          <div className="flex justify-end gap-4 mt-6">
-            <Button variant="outline" onClick={onClose} disabled={isLoading}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSaveStock}
-              className="bg-blue-500 hover:bg-blue-600"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Actualizando...' : 'Guardar'}
-            </Button>
-          </div>
+            <div>
+              <Label htmlFor="price">
+                {existingPrice !== null ? "Precio (valor existente)" : "Precio"}
+              </Label>
+              <div className="relative">
+                <Input
+                  id="price"
+                  type="number"
+                  value={price}
+                  onChange={e => setPrice(e.target.value)}
+                  placeholder="Precio del producto"
+                  className="mt-1"
+                  disabled={isLoading || existingPrice !== null}
+                  min={0.01}
+                  step={0.01}
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                  MXN
+                </div>
+              </div>
+              {existingPrice !== null ? (
+                <p className="text-sm text-blue-500 mt-1">
+                  Esta variante ya tiene un precio establecido de {existingPrice} MXN.
+                </p>
+              ) : priceError ? (
+                <p className="text-red-600 text-sm mt-1">{priceError}</p>
+              ) : null}
+            </div>
+
+            <div>
+              <Label htmlFor="entry-date">Fecha de entrada</Label>
+              <Input
+                id="entry-date"
+                type="date"
+                value={entryDate}
+                onChange={e => setEntryDate(e.target.value)}
+                className="mt-1 text-[#737373]"
+                disabled={isLoading}
+              />
+              {dateError && <p className="text-red-600 text-sm mt-1">{dateError}</p>}
+            </div>
+
+            <div className="flex justify-end gap-4 mt-6">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={onClose} 
+                disabled={isLoading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Actualizando...' : 'Guardar'}
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>
