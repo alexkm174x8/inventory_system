@@ -42,14 +42,14 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [passwordError, setPasswordError] = useState('');
 
-  if (!params?.id) {
-    router.push('/dashboard-superadmin/negocios');
-    return null;
-  }
-
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const id = params?.id ? (Array.isArray(params.id) ? params.id[0] : params.id) : null;
 
   useEffect(() => {
+    if (!id) {
+      router.push('/dashboard-superadmin/negocios');
+      return;
+    }
+
     const fetchNegocio = async () => {
       try {
         const { data: negData, error: negErr } = await supabase
@@ -73,8 +73,7 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
         setNegocioBillingDay(negData.billing_day.toString());
         setNegocioBillingAmount(negData.billing_amount.toString());
 
-      } catch (err: unknown) {
-        //const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cargar datos';
+      } catch {
         toast({
           variant: "destructive",
           title: "Error",
@@ -88,6 +87,10 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
 
     fetchNegocio();
   }, [id, router, toast]);
+
+  if (!id) {
+    return null;
+  }
 
   const handleDelete = async () => {
     if (!id) return;

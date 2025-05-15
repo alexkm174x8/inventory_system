@@ -91,7 +91,6 @@ const VentasContent: React.FC = () => {
   const [dateFilter, setDateFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState<number | null>(null);
   const [locations, setLocations] = useState<Record<number, string>>({});
-  const [clients, setClients] = useState<Record<number, string>>({});
   const [showModal, setShowModal] = useState(false);
 
   const fetchLocations = async () => {
@@ -182,7 +181,6 @@ const VentasContent: React.FC = () => {
         setLocations(locationMap);
         
         const clientMap = await fetchClients();
-        setClients(clientMap);
         
         const { data: salesData, error: salesError } = await supabase
           .from('sales')

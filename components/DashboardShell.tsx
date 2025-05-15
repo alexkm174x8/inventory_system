@@ -101,7 +101,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           setUserName('Perfil no encontrado');
           setIsLoading(false);
         }
-      } catch (err: unknown) {
+      } catch {
         //const errorMessage = err instanceof Error ? err.message : 'Error desconocido al obtener datos';
         if (mounted) {
           setUserName('Error al obtener datos');
@@ -137,7 +137,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         throw error;
       }
       router.push('/');
-    } catch (err: unknown) {
+    } catch {
       //const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cerrar sesión';
     }
   };

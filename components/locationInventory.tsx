@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
@@ -54,9 +54,8 @@ const LocationInventory: React.FC = () => {
   const { id } = useParams();
   const locationId = Number(id);
   
-  const [filterStatus, ] = useState("Todos");
+  const [filterStatus] = useState("Todos");
   const [currentPage, setCurrentPage] = useState(1);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loadingInventory, setLoadingInventory] = useState(true);
   const [errorInventory, setErrorInventory] = useState<string | null>(null);
@@ -64,7 +63,7 @@ const LocationInventory: React.FC = () => {
   const [totalItemsCount, setTotalItemsCount] = useState(0);
 
   const itemsPerPage = 5;
-  const filteredData = inventory.filter(stock => filterStatus === "Todos");
+  const filteredData = inventory.filter(() => filterStatus === "Todos");
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -74,11 +73,7 @@ const LocationInventory: React.FC = () => {
     setCurrentPage(1);
   }, [filterStatus]);
 
-  const toggleDropdown = () => {
-    setIsDropdownOpen(!isDropdownOpen);
-  }
-
-  const fetchLocationName = async () => {
+  const fetchLocationName = useCallback(async () => {
     try {
       const userId = await getUserId();
       if (!userId) throw new Error("Usuario no autenticado");
@@ -95,9 +90,9 @@ const LocationInventory: React.FC = () => {
     } catch (error) {
       console.error("Error fetching location name:", error);
     }
-  };
+  }, [locationId]);
 
-  const loadLocationInventory = async () => {
+  const loadLocationInventory = useCallback(async () => {
     setLoadingInventory(true);
     setErrorInventory(null);
     
@@ -181,21 +176,21 @@ const LocationInventory: React.FC = () => {
         setInventory(formattedInventory);
         setTotalItemsCount(formattedInventory.reduce((sum, item) => sum + item.quantity, 0));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading location inventory:", error);
-      setErrorInventory(error.message);
+      setErrorInventory(error instanceof Error ? error.message : 'Error desconocido al cargar inventario');
       setInventory([]);
     } finally {
       setLoadingInventory(false);
     }
-  };
+  }, [locationId]);
 
   useEffect(() => {
     if (locationId) {
       fetchLocationName();
       loadLocationInventory();
     }
-  }, [locationId]);
+  }, [locationId, fetchLocationName, loadLocationInventory]);
 
   if (loadingInventory) {
     return (

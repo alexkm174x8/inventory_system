@@ -42,9 +42,9 @@ export default function SucursalesContent() {
     }))
 
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(err);
-    setError(err.message);
+    setError(err instanceof Error ? err.message : 'Error desconocido al cargar sucursales');
   } finally {
     setLoading(false);
   }

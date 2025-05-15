@@ -37,13 +37,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
   );
   const router = useRouter();
 
-  const initiateCheckout = () => {
-    if (selectedLocationId !== null) {
-      onLocationSelected(selectedLocationId);
-      onClose();
-    }
-  };
-
   useEffect(() => {
     const fetchLocations = async () => {
       try {
@@ -74,7 +67,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
     if (isOpen) {
       fetchLocations();
     }
-  }, [isOpen]);
+  }, [isOpen, selectedLocationId]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

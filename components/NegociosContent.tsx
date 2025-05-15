@@ -57,9 +57,9 @@ export default function NegociosContent() {
         }))
       );
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'Error desconocido al cargar negocios');
     } finally {
       setLoading(false);
     }

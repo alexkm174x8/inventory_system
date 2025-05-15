@@ -37,7 +37,7 @@ const ClientesContent = () => {
 
       const { data, error } = await supabase
         .from('clients')
-        .select('id, name, phone, num_compras, total_compras, discount')
+        .select('id, name, phone, num_compras, total_compras, discount, user_id')
         .eq('user_id', userId);
 
       if (error) throw error;

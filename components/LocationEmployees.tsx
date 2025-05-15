@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
@@ -32,7 +32,7 @@ const LocationEmployees: React.FC = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentData = employees.slice(startIndex, startIndex + itemsPerPage);
 
-  const loadEmployeesByLocation = async () => {
+  const loadEmployeesByLocation = useCallback(async () => {
     try {
       const userId = await getUserId();
       if (!userId) throw new Error('Usuario no autenticado');
@@ -64,9 +64,9 @@ const LocationEmployees: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [locationId]);
 
-  const fetchLocationName = async () => {
+  const fetchLocationName = useCallback(async () => {
     try {
       const userId = await getUserId();
       if (!userId) throw new Error('Usuario no autenticado');
@@ -88,7 +88,7 @@ const LocationEmployees: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido al obtener nombre de sucursal';
       setError(errorMessage);
     }
-  };
+  }, [locationId]);
 
   useEffect(() => {
     if (!isNaN(locationId)) {
@@ -97,7 +97,7 @@ const LocationEmployees: React.FC = () => {
     } else {
       setError('ID de sucursal inválido');
     }
-  }, [locationId]);
+  }, [locationId, loadEmployeesByLocation, fetchLocationName]);
 
   if (loading) {
     return (
