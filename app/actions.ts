@@ -5,7 +5,7 @@ const supabaseUrl = 'https://dijctnuytoiqorvkcjmq.supabase.co'
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 export async function getServerSession() {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   
   const supabase = createServerClient(
     supabaseUrl,
@@ -23,7 +23,7 @@ export async function getServerSession() {
 }
 
 export async function getServerUser() {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   
   const supabase = createServerClient(
     supabaseUrl,
@@ -38,4 +38,9 @@ export async function getServerUser() {
   )
 
   return supabase.auth.getUser()
+}
+
+export async function getCookie(name: string) {
+  const cookieStore = await cookies()
+  return cookieStore.get(name)?.value
 } 
