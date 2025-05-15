@@ -87,8 +87,9 @@ export async function DELETE(request: Request) {
         } else {
           console.log('Auth user deleted successfully');
         }
-      } catch (authError: any) {
-        console.warn('Warning: Error during auth user deletion:', authError.message);
+      } catch (authError: unknown) {
+        const errorMessage = authError instanceof Error ? authError.message : 'Error desconocido durante la eliminación del usuario de autenticación';
+        console.warn('Warning: Error during auth user deletion:', errorMessage);
         // Continue with the success response since the employee record was deleted
       }
     } else {
@@ -103,11 +104,13 @@ export async function DELETE(request: Request) {
         email: employeeData.email
       }
     });
-  } catch (error: any) {
-    console.error('Unexpected error in delete-employee:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Unexpected error in delete-employee:', errorMessage);
     return NextResponse.json({ 
-      error: error.message,
-      details: error.stack
+      error: errorMessage,
+      details: errorStack
     }, { status: 500 });
   }
 } 

@@ -1,13 +1,14 @@
 "use client"
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Minus, Image, Trash2, Search, Filter, Building, Users } from 'lucide-react';
+import { Plus, Minus, ImageIcon, Trash2, Search, Building, Users } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '@/lib/supabase';
 import { getUserId, getUserRole } from '@/lib/userId';
 import { useToast } from "@/components/ui/use-toast";
+import Image from 'next/image';
 
 interface ProductVariant {
   variant_id: number; 
@@ -172,7 +173,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     };
     
     fetchClients();
-  }, []);
+  }, [toast]);
 
   // Fetch location information
   useEffect(() => {
@@ -346,7 +347,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   const formatVariantName = (variantId: number): string => {
     const attrs = variantAttributes[variantId];
     const attrLines = Object.entries(attrs)
-      .map(([characteristicName, value]) => ` ${value}`)
+      .map(([value]) => ` ${value}`)
       .join("\n");
     return `${attrLines}`;
   };
@@ -615,7 +616,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
             .map(([productId, variants]) => {
               const product = products.find(p => p.id === Number(productId));
               if (!product) return null;
-              const firstVariant = variants[0];
               const selectedVariant = variants.find(v => v.variant_id === Number(selectedVariantId));
               const selectedStockItem = selectedVariant
                 ? stockItems.find(
@@ -657,14 +657,16 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
 
                       {/* Imagen de la variante seleccionada o placeholder */}
                       {selectedVariant?.image_url ? (
-                        <img
+                        <Image
                           src={selectedVariant.image_url}
-                          alt={formatVariantName(selectedVariant.variant_id)}
-                          className="w-24 h-24 object-cover rounded mx-auto mt-4"
+                          alt={`Producto ${formatVariantName(selectedVariant.variant_id)}`}
+                          width={96}
+                          height={96}
+                          className="object-cover rounded mx-auto mt-4"
                         />
                       ) : (
                         <div className="w-24 h-24 flex items-center justify-center bg-gray-100 rounded mx-auto mt-4">
-                          <Image className="w-12 h-12 text-[#1366D9]" />
+                          <ImageIcon className="w-12 h-12 text-[#1366D9]" />
                         </div>
                       )}
 

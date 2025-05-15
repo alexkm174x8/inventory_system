@@ -13,13 +13,6 @@ interface AddNegocioProps {
   onNegocioAdded: () => void;
 }
 
-interface Negocio {
-  id: number;
-  name: string;
-  billingDay: number;
-  billingAmount: string;
-}
-
 const AddNegocio: React.FC<AddNegocioProps> = ({ onClose, onNegocioAdded }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -188,10 +181,12 @@ const AddNegocio: React.FC<AddNegocioProps> = ({ onClose, onNegocioAdded }) => {
       onNegocioAdded();
       onClose();
      
-    } catch (err: any) {
-      console.error('Error al agregar negocio:', err);
+    
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al agregar negocio. Por favor, intente nuevamente.';
+      console.error('Error al agregar negocio:', errorMessage);
       setErrors({ 
-        general: err.message || 'Error al agregar negocio. Por favor, intente nuevamente.' 
+        general: errorMessage
       }); 
     } finally {
       setLoading(false);

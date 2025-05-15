@@ -59,9 +59,10 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
           .eq('user_id', userId);
         if (error) throw error;
         setLocations(data || []);
-      } catch (err: any) {
-        console.error('Error al cargar sucursales:', err);
-        setLocationsError(err.message);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cargar sucursales';
+        console.error('Error al cargar sucursales:', errorMessage);
+        setLocationsError(errorMessage);
       } finally {
         setLocationsLoading(false);
       }
@@ -223,10 +224,11 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
       onEmployeeAdded();
       onClose();
      
-    } catch (err: any) {
-      console.error('Error al agregar empleado:', err);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al agregar empleado. Por favor, intente nuevamente.';
+      console.error('Error al agregar empleado:', errorMessage);
       setErrors({ 
-        general: err.message || 'Error al agregar empleado. Por favor, intente nuevamente.' 
+        general: errorMessage
       }); 
       setLoading(false);
     } finally {

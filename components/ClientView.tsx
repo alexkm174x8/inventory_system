@@ -14,20 +14,16 @@ interface ClientViewProps {
 }
 
 const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
-  const params = useParams();
-  const router = useRouter();
   const { toast } = useToast();
-  if (!params || !params.id) {
-    return null;
-  }
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const router = useRouter();
+  const { id } = useParams();
+  const [loading, setLoading] = useState(true);
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
-  const [clientId, setClientId] = useState('');
+  const [clientId, setClientId] = useState<number | null>(null);
   const [clientComprasNum, setClientComprasNum] = useState('');
   const [clientComprasTot, setClientComprasTot] = useState('');
   const [lastMonthTotal, setLastMonthTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchCliente = async () => {

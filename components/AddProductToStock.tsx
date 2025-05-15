@@ -189,8 +189,9 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
           .eq('user_id', userId);
         if (ubicacionesError) throw ubicacionesError;
         setUbicaciones(ubicacionesData || []);
-      } catch (error: any) {
-        console.error('Error cargando datos iniciales:', error);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido al cargar datos iniciales';
+        console.error('Error cargando datos iniciales:', errorMessage);
         toast({
           variant: "destructive",
           title: "Error",
@@ -201,7 +202,7 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       }
     }
     loadInitialData();
-  }, []);
+  }, [toast]);
 
   // Carga atributos al cambiar de producto
   useEffect(() => {
@@ -222,8 +223,9 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         setAttributes(data || []);
         setAttributeOptions({});
         setSelectedOptions({});
-      } catch (error: any) {
-        console.error("Error fetching attributes:", error);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido al cargar atributos';
+        console.error("Error fetching attributes:", errorMessage);
         setAttributes([]);
       } finally {
         setIsLoading(false);
@@ -241,8 +243,8 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       }
       setIsLoading(true);
       try {
-        let optionsMap: Record<number, OptionData[]> = {};
-        let initialSelected: Record<number, number | null> = {};
+        const optionsMap: Record<number, OptionData[]> = {};
+        const initialSelected: Record<number, number | null> = {};
         for (const attribute of attributes) {
           const { data, error } = await supabase
             .from("characteristics_options")
@@ -262,8 +264,9 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
         }
         setAttributeOptions(optionsMap);
         setSelectedOptions(initialSelected);
-      } catch (error: any) {
-        console.error("Unexpected error fetching attribute options:", error);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Error inesperado al cargar opciones de atributos';
+        console.error("Unexpected error fetching attribute options:", errorMessage);
       } finally {
         setIsLoading(false);
       }
@@ -419,12 +422,13 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
       setEntryDate('');
       setSelectedLocationId(null);
       onClose();
-    } catch (error: any) {
-      console.error("Error detallado en handleSaveStock:", error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error al guardar el stock. Por favor, intenta de nuevo.';
+      console.error("Error detallado en handleSaveStock:", errorMessage);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Error al guardar el stock. Por favor, intenta de nuevo.",
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);
