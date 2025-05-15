@@ -74,10 +74,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   const { toast } = useToast();
   // State for location info
   const [locationInfo, setLocationInfo] = useState<Location | null>(null);
-  const [selectedVariantId, setSelectedVariantId] = useState('');
-  // Add state for admin status
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  
+  const [selectedVariantId, setSelectedVariantId] = useState('');  
   // Add state for admin status
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   
