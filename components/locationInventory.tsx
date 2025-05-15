@@ -217,7 +217,7 @@ const LocationInventory: React.FC = () => {
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold  capitalize mb-4">Inventario {locationName}</h1>
+          <h1 className="text-lg font-semibold capitalize">Inventario {locationName}</h1>
         </div>
         <div className="flex gap-4">
           <button

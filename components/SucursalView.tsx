@@ -76,8 +76,8 @@ const SucursalView: React.FC<SucursalViewProps> = ({ onClose }) => {
       <Card className="w-full overflow-hidden mt-6">
         <CardContent>
           <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3 flex-wrap gap-2">
-            <h1 className="text-2xl font-bold  capitalize">Sucursal {name}</h1>
-            <p className="text-lg font-light flex items-center gap-2 capitalize">
+            <h1 className="text-lg font-semibold capitalize">Sucursal {name}</h1>
+            <p className="text-md font-light flex items-center gap-2 capitalize">
               <MapPin className="w-4 h-4 " />
               {address}
             </p>

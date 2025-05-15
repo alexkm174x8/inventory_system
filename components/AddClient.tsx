@@ -92,7 +92,7 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
     <div className="h-full">
       <Card className="w-full">
         <CardContent className="p-6">
-            <h1 className="text-2xl font-bold  capitalize mb-4">Agregar nuevo cliente</h1>
+            <h1 className="text-lg font-semibold capitalize">Agregar nuevo cliente</h1>
             <div className="mb-4">
                 <Label htmlFor="clientName">Nombre</Label>
                 <Input

@@ -111,7 +111,7 @@ const LocationEmployees: React.FC = () => {
     <div>
       <div className="bg-white rounded-lg border border-[#e6e6e6] shadow-sm mt-8">
       <div className="px-6 py-4 border-b border-[#e6e6e6] flex justify-between items-center">
-        <h2 className="text-lg font-medium text-[#1b1f26] capitalize">
+        <h2 className="text-lg font-semibold capitalize">
           Empleados sucursal {locationName ? locationName : `#${locationId}`}
         </h2>
       </div> 

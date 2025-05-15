@@ -111,8 +111,8 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
       <Card className="w-full overflow-hidden mt-6">
         <CardContent>
           <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3 flex-wrap gap-2">
-            <h1 className="text-2xl font-bold capitalize">Cliente</h1>
-            <p className="text-lg font-light flex items-center gap-2">
+            <h1 className="text-lg font-semibold capitalize">Cliente</h1>
+            <p className="text-md font-light flex items-center gap-2">
               ID# {clientId}
             </p>
           </div>

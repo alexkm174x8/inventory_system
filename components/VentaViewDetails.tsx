@@ -54,7 +54,7 @@ const VentaViewDetails: React.FC<VentaViewDetailsProps> = ({ venta, onClose }) =
       <Card className="w-full overflow-hidden">
         <CardContent>
             <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3">
-                <h1 className="text-2xl font-bold">Venta</h1> 
+                <h1 className="text-lg font-semibold capitalize">Venta</h1> 
                 <p className="text-lg font-light flex items-center gap-2">
                   ID #{venta.id}
                 </p>
@@ -62,7 +62,7 @@ const VentaViewDetails: React.FC<VentaViewDetailsProps> = ({ venta, onClose }) =
             <div className="mt-3 mb-3">
                 <h2 className="text-base font-semibold">Detalles principales</h2> 
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 ">
               <p><strong>Fecha:</strong> {fecha.toLocaleDateString()}</p>
               <p><strong>Hora:</strong> {fecha.toLocaleTimeString()}</p>
               {venta.locationName && (
@@ -71,7 +71,7 @@ const VentaViewDetails: React.FC<VentaViewDetailsProps> = ({ venta, onClose }) =
               <p><strong>Cliente:</strong> {venta.clientName || 'Sin cliente'}</p>
               <p><strong>Vendedor:</strong> {venta.employeeName}</p>
             </div>
-            <div className="mt-3">
+            <div className="mt-2">
                 <h2 className="text-base font-semibold">Productos</h2> 
                 <ul className="mt-3">
                     {venta.items.map((item, index) => (

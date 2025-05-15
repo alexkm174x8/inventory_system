@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Trash2, Pencil } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import {
   AlertDialog,
@@ -324,8 +325,8 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
       <Card className="w-full overflow-hidden">
         <CardContent>
           <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3">
-            <h1 className="text-2xl font-bold capitalize mb-4">Producto</h1>
-            <p className="text-lg font-light flex items-center gap-2">
+            <h1 className="text-lg font-semibold capitalize">Producto</h1>
+            <p className="text-md font-light flex items-center gap-2">
               ID #{product.id}
             </p>
           </div>
@@ -379,7 +380,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
               <ul>
                 {product.caracteristicas.map((char, index) => (
                   <li key={index}>
-                    <p className='text-lg'>
+                    <p>
                       <strong>{char.name}:</strong> {char.value}
                     </p>
                   </li>
@@ -392,43 +393,48 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
             <div className="text-red-500 my-2">{updateError}</div>
           )}
 
-          <div className="flex flex-wrap justify-center gap-3 mt-6">
-            {isEditing ? (
-              <>
-                <Button 
-                  variant="outline" 
-                  onClick={handleCancelEdit} 
-                  disabled={updateLoading}
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  className="bg-blue-500 hover:bg-blue-600" 
-                  onClick={handleSaveEdit} 
-                  disabled={updateLoading}
-                >
-                  {updateLoading ? 'Guardando...' : 'Guardar'}
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={() => router.back()}>Cerrar</Button>
-                <Button 
-                  className="bg-blue-500 hover:bg-blue-600" 
-                  onClick={handleEditClick}
-                >
-                  Editar
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={() => setShowDeleteDialog(true)}
-                  disabled={updateLoading}
-                >
-                  Eliminar
-                </Button>
-              </>
-            )}
-          </div>
+<div className="relative mt-6">
+  <div className="lg:text-center mt-6 sm:text-left">
+    {isEditing ? (
+      <>
+        <Button 
+          variant="outline" 
+          onClick={handleCancelEdit} 
+          disabled={updateLoading}
+        >
+          Cancelar
+        </Button>
+        <Button 
+          className="bg-blue-500 hover:bg-blue-600" 
+          onClick={handleSaveEdit} 
+          disabled={updateLoading}
+        >
+          {updateLoading ? 'Guardando...' : 'Guardar'}
+        </Button>
+      </>
+    ) : (
+      <Button variant="outline" onClick={() => router.back()}>Cerrar</Button>
+    )}
+  </div>
+
+  <div className="absolute bottom-0 right-0 flex gap-3">
+    <Button 
+      className="bg-blue-500 hover:bg-blue-600" 
+      onClick={handleEditClick}
+    >
+      <Pencil className="w-4 h-4" />
+      Editar
+    </Button>
+    <Button 
+      variant="destructive" 
+      onClick={() => setShowDeleteDialog(true)}
+      disabled={updateLoading}
+    >
+      <Trash2 className="w-4 h-4" />
+      Eliminar
+    </Button>
+  </div>
+</div>
         </CardContent>
       </Card>
 

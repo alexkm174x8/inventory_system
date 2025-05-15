@@ -78,8 +78,8 @@ useEffect(() => {
 }, []);
 
 return (
-  <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
-    <div className="flex gap-4 mb-9">
+  <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5] pb-10">
+    <div className="flex gap-4 mb-6">
       <button
       onClick={() => router.push('/dashboard/empleados/agregarempleado')}
       className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
@@ -90,7 +90,7 @@ return (
     </div>
     <div className="bg-white rounded-lg border border-[#e6e6e6] shadow-sm mt-8">
       <div className="px-6 py-4 border-b border-[#e6e6e6] flex justify-between items-center">
-        <h2 className="text-lg font-medium text-[#1b1f26]">Lista de Empleados</h2>
+        <h2 className="text-lg font-semibold capitalize">Lista de Empleados</h2>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -106,11 +106,11 @@ return (
           <tbody className="divide-y divide-[#e6e6e6] text-center">
           {currentData.map(emp => (
             <tr key={emp.id}>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26] capitalize">{emp.name}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085] capitalize">{emp.name}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{emp.email}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]"> ${emp.salary} MXN</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26] capitalize">{emp.role}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26] capitalize">{locationMap[emp.location_id] ?? 'Desconocida'}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085] capitalize">{emp.role}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085] capitalize">{locationMap[emp.location_id] ?? 'Desconocida'}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm">
                 <button
                   onClick={() => router.push(`/dashboard/empleados/${emp.id}`)}

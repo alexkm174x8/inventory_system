@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getUserId } from '@/lib/userId'
+import {CircleDollarSign} from 'lucide-react'
 
 interface TopProduct {
   name: string
@@ -163,58 +164,59 @@ const MenuContent = () => {
   }
 
   return (
-    <main className="flex-1 overflow-y-auto p-6 bg-[#f5f5f5]">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Card 1 - Top Selling Products */}
-        <div className="bg-white rounded-lg border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-lg font-medium text-gray-800">Productos más vendidos</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Producto
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ganancia
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ventas
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {topProducts.map((product, index) => (
-                  <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{product.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                      ${product.total_revenue.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-500 font-medium">
-                      {product.total_sales}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Card 2 - Total Earnings */}
-        <div className="bg-white rounded-lg border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-lg font-medium text-gray-800">Ganancias Totales</h2>
-          </div>
-          <div className="p-6">
-            <div className="text-3xl font-bold text-gray-900 mb-2">
-              ${totalEarnings.toLocaleString()}
+    <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5] pb-10">
+      <div className="flex gap-4 mb-6">
+        <div className="flex flex-col lg:flex-row gap-4 w-full">
+          <div className="bg-white rounded-lg border border-gray-200 flex-1">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-lg font-semibold capitalize">Productos más vendidos</h2>
             </div>
-            <p className="text-sm text-gray-500">
-              Ingresos totales de todas las ventas
-            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-[#f5f5f5]">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Producto
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ganancia
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ventas
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {topProducts.map((product, index) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{product.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                        ${product.total_revenue.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-500 font-medium">
+                        {product.total_sales}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 flex-1">
+            <div className="px-6 py-4 flex justify-between items-center">
+              <h2 className="text-lg font-semibold capitalize">Ganancias Totales</h2>
+              <CircleDollarSign className="w-6 h-6 text-violet-500" />
+            </div>
+            <div className="p-6">
+            <div className="flex gap-2 items-baseline text-3xl font-bold text-gray-900 mb-2">
+              ${totalEarnings.toLocaleString()}
+              <span className="text-sm text-gray-500 font-normal">MXN</span>
+            </div>
+              
+              <p className="text-sm text-gray-500">
+                Ingresos totales de todas las ventas
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -222,7 +224,7 @@ const MenuContent = () => {
       {/* Recent Orders */}
       <div className="bg-white rounded-lg border border-[#e6e6e6] shadow-sm mb-6">
         <div className="px-6 py-4 border-b border-[#e6e6e6] flex justify-between items-center">
-          <h2 className="text-lg font-medium text-[#1b1f26]">Pedidos Recientes</h2>
+          <h2 className="text-lg font-semibold capitalize">Pedidos Recientes</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -245,10 +247,10 @@ const MenuContent = () => {
             <tbody className="divide-y divide-[#e6e6e6]">
               {recentSales.map((sale, i) => (
                 <tr key={i} className="hover:bg-[#f5f5f5]">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]">{sale.id}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{sale.id}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{sale.customer}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{sale.date}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#1b1f26] font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">
                     ${sale.amount.toLocaleString()}
                   </td>
                 </tr>

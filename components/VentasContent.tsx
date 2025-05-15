@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Printer } from 'lucide-react';
+import { Plus, Search, Filter, Printer} from 'lucide-react';
 import LoginLogo from './login-logo';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
@@ -455,7 +455,7 @@ const VentasContent: React.FC = () => {
   };
 
   return (
-    <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
+    <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5] pb-10">
           <div className="flex justify-between items-center mb-6">
           <button 
             onClick={handleButtonClick}
@@ -496,22 +496,30 @@ const VentasContent: React.FC = () => {
                     const value = e.target.value;
                     setLocationFilter(value === '' ? null : Number(value));
                   }}
-                  className="pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    locationFilter === null ? 'text-gray-400' : 'text-gray-900'
+                  }`}
                 >
                   <option value="">Todas las ubicaciones</option>
                   {Object.entries(locations).map(([id, name]) => (
-                    <option key={id} value={id}>{name}</option>
+                    <option key={id} value={id}>
+                      {name}
+                    </option>
                   ))}
                 </select>
                 <Filter className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
               </div>
+
+              
               
               <div className="relative">
                 <input
                   type="date"
                   value={dateFilter}
                   onChange={(e) => setDateFilter(e.target.value)}
-                  className="pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    dateFilter === '' ? 'text-gray-400' : 'text-gray-900'
+                  }`}
                 />
                 <Filter className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
               </div>
@@ -536,18 +544,21 @@ const VentasContent: React.FC = () => {
                       key={venta.id} 
                       className="relative flex flex-col bg-white shadow-sm border border-slate-200 rounded-lg w-full hover:shadow-md transition-shadow"
                     >
+                      {/* Print Button */}
                       <button
                         onClick={() => handlePrint(venta)}
                         className="absolute top-3 right-3 p-2 text-gray-500 hover:text-blue-600 transition-colors"
                         title="Imprimir ticket"
                       >
-                        <Printer className="w-5 h-5" />
+                        <Printer className="w-5 h-5 text-[#1366D9]" />
                       </button>
+
+                      {/* Header */}
                       <div className="mx-3 mb-0 border-b border-slate-200 pt-3 pb-2 px-1">
                         <div className="flex items-center gap-3">
                           <LoginLogo size={60} />
                           <div>
-                            <h2 className="text-lg font-semibold">Venta #{venta.id}</h2>
+                            <h2 className="text-lg font-semibold capitalize">Venta #{venta.id}</h2>
                             <p className="font-light text-sm mt-2">Ubicación: {venta.locationName}</p>
                             <p className="font-light text-sm mt-2">Cliente: {venta.clientName}</p>
                           </div>
@@ -557,30 +568,38 @@ const VentasContent: React.FC = () => {
                           <p>{fecha.toLocaleTimeString()}</p>
                         </div>
                       </div>
-                      <div className="p-4">
-                        <div className="flex justify-between text-gray-400 pb-3">
+
+                      {/* Product List */}
+                      <div className="p-4 pb-20"> {/* <- Note the extra bottom padding */}
+                        <div className="grid grid-cols-3 text-gray-400 pb-3 text-sm font-medium">
                           <span>Cantidad</span>
-                          <span>Producto</span>
-                          <span>Precio</span>
+                          <span className="text-center">Producto</span>
+                          <span className="text-right">Precio</span>
                         </div>
-                        <ul className="text-slate-600 font-light">
+
+                        <ul className="text-slate-600 font-light text-sm">
                           {venta.items.slice(0, 3).map((producto, index) => (
-                            <li key={index} className="flex justify-between py-1">
+                            <li key={index} className="grid grid-cols-3 py-1">
                               <span>{producto.quantity}</span>
-                              <span className="mx-2 text-ellipsis overflow-hidden">
+                              <span className="text-center capitalize">
                                 {formatProductWithAttributes(producto)}
                               </span>
-                              <span>${producto.unitPrice * producto.quantity} MXN</span>
+                              <span className="text-right">
+                                ${producto.unitPrice * producto.quantity} MXN
+                              </span>
                             </li>
                           ))}
+
                           {venta.items.length > 3 && (
-                            <li className="text-center text-blue-600 text-sm py-1">
+                            <li className="text-center text-blue-600 text-sm py-1 col-span-3">
                               {venta.items.length - 3} productos más...
                             </li>
                           )}
                         </ul>
                       </div>
-                      <div className="mx-3 border-t border-slate-200 pb-3 pt-2 px-1 flex justify-between items-center">
+
+                      {/* Fixed Bottom Section */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2 flex justify-between items-center rounded-b-lg">
                         <p className="text-sm text-slate-600 font-medium">Total: ${venta.total} MXN</p>
                         <button 
                           onClick={() => router.push(`/dashboard/ventas/${venta.id}`)}
