@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import CheckoutVenta from '@/components/CheckoutVenta';
 
-export default function AgregarVentaPage() {
+function AgregarVentaContent() {
   const searchParams = useSearchParams();
   const locationId = searchParams.get('locationId');
 
@@ -16,6 +17,14 @@ export default function AgregarVentaPage() {
         onClose={() => window.history.back()}
       />
     </div>
+  );
+}
+
+export default function AgregarVentaPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Cargando...</div>}>
+      <AgregarVentaContent />
+    </Suspense>
   );
 }
 
