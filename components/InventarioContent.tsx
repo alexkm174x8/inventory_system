@@ -184,9 +184,10 @@ const InventarioContent: React.FC = () => {
         </button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md  border border-[#e6e6e6] transition-shadow duration-200">
+        {/* Total Inventory Card */}
+        <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold capitalize">Inventario Total</h2>
+            <h2 className="text-lg font-semibold text-gray-700">Inventario Total</h2>
             <Package className="w-6 h-6 text-violet-500" />
           </div>
           <div className="flex items-baseline">
@@ -199,9 +200,9 @@ const InventarioContent: React.FC = () => {
         </div>
 
         {/* Products with Stock Card */}
-        <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md border border-[#e6e6e6]  transition-shadow duration-200">
+        <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold capitalize">Productos con Stock</h2>
+            <h2 className="text-lg font-semibold text-gray-700">Productos con Stock</h2>
             <AlertCircle className="w-6 h-6 text-red-500" />
           </div>
           <div className="flex items-baseline">
@@ -214,6 +215,7 @@ const InventarioContent: React.FC = () => {
         </div>
 
         {/* Products without Stock Card */}
+
         <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md border border-[#e6e6e6]  transition-shadow duration-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold capitalize">Productos sin Stock</h2>

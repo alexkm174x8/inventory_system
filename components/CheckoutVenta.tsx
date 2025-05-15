@@ -48,6 +48,7 @@ interface Client {
   phone?: string;
   user_id: number;
   discount: number;
+  is_default?: boolean;
 }
 
 // Interface for cart items
@@ -74,6 +75,9 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   // State for location info
   const [locationInfo, setLocationInfo] = useState<Location | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState('');
+  // Add state for admin status
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  
   // Add state for admin status
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   
@@ -113,27 +117,58 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         
         if (error) throw error;
         
-        // Check if we have a "Cliente General" in the data
-        // If not, we'll create a default client object
-        let clienteGeneral = data?.find(client => 
-          client.name.toLowerCase() === 'cliente general' || 
-          client.name.toLowerCase() === 'general'
+        // Create default "Público en General" client if it doesn't exist
+        let publicoGeneral = data?.find(client => 
+          client.name.toLowerCase() === 'público en general' || 
+          client.name.toLowerCase() === 'publico en general'
         );
         
-        if (clienteGeneral) {
-          setSelectedClientId(clienteGeneral.id);
-          setDescuento(clienteGeneral.discount || 0);
-          setInputDescuento(clienteGeneral.discount?.toString() || "0");
+        if (!publicoGeneral) {
+          // Insert the default client
+          const { data: newClient, error: insertError } = await supabase
+            .from('clients')
+            .insert([
+              {
+                name: 'Público en General',
+                user_id: userId,
+                discount: 0,
+                is_default: true
+              }
+            ])
+            .select()
+            .single();
+          
+          if (insertError) throw insertError;
+          publicoGeneral = newClient;
+        }
+        
+        // Combine the default client with other clients
+        const allClients = publicoGeneral 
+          ? [publicoGeneral, ...(data?.filter(c => c.id !== publicoGeneral?.id) || [])]
+          : data || [];
+        
+        setClients(allClients);
+        
+        // Always select "Público en General" by default
+        if (publicoGeneral) {
+          setSelectedClientId(publicoGeneral.id);
+          setDescuento(publicoGeneral.discount || 0);
+          setInputDescuento(publicoGeneral.discount?.toString() || "0");
+
         } else if (data && data.length > 0) {
-          // If no "Cliente General", select the first client
+          // Fallback to first client if somehow publicoGeneral wasn't created
           setSelectedClientId(data[0].id);
           setDescuento(data[0].discount || 0);
           setInputDescuento(data[0].discount?.toString() || "0");
         }
         
-        setClients(data || []);
       } catch (error) {
         console.error('Error fetching clients:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Error al cargar los clientes",
+        });
       } finally {
         setLoadingClients(false);
       }
@@ -765,7 +800,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
               </SelectTrigger>
               <SelectContent>
                 {clients.map(client => (
-                  <SelectItem key={client.id} value={client.id.toString()}>
+                  <SelectItem 
+                    key={client.id} 
+                    value={client.id.toString()}
+                    className={client.is_default ? "font-semibold" : ""}
+                  >
                     {client.name} {client.discount > 0 ? `(${client.discount}% desc.)` : ''}
                   </SelectItem>
                 ))}
@@ -818,6 +857,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                 </div>
               )}
             </div>
+
             {/* Discount input - only show for admins */}
             {isAdmin && (
               <div className="mt-4">

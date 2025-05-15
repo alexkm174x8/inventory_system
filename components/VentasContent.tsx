@@ -552,7 +552,6 @@ const VentasContent: React.FC = () => {
                       >
                         <Printer className="w-5 h-5 text-[#1366D9]" />
                       </button>
-
                       {/* Header */}
                       <div className="mx-3 mb-0 border-b border-slate-200 pt-3 pb-2 px-1">
                         <div className="flex items-center gap-3">
