@@ -28,7 +28,6 @@ interface LocationSelectorProps {
 const LocationSelector: React.FC<LocationSelectorProps> = ({
   isOpen,
   onClose,
-  onLocationSelected,
 }) => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
