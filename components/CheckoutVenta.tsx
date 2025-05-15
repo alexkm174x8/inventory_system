@@ -536,7 +536,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     <div className="flex">
       <div className="w-3/4 p-8 bg-white rounded-lg h-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Nueva venta</h1>
+          <h1 className="text-lg font-semibold capitalize">Nueva venta</h1>
           {locationInfo && (
             <div className="flex items-center rounded-full bg-blue-50 px-3 py-1">
               <Building className="w-4 h-4 text-blue-700 mr-2" />
@@ -740,7 +740,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         </div>
       </div>
       <div className="w-1/4 p-4 bg-white mx-4 h-full rounded-lg">
-        <h1 className="text-xl font-bold mb-4">Resumen de venta</h1>
+        <h1 className="text-lg font-semibold capitalize">Resumen de venta</h1>
         <div className="mb-4">
           <label htmlFor="client" className="text-sm font-medium mb-2 flex items-center">
             <Users className="w-4 h-4 mr-1 text-gray-500" />
