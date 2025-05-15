@@ -8,7 +8,6 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from "@/components/ui/use-toast";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -75,7 +74,7 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
         setNegocioBillingAmount(negData.billing_amount.toString());
 
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cargar datos';
+        //const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cargar datos';
         toast({
           variant: "destructive",
           title: "Error",

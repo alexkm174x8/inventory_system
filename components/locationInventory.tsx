@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Eye, SlidersHorizontal, ChevronLeft, ChevronRight, Check, ArrowLeft } from 'lucide-react';
+import { Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 import { useRouter, useParams } from 'next/navigation';
@@ -54,7 +54,7 @@ const LocationInventory: React.FC = () => {
   const { id } = useParams();
   const locationId = Number(id);
   
-  const [filterStatus, setFilterStatus] = useState("Todos");
+  const [filterStatus, ] = useState("Todos");
   const [currentPage, setCurrentPage] = useState(1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);

@@ -19,12 +19,6 @@ interface AddProductToStockProps {
   onClose: () => void;
 }
 
-interface StockCheck {
-  id: number;
-  stock: number;
-  price: number | null;
-}
-
 const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onClose }) => {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);

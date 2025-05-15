@@ -27,14 +27,14 @@ interface CreateProductViewProps {
 
 const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, onClose }) => {
   const [productImage, setProductImage] = useState<string | null>(null);
-  const [fileName, setFileName] = useState("");
+  //const [fileName, setFileName] = useState("");
   const [productName, setProductName] = useState('');
   const [productNameError, setProductNameError] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
+  //const [isDragging, setIsDragging] = useState(false);
   const [attributes, setAttributes] = useState<Attribute[]>([{ name: '', options: [''] }]);
   const [attributeErrors, setAttributeErrors] = useState<string[]>([]);
-  const [file, setFile] = useState<File | null>(null);
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  //const [file, setFile] = useState<File | null>(null);
+  //const [fileUrl, setFileUrl] = useState<string | null>(null);
 
   const validateForm = () => {
     let valid = true;

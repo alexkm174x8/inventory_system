@@ -33,12 +33,12 @@ interface Variant {
 
 const InventarioContent: React.FC = () => {
   const router = useRouter();
-  const [filterStatus, setFilterStatus] = useState<'Todos' | 'ConStock'>('Todos');
+  const [filterStatus] = useState<'Todos' | 'ConStock'>('Todos');
   const [currentPage, setCurrentPage] = useState(1);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [locationMap, setLocationMap] = useState<Record<number, string>>({});
+  const [, setLocationMap] = useState<Record<number, string>>({});
 
   const itemsPerPage = 6;
 

@@ -102,7 +102,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           setIsLoading(false);
         }
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : 'Error desconocido al obtener datos';
+        //const errorMessage = err instanceof Error ? err.message : 'Error desconocido al obtener datos';
         if (mounted) {
           setUserName('Error al obtener datos');
           setIsLoading(false);
@@ -138,7 +138,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       }
       router.push('/');
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cerrar sesión';
+      //const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cerrar sesión';
     }
   };
 
