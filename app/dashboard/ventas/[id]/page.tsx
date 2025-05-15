@@ -44,18 +44,6 @@ interface Client {
     name: string;
 }
 
-interface DatabaseSale {
-    id: number;
-    created_at: string;
-    sales_items?: SalesItem[];
-    discount_percentage: number;
-    total_amount: number;
-    client: number | null;
-    clients?: Client;
-    location: number;
-    salesman: string;
-}
-
 interface Venta {
     id: string;
     createdAt: string;

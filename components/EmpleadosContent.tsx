@@ -9,11 +9,9 @@ interface Employee {
   id: number;
   name: string;
   email: string;
-  salary: number;
   role: string;
-  phone: number;
-  location_id: number;
-  location_name: string
+  user_id: number;
+  auth_id: string;
 }
 
 export default function EmpleadosContent() {
@@ -21,17 +19,12 @@ export default function EmpleadosContent() {
 const router = useRouter();
 const [employees, setEmployees] = useState<Employee[]>([]);
 const [locationMap, setLocationMap] = useState<Record<number, string>>({});
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState<string | null>(null);
 const [currentPage, setCurrentPage] = useState(1);
 const itemsPerPage = 6;
 const totalPages = Math.ceil(employees.length / itemsPerPage);
 const startIndex = (currentPage - 1) * itemsPerPage;
 const currentData = employees.slice(startIndex, startIndex + itemsPerPage);
 const loadEmployeesAndLocations = async () => {
-
-setLoading(true);
-setError(null);
 
 try {
   const userId = await getUserId();
@@ -67,9 +60,6 @@ try {
 );
   } catch (err: any) {
     console.error(err);
-    setError(err.message);
-  } finally {
-    setLoading(false);
   }
 };
 

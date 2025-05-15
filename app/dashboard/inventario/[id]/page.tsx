@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import ProductDetailView from '@/components/ProductDetailView';
 
 export default function Page() {

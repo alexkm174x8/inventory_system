@@ -2,8 +2,12 @@ import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  BarChart2, Archive, Users, CircleDollarSign,
-  Store, Settings, LogOut, Bell, ChevronDown, SquareUserRound, UserPlus, Menu as MenuIcon
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Users,
+  Building,
+  LogOut
 } from 'lucide-react';
 import { getUserId, getUserRole } from '@/lib/userId';
 import { supabase } from '@/lib/supabase';
@@ -144,12 +148,12 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   };
 
   const allMenuItems = [
-    { label: 'Menú', href: '/dashboard/menu', icon: <BarChart2 /> },
-    { label: 'Inventario', href: '/dashboard/inventario', icon: <Archive /> },
+    { label: 'Menú', href: '/dashboard/menu', icon: <LayoutDashboard /> },
+    { label: 'Inventario', href: '/dashboard/inventario', icon: <Package /> },
     { label: 'Clientes', href: '/dashboard/clientes', icon: <Users /> },
-    { label: 'Ventas', href: '/dashboard/ventas', icon: <CircleDollarSign /> },
-    { label: 'Empleados', href: '/dashboard/empleados', icon: <SquareUserRound /> },
-    { label: 'Sucursales', href: '/dashboard/sucursales', icon: <Store /> },
+    { label: 'Ventas', href: '/dashboard/ventas', icon: <ShoppingCart /> },
+    { label: 'Empleados', href: '/dashboard/empleados', icon: <Building /> },
+    { label: 'Sucursales', href: '/dashboard/sucursales', icon: <Building /> },
     //{ label: 'Configuración', href: '/dashboard/configuracion', icon: <Settings /> },
   ];
 
@@ -234,11 +238,11 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       <div className="flex-1 flex flex-col">
         <header className="bg-white border-b py-4 px-6 flex items-center justify-between">
           <button className="md:hidden" onClick={() => setIsMobileMenuOpen(o => !o)}>
-            <MenuIcon className="h-6 w-6" />
+            <LayoutDashboard className="h-6 w-6" />
           </button>
           <h1 className="text-2xl font-bold">{pageTitle}</h1>
           <div className="flex items-center space-x-4">
-            <Bell />
+            <LayoutDashboard />
             <div className="flex items-center">
               <div className="h-8 w-8 rounded-full bg-[#007aff] text-white flex items-center justify-center">
                 {!isLoading && userName && !['Error de sesión', 'No autenticado', 'Error al cargar perfil', 'Perfil no encontrado', 'Error al obtener ID', 'Error inesperado', 'Error al obtener datos'].includes(userName)
@@ -246,7 +250,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                   : ''}
               </div>
               <button className="ml-2 flex items-center text-sm">
-                {userName} <ChevronDown className="ml-1 h-4 w-4" />
+                {userName} <LayoutDashboard className="ml-1 h-4 w-4" />
               </button>
             </div>
           </div>

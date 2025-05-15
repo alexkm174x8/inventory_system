@@ -33,6 +33,8 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
   const [isDragging, setIsDragging] = useState(false);
   const [attributes, setAttributes] = useState<Attribute[]>([{ name: '', options: [''] }]);
   const [attributeErrors, setAttributeErrors] = useState<string[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
 
   const validateForm = () => {
     let valid = true;
