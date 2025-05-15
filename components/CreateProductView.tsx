@@ -174,7 +174,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
     setAttributes([...attributes, { name: '', options: [''] }]);
   };
 
-  const [insertedId, setInsertedId] = useState(null);
+  //const [insertedId, setInsertedId] = useState(null);
 
   async function insertProduct() {
     try {
