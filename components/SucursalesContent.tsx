@@ -55,7 +55,7 @@ useEffect(() => {
 }, [])
 
   return (
-    <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
+    <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5] pb-10">
       <div className="mb-6">
           <button onClick={() => router.push("/dashboard/sucursales/agregarsucursal")}
           className="px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors">

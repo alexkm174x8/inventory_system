@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Trash2, Pencil } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import {
   AlertDialog,
@@ -31,8 +32,8 @@ interface InventoryItem {
   unitPrice?: number;
   imageUrl?: string | null;
   attributes?: any[];
-  price?: number; // Add price field
-  location_id?: number; // Add location id field
+  price?: number; 
+  location_id?: number; 
 }
 
 type SupabaseStockItem = {
@@ -40,8 +41,8 @@ type SupabaseStockItem = {
   variant_id: number;
   stock: number;
   added_at: string;
-  price: number; // Make sure price is included
-  location: number; // Add location field
+  price: number;
+  location: number;
   locations: { name: string; id: number } | null;
   productVariants: {
     product_id: number;
@@ -64,24 +65,21 @@ type SupabaseStockItem = {
 };
 
 interface ProductDetailViewProps {
-  onClose: () => void;
 }
 
-interface ProductDetailPageParams {
-  id?: string;
-  [key: string]: string | string[] | undefined; 
-}
-
-const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
+const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
+  const params = useParams();
   const router = useRouter();
   const { id: productId } = useParams<ProductDetailPageParams>();
+  //const productIdFromParams = params?.productId || params?.id;
+  //const productId = Array.isArray(productIdFromParams) ? productIdFromParams[0] : productIdFromParams;
   const { toast } = useToast();
   const [product, setProduct] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
-  // New states for editing
+  // States for editing
   const [isEditing, setIsEditing] = useState(false);
   const [editedQuantity, setEditedQuantity] = useState<number | string>('');
   const [editedPrice, setEditedPrice] = useState<number | string>('');
@@ -126,6 +124,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
           .eq('id', productId)
           .single()
           .returns<SupabaseStockItem>();
+          console.log("Iddddd", productId)
 
         if (supaErr) throw supaErr;
 
@@ -153,8 +152,8 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
             entryDate: new Date(data.added_at).toLocaleDateString(),
             ubicacion_nombre: loc,
             caracteristicas: chars,
-            price: data.price, // Store price
-            location_id: data.location // Store location id
+            price: data.price, 
+            location_id: data.location 
           };
 
           setProduct(productData);
@@ -172,7 +171,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
     };
 
     loadProductDetails();
-  }, [productId]);
+  }, [productId, router ]);
 
   // Function to handle entering edit mode
   const handleEditClick = () => {
@@ -289,6 +288,9 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
       onClose();
       router.refresh(); // Force a refresh of the page data
       router.push('/dashboard/inventario');
+      // Redirect to products list
+      //router.push('/dashboard/inventario');
+      //router.refresh(); // Force a refresh of the page data
     } catch (err: any) {
       console.error('Error in frontend delete handler:', err);
       const errorMessage = err.message || 'Error desconocido al eliminar el producto';
@@ -328,8 +330,8 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
       <Card className="w-full overflow-hidden">
         <CardContent>
           <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3">
-            <h1 className="text-2xl font-bold capitalize mb-4">Producto</h1>
-            <p className="text-lg font-light flex items-center gap-2">
+            <h1 className="text-lg font-semibold capitalize">Producto</h1>
+            <p className="text-md font-light flex items-center gap-2">
               ID #{product.id}
             </p>
           </div>
@@ -383,7 +385,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
               <ul>
                 {product.caracteristicas.map((char, index) => (
                   <li key={index}>
-                    <p className='text-lg'>
+                    <p>
                       <strong>{char.name}:</strong> {char.value}
                     </p>
                   </li>
@@ -395,34 +397,41 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
           {updateError && (
             <div className="text-red-500 my-2">{updateError}</div>
           )}
+          <div className="flex flex-wrap justify-center gap-3 mt-6 relative">
+            <div className="lg:text-center sm:text-left w-full">
+              {isEditing ? (
+                <>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleCancelEdit} 
+                    disabled={updateLoading}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    className="bg-blue-500 hover:bg-blue-600" 
+                    onClick={handleSaveEdit} 
+                    disabled={updateLoading}
+                  >
+                    {updateLoading ? 'Guardando...' : 'Guardar'}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => router.back()}>
+                    Cerrar
+                  </Button>
+                </>
+              )}
+            </div>
 
-          <div className="flex flex-wrap justify-center gap-3 mt-6">
-            {isEditing ? (
-              <>
-                <Button 
-                  variant="outline" 
-                  onClick={handleCancelEdit} 
-                  disabled={updateLoading}
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  className="bg-blue-500 hover:bg-blue-600" 
-                  onClick={handleSaveEdit} 
-                  disabled={updateLoading}
-                >
-                  {updateLoading ? 'Guardando...' : 'Guardar'}
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={onClose}>
-                  Cerrar
-                </Button>
+            {!isEditing && (
+              <div className="absolute bottom-0 right-0 flex gap-3">
                 <Button 
                   className="bg-blue-500 hover:bg-blue-600" 
                   onClick={handleEditClick}
                 >
+                  <Pencil className="w-4 h-4 mr-2" />
                   Editar
                 </Button>
                 <Button 
@@ -430,9 +439,10 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ onClose }) => {
                   onClick={() => setShowDeleteDialog(true)}
                   disabled={updateLoading}
                 >
+                  <Trash2 className="w-4 h-4 mr-2" />
                   Eliminar
                 </Button>
-              </>
+              </div>
             )}
           </div>
         </CardContent>

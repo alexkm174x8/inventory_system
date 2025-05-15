@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from 'lucide-react';
 
+
 interface   NegociosViewProps {
   onClose: () => void;
 }
@@ -84,7 +85,6 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
 
     fetchNegocio();
   }, [id, router, toast]);
-
   const handleDelete = async () => {
     if (!id) return;
 
@@ -196,7 +196,7 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
       <Card className="w-full overflow-hidden mt-6">
         <CardContent>
           <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3">
-            <h1 className="text-2xl font-bold capitalize">Negocio</h1>
+            <h1 className="text-lg font-semibold capitalize">Negocio</h1>
             <p className="text-lg font-light">ID# {negocioId}</p>
           </div>
 

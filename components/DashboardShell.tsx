@@ -181,7 +181,9 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         // Only redirect if we're not already on the correct page
         if (userRole === 'employee') {
           if (employeeRole === 'inventario' && !pathname.startsWith('/dashboard/inventario')) {
-        router.push('/dashboard/inventario');
+
+            router.push('/dashboard/inventario');
+
           } else if (employeeRole === 'ventas' && !pathname.startsWith('/dashboard/ventas')) {
             router.push('/dashboard/ventas');
           }

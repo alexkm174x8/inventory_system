@@ -253,7 +253,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
       <Card className="w-full max-w-3xl mx-auto">
         <CardContent className="p-6 ">
           <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-            <h1 className="text-2xl font-bold  capitalize mb-4">Nuevo Producto</h1>
+            <h1 className="text-lg font-semibold capitalize">Nuevo Producto</h1>
           </div>
           {/*
           <div

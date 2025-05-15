@@ -51,8 +51,8 @@ type SupabaseStockItem = {
 
 const LocationInventory: React.FC = () => {
   const router = useRouter();
-  const params = useParams();
-  const locationId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const { id } = useParams();
+  const locationId = Number(id);
   
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [currentPage, setCurrentPage] = useState(1);
@@ -217,14 +217,14 @@ const LocationInventory: React.FC = () => {
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold  capitalize mb-4">Inventario {locationName}</h1>
+          <h1 className="text-lg font-semibold capitalize">Inventario {locationName}</h1>
         </div>
         <div className="flex gap-4">
           <button
             onClick={() => router.push('/dashboard/inventario')}
             className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
           >
-            <Eye className="w-4 h-4" />
+            <Eye className="w-4 h-4 mx-auto" />
             Ver todo inventario
           </button>
         </div>
@@ -286,18 +286,20 @@ const LocationInventory: React.FC = () => {
                 currentData.map((item) => (
                   <tr key={item.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]  capitalize">{item.productName}</td>
-                    <td className="px-6 py-4 text-sm text-[#667085]  capitalize">{item.caracteristicas.join(', ')}</td>
+                    <td className="px-6 py-4 text-sm text-[#667085] capitalize">{item.caracteristicas.join(', ')}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.quantity}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.entryDate}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-6 py-4 text-sm">
                       <button
                         className="text-indigo-600 hover:text-indigo-900"
-                        onClick={() => router.push(`/dashboard/inventario/producto/${item.variant_id}`)}
+                        onClick={() => router.push(`/dashboard/sucursales/${locationId}/inventario/${item.id}`)}
                       >
                         <Eye className="w-4 h-4 mx-auto" />
                       </button>
+                      
                     </td>
                   </tr>
+                  
                 ))
               ) : (
                 <tr>

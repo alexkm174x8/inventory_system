@@ -166,7 +166,7 @@ const InventarioContent: React.FC = () => {
   }
 
   return (
-    <main className="flex-1 overflow-y-auto p-4 bg-[#f5f5f5]">
+    <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5] pb-10">
       <div className="flex gap-4 mb-6">
         <button
           onClick={() => router.push('/dashboard/inventario/crearproducto')}
@@ -215,9 +215,10 @@ const InventarioContent: React.FC = () => {
         </div>
 
         {/* Products without Stock Card */}
-        <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow duration-200">
+
+        <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md border border-[#e6e6e6]  transition-shadow duration-200">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-700">Productos sin Stock</h2>
+            <h2 className="text-lg font-semibold capitalize">Productos sin Stock</h2>
             <TrendingUp className="w-6 h-6 text-orange-500" />
           </div>
           <div className="flex items-baseline">
@@ -233,7 +234,7 @@ const InventarioContent: React.FC = () => {
       {/* Tabla */}
       <div className="bg-white rounded-lg border border-[#e6e6e6] shadow-sm mt-8">
         <div className="px-6 py-4 border-b border-[#e6e6e6] flex justify-between items-center">
-          <h2 className="text-lg font-medium text-[#1b1f26]">Lista de Inventario</h2>
+          <h2 className="text-lg font-semibold capitalize">Lista de Inventario</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -249,7 +250,7 @@ const InventarioContent: React.FC = () => {
           <tbody className="divide-y divide-[#e6e6e6] text-center">
             {pageData.map(item => (
               <tr key={item.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26]  capitalize">{item.productName}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085] capitalize">{item.productName}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]  capitalize">{item.caracteristicas.join(', ')}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">{item.quantity}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]  capitalize">{item.ubicacion_nombre}</td>
@@ -267,23 +268,23 @@ const InventarioContent: React.FC = () => {
           </tbody>
         </table>
         <div className="px-6 py-4 border-t border-[#e6e6e6] flex justify-between items-center">
-          <button
-            onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            <ChevronLeft className="inline w-4 h-4" /> Anterior
-          </button>
-          <span className="text-sm">
-            Página {currentPage} de {totalPages}
-          </span>
-          <button
-            onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            Siguiente <ChevronRight className="inline w-4 h-4" />
-          </button>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={`border-2 px-3 py-2 flex items-center gap-2 rounded-sm ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <ChevronLeft className="w-4 h-4" /> Anterior
+              </button>
+              <span className="text-xs font-medium text-[#667085] uppercase tracking-wider">
+                Página {currentPage} de {totalPages}
+              </span> 
+              <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`border-2 px-3 py-2 flex items-center gap-2 rounded-sm ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+              Siguiente <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>

@@ -203,7 +203,7 @@ const AddNegocio: React.FC<AddNegocioProps> = ({ onClose, onNegocioAdded }) => {
       <Card className="w-full">
         <CardContent className="p-6">
           <h1 className="text-2xl font-bold capitalize mb-4">Agregar negocio</h1>
-
+          
           <div className="mb-4">
             <Label htmlFor="name">Nombre</Label>
             <Input

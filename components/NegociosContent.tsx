@@ -69,6 +69,7 @@ export default function NegociosContent() {
     loadNegocios();
   }, []);
 
+
   return (
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5]">
       <div className="flex gap-4 mb-9">
@@ -79,6 +80,10 @@ export default function NegociosContent() {
           <Plus className="w-4 h-4" />
           Agregar Negocio
         </button>
+      </div>
+      <div className="bg-white rounded-lg border border-[#e6e6e6] shadow-sm mt-8">
+        <div className="px-6 py-4 border-b border-[#e6e6e6] flex justify-between items-center">
+          <h2 className="text-lg font-semibold capitalize">Lista de Negocios</h2>
       </div>
       <div className="bg-white rounded-lg border border-[#e6e6e6] shadow-sm mt-8">
         <div className="px-6 py-4 border-b border-[#e6e6e6] flex justify-between items-center">
