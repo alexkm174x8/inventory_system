@@ -211,10 +211,10 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
     }
   }
   
-  async function insertOptions(attributesData: any[], nonEmptyAttributes: Attribute[]) {
+  async function insertOptions(attributesData: { characteristics_id: number; name: string }[], nonEmptyAttributes: Attribute[]) {
     try {
       // Create an array to hold all options to be inserted
-      const optionsToInsert: any[] = [];
+      const optionsToInsert: { characteristics_id: number; values: string }[] = [];
       
       // For each attribute, find its corresponding ID and add its options
       for (let i = 0; i < attributesData.length; i++) {
@@ -243,8 +243,8 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
         if (error) throw error;
         console.log("Inserted options successfully");
       }
-    } catch (error) {
-      console.error('Error inserting options:', error);
+    } catch (error: unknown) {
+      console.error('Error inserting options:', error instanceof Error ? error.message : 'Unknown error');
     }
   }
   

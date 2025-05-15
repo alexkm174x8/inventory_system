@@ -42,9 +42,9 @@ const ClientesContent = () => {
 
       if (error) throw error;
       setClients(data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'Error desconocido al cargar clientes');
     } finally {
       setLoading(false);
     }

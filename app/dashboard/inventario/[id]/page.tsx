@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { useParams } from 'next/navigation';
 import ProductDetailView from '@/components/ProductDetailView';
 
 export default function Page() {

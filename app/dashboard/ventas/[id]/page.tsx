@@ -39,11 +39,6 @@ interface SalesItem {
     sale_price: number;
 }
 
-interface Client {
-    id: number;
-    name: string;
-}
-
 interface Venta {
     id: string;
     createdAt: string;
