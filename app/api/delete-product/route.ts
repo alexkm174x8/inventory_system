@@ -46,10 +46,11 @@ export async function DELETE(request: Request) {
       message: 'Producto eliminado exitosamente',
       deletedProduct: { id: productId }
     });
-  } catch (error: any) {
-    console.error('Error in delete-product:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Error inesperado al eliminar el producto';
+    console.error('Error in delete-product:', errorMessage);
     return NextResponse.json({ 
-      error: 'Error inesperado al eliminar el producto'
+      error: errorMessage
     }, { status: 500 });
   }
 } 

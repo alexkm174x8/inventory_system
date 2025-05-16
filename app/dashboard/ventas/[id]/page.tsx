@@ -14,6 +14,31 @@ interface SaleItem {
     attributes?: Record<string, string>;
 }
 
+interface ProductCharacteristic {
+    name: string;
+}
+
+interface CharacteristicOption {
+    product_characteristics: ProductCharacteristic;
+    values: string;
+}
+
+interface Product {
+    name: string;
+    characteristics_options?: CharacteristicOption[];
+}
+
+interface Variant {
+    product?: Product;
+}
+
+interface SalesItem {
+    id: number;
+    variant?: Variant;
+    quantity_sold: number;
+    sale_price: number;
+}
+
 interface Venta {
     id: string;
     createdAt: string;
@@ -65,14 +90,13 @@ export default function Page() {
                     return;
                 }
 
-                const variantAttributes: Record<number, Record<string, string>> = {};
                 const transformedSale: Venta = {
                     id: venta.id.toString(),
                     createdAt: venta.created_at,
-                    items: venta.sales_items?.map((item: any) => {
+                    items: venta.sales_items?.map((item: SalesItem) => {
                         let itemAttributes: Record<string, string> = {};
                         if (item.variant?.product?.characteristics_options) {
-                            itemAttributes = item.variant.product.characteristics_options.reduce((acc: Record<string, string>, option: any) => {
+                            itemAttributes = item.variant.product.characteristics_options.reduce((acc: Record<string, string>, option: CharacteristicOption) => {
                                 if (option.product_characteristics?.name && option.values) {
                                     acc[option.product_characteristics.name] = option.values;
                                 }
@@ -97,8 +121,9 @@ export default function Page() {
                 };
                 setVenta(transformedSale);
                 setLoading(false);
-            } catch (error: any) {
-                setError(error.message || "Error al cargar la venta");
+            } catch (error: unknown) {
+                const errorMessage = error instanceof Error ? error.message : "Error al cargar la venta";
+                setError(errorMessage);
                 setLoading(false);
             }
         };

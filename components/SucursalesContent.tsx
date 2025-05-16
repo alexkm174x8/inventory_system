@@ -18,7 +18,7 @@ export default function SucursalesContent() {
   const [locations, setLocations] = useState<Location[]>([]);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const loadLocations = async () => {
 
   setLoading(true);
@@ -42,9 +42,9 @@ export default function SucursalesContent() {
     }))
 
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(err);
-    setError(err.message);
+    setError(err instanceof Error ? err.message : 'Error desconocido al cargar sucursales');
   } finally {
     setLoading(false);
   }

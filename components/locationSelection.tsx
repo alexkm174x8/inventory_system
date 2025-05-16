@@ -28,7 +28,6 @@ interface LocationSelectorProps {
 const LocationSelector: React.FC<LocationSelectorProps> = ({
   isOpen,
   onClose,
-  onLocationSelected,
 }) => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,13 +35,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
     null
   );
   const router = useRouter();
-
-  const initiateCheckout = () => {
-    if (selectedLocationId !== null) {
-      onLocationSelected(selectedLocationId);
-      onClose();
-    }
-  };
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -74,7 +66,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
     if (isOpen) {
       fetchLocations();
     }
-  }, [isOpen]);
+  }, [isOpen, selectedLocationId]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

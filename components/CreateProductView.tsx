@@ -27,12 +27,14 @@ interface CreateProductViewProps {
 
 const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, onClose }) => {
   const [productImage, setProductImage] = useState<string | null>(null);
-  const [fileName, setFileName] = useState("");
+  //const [fileName, setFileName] = useState("");
   const [productName, setProductName] = useState('');
   const [productNameError, setProductNameError] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
+  //const [isDragging, setIsDragging] = useState(false);
   const [attributes, setAttributes] = useState<Attribute[]>([{ name: '', options: [''] }]);
   const [attributeErrors, setAttributeErrors] = useState<string[]>([]);
+  //const [file, setFile] = useState<File | null>(null);
+  //const [fileUrl, setFileUrl] = useState<string | null>(null);
 
   const validateForm = () => {
     let valid = true;
@@ -172,7 +174,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
     setAttributes([...attributes, { name: '', options: [''] }]);
   };
 
-  const [insertedId, setInsertedId] = useState(null);
+  //const [insertedId, setInsertedId] = useState(null);
 
   async function insertProduct() {
     try {
@@ -209,10 +211,10 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
     }
   }
   
-  async function insertOptions(attributesData: any[], nonEmptyAttributes: Attribute[]) {
+  async function insertOptions(attributesData: { characteristics_id: number; name: string }[], nonEmptyAttributes: Attribute[]) {
     try {
       // Create an array to hold all options to be inserted
-      const optionsToInsert: any[] = [];
+      const optionsToInsert: { characteristics_id: number; values: string }[] = [];
       
       // For each attribute, find its corresponding ID and add its options
       for (let i = 0; i < attributesData.length; i++) {
@@ -241,8 +243,8 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
         if (error) throw error;
         console.log("Inserted options successfully");
       }
-    } catch (error) {
-      console.error('Error inserting options:', error);
+    } catch (error: unknown) {
+      console.error('Error inserting options:', error instanceof Error ? error.message : 'Unknown error');
     }
   }
   

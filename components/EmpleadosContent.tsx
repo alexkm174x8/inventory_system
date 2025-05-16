@@ -9,11 +9,13 @@ interface Employee {
   id: number;
   name: string;
   email: string;
-  salary: number;
   role: string;
-  phone: number;
+  user_id: number;
+  auth_id: string;
+  salary: number;
+  phone: string;
   location_id: number;
-  location_name: string
+  location_name?: string;
 }
 
 export default function EmpleadosContent() {
@@ -21,8 +23,6 @@ export default function EmpleadosContent() {
 const router = useRouter();
 const [employees, setEmployees] = useState<Employee[]>([]);
 const [locationMap, setLocationMap] = useState<Record<number, string>>({});
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState<string | null>(null);
 const [currentPage, setCurrentPage] = useState(1);
 const itemsPerPage = 6;
 const totalPages = Math.ceil(employees.length / itemsPerPage);
@@ -30,15 +30,12 @@ const startIndex = (currentPage - 1) * itemsPerPage;
 const currentData = employees.slice(startIndex, startIndex + itemsPerPage);
 const loadEmployeesAndLocations = async () => {
 
-setLoading(true);
-setError(null);
-
 try {
   const userId = await getUserId();
   if (!userId) throw new Error('Usuario no autenticado.');
   const { data: employees, error: empError } = await supabase
     .from('employees')
-    .select('id, name, email, salary, role, phone, location_id')
+    .select('id, name, email, salary, role, phone, location_id, user_id, auth_id')
     .eq('user_id', userId);
   if (empError) throw empError;
   const { data: locations, error: locError } = await supabase
@@ -57,19 +54,17 @@ try {
       id: emp.id,
       name: emp.name,
       email: emp.email,
-      salary: emp.salary,
       role: emp.role,
+      user_id: emp.user_id,
+      auth_id: emp.auth_id,
+      salary: emp.salary,
       phone: emp.phone,
       location_id: emp.location_id,
       location_name: locMap[emp.location_id]
-  }))
-
-);
-  } catch (err: any) {
-    console.error(err);
-    setError(err.message);
-  } finally {
-    setLoading(false);
+    }))
+  );
+  } catch (err: unknown) {
+    console.error('Error loading employees:', err instanceof Error ? err.message : 'Unknown error');
   }
 };
 

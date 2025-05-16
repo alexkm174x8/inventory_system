@@ -29,28 +29,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { getUserId } from '@/lib/userId';
 
-interface EmployeeViewProps {
-}
-
-const EmployeeView: React.FC<EmployeeViewProps> = () => {
-  const params = useParams();
-  const router = useRouter();
-
-  const employeeIdFromParams = params?.employeeId || params?.id;
-  const employeeId = Array.isArray(employeeIdFromParams) ? employeeIdFromParams[0] : employeeIdFromParams;
+const EmployeeView: React.FC = () => {
   const { toast } = useToast();
-  if (!params?.id) return null;
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
-
+  const router = useRouter();
+  const params = useParams();
+  const [loading, setLoading] = useState(true);
   const [employeeName, setEmployeeName] = useState('');
   const [employeeEmail, setEmployeeEmail] = useState('');
-  const [employeeSalary, setEmployeeSalary] = useState('');
-  const [employeeDbId, setEmployeeDbId] = useState('');
   const [employeeRole, setEmployeeRole] = useState('');
+  const [employeeId, setEmployeeId] = useState<number | null>(null);
+  const [employeeLocation, setEmployeeLocation] = useState<string | null>(null);
+  const [employeeSalary, setEmployeeSalary] = useState('');
   const [employeePhone, setEmployeePhone] = useState('');
-  const [employeeLocationName, setEmployeeLocationName] = useState('');
-  const [loading, setLoading] = useState(true);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -62,21 +54,28 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
 
   useEffect(() => {
     const fetchEmployee = async () => {
-      if (!employeeId) {
-        console.warn('No se proporcionó un ID de empleado.');
-        setLoading(false);
-        return;
-      }
-
       try {
-        const { data: empData, error: empErr } = await supabase
+        const userId = await getUserId();
+        const id = params?.id;
+        if (!id) {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "ID de empleado no proporcionado",
+          });
+          router.push('/dashboard/empleados');
+          return;
+        }
+        
+        // Get employee details
+        const { data: employeeData, error: employeeError } = await supabase
           .from('employees')
-          .select('id, name, email, salary, role, phone, location_id')
-          .eq('id', employeeId)
+          .select('*, locations(name)')
+          .eq('id', id)
+          .eq('user_id', userId)
           .single();
 
-        if (empErr || !empData) {
-
+        if (employeeError || !employeeData) {
           toast({
             variant: "destructive",
             title: "Error",
@@ -86,31 +85,15 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
           return;
         }
 
-        setEmployeeDbId(empData.id.toString());
-        setEmployeeName(empData.name);
-        setEmployeeEmail(empData.email);
-        setEmployeeSalary(empData.salary.toString());
-        setEmployeeRole(empData.role);
-        setEmployeePhone(empData.phone.toString());
-
-        const { data: locData, error: locError } = await supabase
-          .from('locations')
-          .select('name')
-          .eq('id', empData.location_id)
-          .maybeSingle();
-
-        if (locError) {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Error al cargar la información de la sucursal",
-          });
-        }
-
-        setEmployeeLocationName(locData?.name ?? 'Desconocida');
-
-      } catch (err) {
-        console.error('Error al cargar datos:', err);
+        setEmployeeName(employeeData.name);
+        setEmployeeEmail(employeeData.email);
+        setEmployeeRole(employeeData.role);
+        setEmployeeId(employeeData.id);
+        setEmployeeLocation(employeeData.locations?.name || null);
+        setEmployeeSalary(employeeData.salary.toString());
+        setEmployeePhone(employeeData.phone.toString());
+      } catch (err: unknown) {
+        console.error('Error al cargar el empleado', err);
         toast({
           variant: "destructive",
           title: "Error",
@@ -123,7 +106,7 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
     };
 
     fetchEmployee();
-  }, [id, router, toast]);
+  }, [router, toast, params]);
 
   const handlePasswordReset = async () => {
     if (newPassword !== confirmPassword) {
@@ -146,7 +129,7 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          employeeId: id,
+          employeeId: employeeId,
           newPassword,
         }),
       });
@@ -162,16 +145,16 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
         description: "Contraseña actualizada exitosamente",
       });
 
-      // Reset form and close dialog
       setNewPassword('');
       setConfirmPassword('');
       setIsResetDialogOpen(false);
-    } catch (error: any) {
-      setResetError(error.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido al resetear la contraseña';
+      setResetError(errorMessage);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message,
+        description: errorMessage,
       });
     } finally {
       setResetLoading(false);
@@ -183,8 +166,8 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
     setDeleteError(null);
 
     try {
-      console.log('Attempting to delete employee with ID:', id);
-      const response = await fetch(`/api/delete-employee?id=${id}`, {
+      console.log('Attempting to delete employee with ID:', employeeId);
+      const response = await fetch(`/api/delete-employee?id=${employeeId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -203,13 +186,10 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
         description: `Empleado ${data.deletedEmployee?.name || ''} eliminado exitosamente`,
       });
 
-      // Close the view and redirect to employees list
-      onClose();
-
       router.push('/dashboard/empleados');
-    } catch (error: any) {
-      console.error('Error deleting employee:', error);
-      const errorMessage = error.message || 'Error desconocido al eliminar el empleado';
+    } catch (err: unknown) {
+      console.error('Error deleting employee:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido al eliminar el empleado';
       setDeleteError(errorMessage);
       toast({
         variant: "destructive",
@@ -253,7 +233,7 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
               <h2 className="font-semibold">Características</h2>
               <p><strong>Salario:</strong> ${employeeSalary} MXN</p>
               <p><strong>Rol:</strong> {employeeRole}</p>
-              <p><strong>Sucursal:</strong> {employeeLocationName}</p>
+              <p><strong>Sucursal:</strong> {employeeLocation}</p>
             </section>
 
             <div className="relative mt-6">

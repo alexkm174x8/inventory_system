@@ -8,10 +8,12 @@ import { useRouter } from 'next/navigation';
 interface Client {
   id: number;
   name: string;
-  phone: string;
-  num_compras: number;
-  total_compras: number;
+  email?: string;
+  phone?: string;
+  user_id: number;
   discount: number;
+  num_compras?: number;
+  total_compras?: number;
 }
 
 const ClientesContent = () => {
@@ -35,14 +37,14 @@ const ClientesContent = () => {
 
       const { data, error } = await supabase
         .from('clients')
-        .select('id, name, phone, num_compras, total_compras, discount')
+        .select('id, name, phone, num_compras, total_compras, discount, user_id')
         .eq('user_id', userId);
 
       if (error) throw error;
       setClients(data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'Error desconocido al cargar clientes');
     } finally {
       setLoading(false);
     }
@@ -108,7 +110,7 @@ const ClientesContent = () => {
                     {client.num_compras}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">
-                    ${parseFloat(client.total_compras.toString()).toLocaleString('es-MX')} MXN
+                    ${parseFloat(client.total_compras?.toString() || '0').toLocaleString('es-MX')} MXN
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <button

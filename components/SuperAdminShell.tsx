@@ -12,7 +12,7 @@ export default function SuperAdminShell({ children }: { children: ReactNode }) {
   
   const [userName, setUserName] = useState('Cargando…');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [superAdminId, setSuperAdminId] = useState<string | null>(null);
+  const [, setSuperAdminId] = useState<string | null>(null);
 
   useEffect(() => {
       async function getUserData() {

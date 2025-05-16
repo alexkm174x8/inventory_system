@@ -1,9 +1,15 @@
+'use client';
+
 import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  BarChart2, Archive, Users, CircleDollarSign,
-  Store, Settings, LogOut, Bell, ChevronDown, SquareUserRound, UserPlus, Menu as MenuIcon
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Users,
+  Building,
+  LogOut
 } from 'lucide-react';
 import { getUserId, getUserRole } from '@/lib/userId';
 import { supabase } from '@/lib/supabase';
@@ -21,22 +27,22 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-
-    // Set up session listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
 
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        if (session?.user?.id) {
-          await getUserData(session.user.id);
+      setTimeout(async () => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (session?.user?.id) {
+            await getUserData(session.user.id);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUserName('No autenticado');
+          setIsLoading(false);
+          setUserRole(null);
+          setEmployeeRole(null);
+          router.push('/');
         }
-      } else if (event === 'SIGNED_OUT') {
-        setUserName('No autenticado');
-        setIsLoading(false);
-        setUserRole(null);
-        setEmployeeRole(null);
-        router.push('/');
-      }
+      }, 0);
     });
 
     async function getUserData(userId: string) {
@@ -52,7 +58,6 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Get user role
         const role = await getUserRole();
         if (mounted) {
           setUserRole(role);
@@ -62,7 +67,6 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         let error;
 
         if (role === 'employee') {
-          // Fetch employee profile with role
           const result = await supabase
             .from('employees')
             .select('name, auth_id, role')
@@ -74,18 +78,16 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             setEmployeeRole(profile.role);
           }
         } else {
-          // Fetch admin profile
           const result = await supabase
-          .from('admins')
-          .select('name, id, user_id')
-          .eq('user_id', effectiveUserId)
-          .single();
+            .from('admins')
+            .select('name, id, user_id')
+            .eq('user_id', effectiveUserId)
+            .single();
           profile = result.data;
           error = result.error;
         }
 
         if (error) {
-          console.error('Error fetching profile:', error);
           if (mounted) {
             setUserName('Error al cargar perfil');
             setIsLoading(false);
@@ -100,8 +102,8 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           setUserName('Perfil no encontrado');
           setIsLoading(false);
         }
-      } catch (error) {
-        console.error('Error getting user data:', error);
+      } catch {
+        //const errorMessage = err instanceof Error ? err.message : 'Error desconocido al obtener datos';
         if (mounted) {
           setUserName('Error al obtener datos');
           setIsLoading(false);
@@ -109,7 +111,6 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       }
     }
 
-    // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return;
 
@@ -134,26 +135,23 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('Error signing out:', error.message);
-        return;
+        throw error;
       }
       router.push('/');
-    } catch (error) {
-      console.error('Unexpected error during logout:', error);
+    } catch {
+      //const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cerrar sesión';
     }
   };
 
   const allMenuItems = [
-    { label: 'Menú', href: '/dashboard/menu', icon: <BarChart2 /> },
-    { label: 'Inventario', href: '/dashboard/inventario', icon: <Archive /> },
+    { label: 'Menú', href: '/dashboard/menu', icon: <LayoutDashboard /> },
+    { label: 'Inventario', href: '/dashboard/inventario', icon: <Package /> },
     { label: 'Clientes', href: '/dashboard/clientes', icon: <Users /> },
-    { label: 'Ventas', href: '/dashboard/ventas', icon: <CircleDollarSign /> },
-    { label: 'Empleados', href: '/dashboard/empleados', icon: <SquareUserRound /> },
-    { label: 'Sucursales', href: '/dashboard/sucursales', icon: <Store /> },
-    //{ label: 'Configuración', href: '/dashboard/configuracion', icon: <Settings /> },
+    { label: 'Ventas', href: '/dashboard/ventas', icon: <ShoppingCart /> },
+    { label: 'Empleados', href: '/dashboard/empleados', icon: <Building /> },
+    { label: 'Sucursales', href: '/dashboard/sucursales', icon: <Building /> },
   ];
 
-  // Filter menu items based on user role and employee role
   const menuItems = (() => {
     if (userRole === 'admin') {
       return allMenuItems;
@@ -173,17 +171,13 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   );
   const pageTitle = currentMenuItem?.label || 'Trade Hub';
 
-  // Redirect if user tries to access unauthorized page
   useEffect(() => {
     if (!isLoading && userRole && currentMenuItem) {
       const isAuthorized = menuItems.some(item => item.href === pathname || pathname.startsWith(item.href + '/'));
       if (!isAuthorized) {
-        // Only redirect if we're not already on the correct page
         if (userRole === 'employee') {
           if (employeeRole === 'inventario' && !pathname.startsWith('/dashboard/inventario')) {
-
             router.push('/dashboard/inventario');
-
           } else if (employeeRole === 'ventas' && !pathname.startsWith('/dashboard/ventas')) {
             router.push('/dashboard/ventas');
           }
@@ -192,7 +186,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         }
       }
     }
-  }, [isLoading, userRole, employeeRole, pathname, menuItems, router]);
+  }, [isLoading, userRole, employeeRole, pathname, menuItems, router, currentMenuItem]);
 
   return (
     <div className="flex h-screen bg-[#f5f5f5]">
@@ -234,11 +228,11 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       <div className="flex-1 flex flex-col">
         <header className="bg-white border-b py-4 px-6 flex items-center justify-between">
           <button className="md:hidden" onClick={() => setIsMobileMenuOpen(o => !o)}>
-            <MenuIcon className="h-6 w-6" />
+            <LayoutDashboard className="h-6 w-6" />
           </button>
           <h1 className="text-2xl font-bold">{pageTitle}</h1>
           <div className="flex items-center space-x-4">
-            <Bell />
+            <LayoutDashboard />
             <div className="flex items-center">
               <div className="h-8 w-8 rounded-full bg-[#007aff] text-white flex items-center justify-center">
                 {!isLoading && userName && !['Error de sesión', 'No autenticado', 'Error al cargar perfil', 'Perfil no encontrado', 'Error al obtener ID', 'Error inesperado', 'Error al obtener datos'].includes(userName)
@@ -246,7 +240,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                   : ''}
               </div>
               <button className="ml-2 flex items-center text-sm">
-                {userName} <ChevronDown className="ml-1 h-4 w-4" />
+                {userName} <LayoutDashboard className="ml-1 h-4 w-4" />
               </button>
             </div>
           </div>

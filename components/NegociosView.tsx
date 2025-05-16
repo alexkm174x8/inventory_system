@@ -8,7 +8,6 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from "@/components/ui/use-toast";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -21,8 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from 'lucide-react';
 
-
-interface   NegociosViewProps {
+interface NegociosViewProps {
   onClose: () => void;
 }
 
@@ -30,9 +28,6 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  if (!params?.id) return null;
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
-
   const [negocioName, setNegocioName] = useState('');
   const [negocioBillingDay, setNegocioBillingDay] = useState('');
   const [negocioId, setNegocioId] = useState('');
@@ -44,9 +39,17 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [passwordError, setPasswordError] = useState('');
 
+  const id = params?.id ? (Array.isArray(params.id) ? params.id[0] : params.id) : null;
+
   useEffect(() => {
+    if (!id) {
+      router.push('/dashboard-superadmin/negocios');
+      return;
+    }
+
     const fetchNegocio = async () => {
       try {
         const { data: negData, error: negErr } = await supabase
@@ -70,8 +73,7 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
         setNegocioBillingDay(negData.billing_day.toString());
         setNegocioBillingAmount(negData.billing_amount.toString());
 
-      } catch (err) {
-        console.error('Error al cargar datos:', err);
+      } catch {
         toast({
           variant: "destructive",
           title: "Error",
@@ -85,12 +87,16 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
 
     fetchNegocio();
   }, [id, router, toast]);
+
+  if (!id) {
+    return null;
+  }
+
   const handleDelete = async () => {
     if (!id) return;
 
     setIsDeleting(true);
     try {
-      // Delete the admin using our new endpoint
       const response = await fetch('/api/delete-admin', {
         method: 'POST',
         headers: {
@@ -112,15 +118,16 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
         description: "Negocio eliminado exitosamente",
       });
       router.push('/dashboard-superadmin/negocios');
-    } catch (err: any) {
-      console.error('Error al eliminar negocio:', err);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido al eliminar negocio';
       toast({
         variant: "destructive",
         title: "Error",
-        description: err.message || "Error al eliminar el negocio. Por favor, intenta de nuevo.",
+        description: errorMessage || "Error al eliminar el negocio. Por favor, intenta de nuevo.",
       });
     } finally {
       setIsDeleting(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -145,14 +152,13 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
 
     setIsResettingPassword(true);
     try {
-      // Reset the password using our new admin-specific endpoint
       const response = await fetch('/api/reset-admin-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          adminId: id,  // Using the UUID directly
+          adminId: id,
           newPassword,
         }),
       });
@@ -171,12 +177,12 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
       setNewPassword('');
       setConfirmPassword('');
       setPasswordError('');
-    } catch (err: any) {
-      console.error('Error al restablecer contraseña:', err);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido al restablecer contraseña';
       toast({
         variant: "destructive",
         title: "Error",
-        description: err.message || "Error al restablecer la contraseña. Por favor, intenta de nuevo.",
+        description: errorMessage || "Error al restablecer la contraseña. Por favor, intenta de nuevo.",
       });
     } finally {
       setIsResettingPassword(false);
@@ -207,11 +213,11 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
 
           <section className="mt-6">
             <h2 className="font-semibold">Características</h2>
-            <p><strong>Cobro mensaul:</strong> ${negocioBillingAmount} MXN</p>
+            <p><strong>Cobro mensual:</strong> ${negocioBillingAmount} MXN</p>
             <p><strong>Fecha de cobro:</strong> {negocioBillingDay} de cada mes</p>
           </section>
 
-          <section className="mt-6 flex gap-4 justify-center">
+          <section className="mt-6 flex gap-4">
             <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" className="bg-yellow-500 hover:bg-yellow-600 text-white">
@@ -275,7 +281,7 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
               </AlertDialogContent>
             </AlertDialog>
 
-            <AlertDialog>
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" className="bg-red-500 hover:bg-red-600 text-white">
                   Eliminar

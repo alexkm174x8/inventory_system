@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import LoginLogo from "@/components/login-logo"
 import { supabase } from "@/lib/supabase"
-import { getUserId, getUserRole } from '@/lib/userId';
+import { getUserRole } from '@/lib/userId';
 
 export default function LoginPage() {
   const router = useRouter()

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
-import { Package, ShoppingCart, Users, MapPin, ArrowLeft } from 'lucide-react';
+import { Package, Users, MapPin } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 
 interface SucursalViewProps {
