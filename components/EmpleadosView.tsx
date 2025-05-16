@@ -31,9 +31,10 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface EmployeeViewProps {
+  onClose?: () => void;
 }
 
-const EmployeeView: React.FC<EmployeeViewProps> = () => {
+const EmployeeView: React.FC<EmployeeViewProps> = ({ onClose }) => {
   const params = useParams();
   const router = useRouter();
 
@@ -204,7 +205,11 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
       });
 
       // Close the view and redirect to employees list
-      onClose();
+      if (onClose) {
+        onClose();
+      } else {
+        router.back();
+      }
 
       router.push('/dashboard/empleados');
     } catch (error: any) {
