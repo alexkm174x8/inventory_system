@@ -27,21 +27,22 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
 
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        if (session?.user?.id) {
-          await getUserData(session.user.id);
+      setTimeout(async () => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (session?.user?.id) {
+            await getUserData(session.user.id);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUserName('No autenticado');
+          setIsLoading(false);
+          setUserRole(null);
+          setEmployeeRole(null);
+          router.push('/');
         }
-      } else if (event === 'SIGNED_OUT') {
-        setUserName('No autenticado');
-        setIsLoading(false);
-        setUserRole(null);
-        setEmployeeRole(null);
-        router.push('/');
-      }
+      }, 0);
     });
 
     async function getUserData(userId: string) {
