@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import CheckoutVenta from '@/components/CheckoutVenta';
 
-export default function AgregarVentaPage() {
+function AgregarVentaContent() {
   const searchParams = useSearchParams();
   const locationId = searchParams.get('locationId');
 
@@ -16,6 +17,18 @@ export default function AgregarVentaPage() {
         onClose={() => window.history.back()}
       />
     </div>
+  );
+}
+
+export default function AgregarVentaPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]"></div>
+      </div>
+    }>
+      <AgregarVentaContent />
+    </Suspense>
   );
 }
 

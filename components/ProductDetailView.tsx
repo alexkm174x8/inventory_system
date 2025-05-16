@@ -70,7 +70,7 @@ interface ProductDetailViewProps {
 const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
   const params = useParams();
   const router = useRouter();
-  const { id: productId } = useParams<ProductDetailPageParams>();
+  const { id: productId } = useParams<{ id: string }>();
   //const productIdFromParams = params?.productId || params?.id;
   //const productId = Array.isArray(productIdFromParams) ? productIdFromParams[0] : productIdFromParams;
   const { toast } = useToast();
@@ -283,13 +283,9 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
         title: "¡Éxito!",
         description: "Producto eliminado correctamente",
       });
-
       // Close the detail view and redirect to products list
-      onClose();
-      router.refresh(); // Force a refresh of the page data
       router.push('/dashboard/inventario');
-      // Redirect to products list
-      //router.push('/dashboard/inventario');
+      router.refresh(); // Force a refresh of the page data
       //router.refresh(); // Force a refresh of the page data
     } catch (err: any) {
       console.error('Error in frontend delete handler:', err);

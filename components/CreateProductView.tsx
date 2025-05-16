@@ -27,10 +27,10 @@ interface CreateProductViewProps {
 
 const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, onClose }) => {
   const [productImage, setProductImage] = useState<string | null>(null);
-  const [fileName, setFileName] = useState("");
+  //const [fileName, setFileName] = useState("");
   const [productName, setProductName] = useState('');
   const [productNameError, setProductNameError] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
+  //const [isDragging, setIsDragging] = useState(false);
   const [attributes, setAttributes] = useState<Attribute[]>([{ name: '', options: [''] }]);
   const [attributeErrors, setAttributeErrors] = useState<string[]>([]);
 
@@ -41,15 +41,26 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
     if (!productName.trim()) {
       setProductNameError('El nombre del producto es obligatorio.');
       valid = false;
+    } else if (productName.length > 30) {
+      setProductNameError('El nombre del producto no puede exceder los 30 caracteres.');
+      valid = false;
     } else {
       setProductNameError('');
     }
 
     // Validar atributos
     const newAttrErrors = attributes.map(attr => {
+      if (attr.name.trim() && attr.name.length > 10) {
+        valid = false;
+        return 'El nombre del atributo no puede exceder los 10 caracteres.';
+      }
       if (attr.name.trim() && !attr.options.some(opt => opt.trim())) {
         valid = false;
         return 'Debe ingresar al menos una opción para este atributo.';
+      }
+      if (attr.options.some(opt => opt.length > 10)) {
+        valid = false;
+        return 'Las opciones no pueden exceder los 10 caracteres.';
       }
       return '';
     });
@@ -320,6 +331,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
               value={productName}
               onChange={(e) => setProductName(e.target.value)}
               placeholder="Nombre del producto"
+              maxLength={100}
             />
             {productNameError && (
               <p className="text-red-600 text-sm mt-1">{productNameError}</p>
@@ -339,6 +351,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
                       value={attribute.name}
                       onChange={(e) => handleAttributeNameChange(attrIndex, e.target.value)}
                       placeholder="Nombre del atributo"
+                      maxLength={50}
                     />
                   </div>
 
@@ -355,6 +368,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
                             handleOptionChange(attrIndex, optionIndex, e.target.value)
                           }
                           placeholder="Ingresar la opción"
+                          maxLength={50}
                         />
                       </div>
                       <Button

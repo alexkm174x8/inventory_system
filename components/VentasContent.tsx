@@ -65,6 +65,24 @@ interface Client {
   name: string;
 }
 
+interface SalesItem {
+  id: number;
+  sale_id: number;
+  variant_id: number;
+  quantity_sold: number;
+  sale_price: number;
+  variant?: {
+    id: number;
+    product_id: number;
+    sku: string;
+    price: number;
+    product?: {
+      id: number;
+      name: string;
+    }
+  }
+}
+
 const VentasContent: React.FC = () => {
   const router = useRouter();
   const [ventas, setVentas] = useState<Venta[]>([]);
@@ -187,7 +205,7 @@ const VentasContent: React.FC = () => {
         
         // Get unique variant IDs from all sales
         const variantIds = salesData.flatMap(sale => 
-          sale.sales_items?.map(item => item.variant_id) || []
+          sale.sales_items?.map((item: SalesItem) => item.variant_id) || []
         );
         
         // Fetch attributes for all variants
@@ -256,7 +274,7 @@ const VentasContent: React.FC = () => {
         
         // Get unique variant IDs from all sales
         const variantIds = salesData.flatMap(sale => 
-          sale.sales_items?.map(item => item.variant_id) || []
+          sale.sales_items?.map((item: SalesItem) => item.variant_id) || []
         );
         
         // Fetch attributes for all variants
