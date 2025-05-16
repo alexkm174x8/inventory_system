@@ -34,9 +34,15 @@ const AddSucursal: React.FC<AddSucursalProps> = ({ onClose, onSave }) => {
       newErrors.name =
         'El nombre solo puede contener letras y espacios';
       isValid = false;
+    } else if (locationName.length > 30) {
+      newErrors.name = 'El nombre no puede exceder los 30 caracteres';
+      isValid = false;
     }
     if (!locationAddress.trim()) {
       newErrors.location = 'La dirección es obligatoria';
+      isValid = false;
+    } else if (locationAddress.length > 100) {
+      newErrors.location = 'La dirección no puede exceder los 100 caracteres';
       isValid = false;
     }
 
@@ -89,6 +95,7 @@ const AddSucursal: React.FC<AddSucursalProps> = ({ onClose, onSave }) => {
               className={`mt-1 ${errors.name ? 'border-red-500' : ''}`}
               placeholder="Nombre de la sucursal"
               onChange={e => setLocationName(e.target.value)}
+              maxLength={30}
               required
             />
             {errors.name && (
@@ -108,6 +115,7 @@ const AddSucursal: React.FC<AddSucursalProps> = ({ onClose, onSave }) => {
               }`}
               placeholder="Dirección de la sucursal"
               onChange={e => setLocationAddress(e.target.value)}
+              maxLength={100}
               required
             />
             {errors.location && (
