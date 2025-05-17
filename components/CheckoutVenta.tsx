@@ -655,7 +655,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                         })}
                       </div>
 
-                      {/* Imagen de la variante seleccionada o placeholder */}
+                      {/* Imagen de la variante seleccionada o placeholder
                       {selectedVariant?.image_url ? (
                         <img
                           src={selectedVariant.image_url}
@@ -666,7 +666,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                         <div className="w-24 h-24 flex items-center justify-center bg-gray-100 rounded mx-auto mt-4">
                           <Image className="w-12 h-12 text-[#1366D9]" />
                         </div>
-                      )}
+                      )} */}
 
                       {/* Siempre visible: cantidad, stock, precio y botón */}
                       <div className="mt-4 w-full">
