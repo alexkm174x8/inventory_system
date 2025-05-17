@@ -80,10 +80,16 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
     } else if (!/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/.test(name)) {
       newErrors.name = 'El nombre solo puede contener letras (incluyendo acentos) y espacios';
       isValid = false;
+    } else if (name.length > 50) {
+      newErrors.name = 'El nombre no puede exceder los 50 caracteres';
+      isValid = false;
     }
 
     if (!email.trim()) {
       newErrors.email = 'El email es obligatorio';
+      isValid = false;
+    } else if (email.length > 100) {
+      newErrors.email = 'El email no puede exceder los 100 caracteres';
       isValid = false;
     } else {
       // More comprehensive email validation
@@ -99,6 +105,9 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
       isValid = false;
     } else if (password.length < 6) {
       newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+      isValid = false;
+    } else if (password.length > 50) {
+      newErrors.password = 'La contraseña no puede exceder los 50 caracteres';
       isValid = false;
     }
 
@@ -128,6 +137,9 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
       isValid = false;
     } else if (isNaN(parseInt(phone))) {
       newErrors.phone = 'El teléfono debe ser un número';
+      isValid = false;
+    } else if (phone.length > 15) {
+      newErrors.phone = 'El teléfono no puede exceder los 15 caracteres';
       isValid = false;
     }
 
@@ -240,7 +252,7 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
            <CardContent className="p-6">
                <h1 className="text-lg font-semibold capitalize">Agregar empleado</h1>
 
-          <div className="mb-4">
+          <div className="my-4">
             <Label htmlFor="name">Nombre</Label>
             <Input
               id="name"
@@ -248,6 +260,7 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
               className={`mt-1 ${errors.name ? 'border-red-500' : ''}`}
               placeholder="Nombre del empleado"
               onChange={(e) => setName(e.target.value)}
+              maxLength={50}
               required
             />
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
@@ -262,6 +275,7 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
               value={email}
               placeholder="Correo electrónico"
               onChange={(e) => setEmail(e.target.value)}
+              maxLength={100}
               required
             />
             {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
@@ -277,6 +291,7 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
                      value={password}
                      placeholder="Contraseña inicial"
                      onChange={(e) => setPassword(e.target.value)}
+                     maxLength={50}
                      required
                    />
                    <button
@@ -304,6 +319,7 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
                 value={confirmPassword}
                 placeholder="Confirma la contraseña"
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                maxLength={50}
                 required
               />
             </div>
@@ -333,6 +349,7 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
               value={phone}
               placeholder="Número telefónico"
               onChange={(e) => setPhone(e.target.value)}
+              maxLength={15}
               required
             />
             {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}

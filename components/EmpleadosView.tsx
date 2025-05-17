@@ -31,17 +31,20 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface EmployeeViewProps {
+  onClose?: () => void;
 }
 
-const EmployeeView: React.FC<EmployeeViewProps> = () => {
-  const params = useParams();
-  const router = useRouter();
+type EmployeeViewParams = {
+  [key: string]: string | string[] | undefined;
+  id: string;
+}
 
-  const employeeIdFromParams = params?.employeeId || params?.id;
-  const employeeId = Array.isArray(employeeIdFromParams) ? employeeIdFromParams[0] : employeeIdFromParams;
+const EmployeeView: React.FC<EmployeeViewProps> = ({ onClose }) => {
+  const { id: employeeId } = useParams<EmployeeViewParams>();
+  const router = useRouter();
   const { toast } = useToast();
-  if (!params?.id) return null;
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+
+  if (!employeeId) return null;
 
   const [employeeName, setEmployeeName] = useState('');
   const [employeeEmail, setEmployeeEmail] = useState('');
@@ -123,7 +126,7 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
     };
 
     fetchEmployee();
-  }, [id, router, toast]);
+  }, [employeeId, router, toast]);
 
   const handlePasswordReset = async () => {
     if (newPassword !== confirmPassword) {
@@ -146,7 +149,7 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          employeeId: id,
+          employeeId,
           newPassword,
         }),
       });
@@ -166,6 +169,7 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
       setNewPassword('');
       setConfirmPassword('');
       setIsResetDialogOpen(false);
+      router.refresh();
     } catch (error: any) {
       setResetError(error.message);
       toast({
@@ -183,8 +187,8 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
     setDeleteError(null);
 
     try {
-      console.log('Attempting to delete employee with ID:', id);
-      const response = await fetch(`/api/delete-employee?id=${id}`, {
+      console.log('Attempting to delete employee with ID:', employeeId);
+      const response = await fetch(`/api/delete-employee?id=${employeeId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -203,10 +207,14 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
         description: `Empleado ${data.deletedEmployee?.name || ''} eliminado exitosamente`,
       });
 
-      // Close the view and redirect to employees list
-      onClose();
-
-      router.push('/dashboard/empleados');
+      // Close dialog and navigate
+      setIsDeleteDialogOpen(false);
+      if (onClose) {
+        onClose();
+        router.refresh();
+      } else {
+        router.push('/dashboard/empleados');
+      }
     } catch (error: any) {
       console.error('Error deleting employee:', error);
       const errorMessage = error.message || 'Error desconocido al eliminar el empleado';
@@ -218,7 +226,6 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
       });
     } finally {
       setDeleteLoading(false);
-      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -258,7 +265,19 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
 
             <div className="relative mt-6">
               <div className="lg:text-center mt-6 sm:text-left">
-                <Button variant="outline" onClick={() => router.back()}>Cerrar</Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    if (onClose) {
+                      onClose();
+                      router.refresh();
+                    } else {
+                      router.push('/dashboard/empleados');
+                    }
+                  }}
+                >
+                  Cerrar
+                </Button>
               </div>
               <div className="absolute bottom-0 right-0 flex gap-3">
                 <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
