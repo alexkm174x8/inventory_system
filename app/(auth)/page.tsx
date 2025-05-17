@@ -164,7 +164,7 @@ export default function LoginPage() {
               </div>
               {passwordError && <p className="text-xs text-red-500">{passwordError}</p>}
               <div className="text-right">
-                <Link href="#" className="text-xs text-blue-500 hover:underline">
+                <Link href="mailto:necconsultingg@gmail.com" className="text-xs text-blue-500 hover:underline">
                   ¿Olvidaste tu contraseña?
                 </Link>
               </div>
@@ -181,7 +181,7 @@ export default function LoginPage() {
             </Button>
             <div className="text-center text-sm">
               ¿No tienes una cuenta?{" "}
-              <Link href="#" className="text-blue-500 hover:underline">
+              <Link href="mailto:necconsultingg@gmail.com" className="text-blue-500 hover:underline">
                 Contacta a un administrador.
               </Link>
             </div>
