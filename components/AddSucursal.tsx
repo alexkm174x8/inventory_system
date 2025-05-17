@@ -41,8 +41,8 @@ const AddSucursal: React.FC<AddSucursalProps> = ({ onClose, onSave }) => {
     if (!locationAddress.trim()) {
       newErrors.location = 'La dirección es obligatoria';
       isValid = false;
-    } else if (locationAddress.length > 100) {
-      newErrors.location = 'La dirección no puede exceder los 100 caracteres';
+    } else if (locationAddress.length > 30) {
+      newErrors.location = 'La dirección no puede exceder los 30 caracteres';
       isValid = false;
     }
 

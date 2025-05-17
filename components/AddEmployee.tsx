@@ -252,7 +252,7 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ onClose, onEmployeeAdded }) =
            <CardContent className="p-6">
                <h1 className="text-lg font-semibold capitalize">Agregar empleado</h1>
 
-          <div className="mb-4">
+          <div className="my-4">
             <Label htmlFor="name">Nombre</Label>
             <Input
               id="name"
