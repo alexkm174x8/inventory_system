@@ -172,6 +172,27 @@ const AddNegocio: React.FC<AddNegocioProps> = ({ onClose, onNegocioAdded }) => {
         return;
       }
 
+      // Create default client for the new admin
+      const { error: clientError } = await supabase
+        .from('clients')
+        .insert([
+          {
+            name: 'Público en General',
+            user_id: nextUserId, // Using the numeric user_id instead of UUID
+            discount: 0,
+            is_default: true,
+            num_compras: 0,
+            total_compras: 0,
+            phone: 'N/A'
+          }
+        ]);
+
+      if (clientError) {
+        console.error('Error creating default client:', clientError);
+        // Don't throw here as the admin is already created
+        // Just log the error and continue
+      }
+
       // Update the auth user's metadata with the role
       const { error: updateError } = await supabase.auth.updateUser({
         data: {
