@@ -36,6 +36,9 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
       newErrors.name =
         'El nombre solo puede contener letras y espacios';
       isValid = false;
+    } else if (clientName.length > 50) {
+      newErrors.name = 'El nombre no puede exceder los 50 caracteres';
+      isValid = false;
     }
 
     if (!clientPhone.trim()) {
@@ -43,6 +46,9 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
       isValid = false;
     } else if (isNaN(parseInt(clientPhone))) {
       newErrors.phone = 'El teléfono debe ser un número';
+      isValid = false;
+    } else if (clientPhone.length > 15) {
+      newErrors.phone = 'El teléfono no puede exceder los 15 caracteres';
       isValid = false;
     }
 
@@ -102,7 +108,8 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
                     }`}
                     value={clientName}
                     placeholder="Agregue el nombre del cliente"
-                    onChange={(e) => setClientnName(e.target.value )}
+                    onChange={(e) => setClientnName(e.target.value)}
+                    maxLength={50}
                 />
                 {errors.name && (
               <p className="text-red-500 text-xs mt-1">
@@ -120,6 +127,7 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
                     placeholder="Agregue el número del cliente"
+                    maxLength={15}
                 />
                 {errors.phone && (
              <p className="text-red-500 text-xs mt-1">

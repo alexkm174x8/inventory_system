@@ -70,8 +70,7 @@ interface ProductDetailViewProps {
 const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
   const params = useParams();
   const router = useRouter();
-  const productIdFromParams = params?.productId || params?.id;
-  const productId = Array.isArray(productIdFromParams) ? productIdFromParams[0] : productIdFromParams;
+  const { id: productId } = useParams<{ id: string }>();
   const { toast } = useToast();
   const [product, setProduct] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -282,8 +281,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
         title: "¡Éxito!",
         description: "Producto eliminado correctamente",
       });
-
-      // Redirect to products list
+      // Close the detail view and redirect to products list
       router.push('/dashboard/inventario');
       router.refresh(); // Force a refresh of the page data
     } catch (err: any) {
@@ -393,48 +391,52 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
             <div className="text-red-500 my-2">{updateError}</div>
           )}
 
-<div className="relative mt-6">
-  <div className="lg:text-center mt-6 sm:text-left">
-    {isEditing ? (
-      <>
-        <Button 
-          variant="outline" 
-          onClick={handleCancelEdit} 
-          disabled={updateLoading}
-        >
-          Cancelar
-        </Button>
-        <Button 
-          className="bg-blue-500 hover:bg-blue-600" 
-          onClick={handleSaveEdit} 
-          disabled={updateLoading}
-        >
-          {updateLoading ? 'Guardando...' : 'Guardar'}
-        </Button>
-      </>
-    ) : (
-      <Button variant="outline" onClick={() => router.back()}>Cerrar</Button>
-    )}
-  </div>
+          <div className="relative mt-6">
+            <div className="lg:text-center sm:text-left">
+              {isEditing ? (
+                <div className="flex gap-3 justify-center">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleCancelEdit} 
+                    disabled={updateLoading}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    className="bg-blue-500 hover:bg-blue-600" 
+                    onClick={handleSaveEdit} 
+                    disabled={updateLoading}
+                  >
+                    {updateLoading ? 'Guardando...' : 'Guardar'}
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="outline" onClick={() => router.back()}>
+                  Cerrar
+                </Button>
+              )}
+            </div>
 
-  <div className="absolute bottom-0 right-0 flex gap-3">
-    <Button 
-      className="bg-blue-500 hover:bg-blue-600" 
-      onClick={handleEditClick}
-    >
-      <Pencil className="w-4 h-4" />
-      Editar
-    </Button>
-    <Button 
-      variant="destructive" 
-      onClick={() => setShowDeleteDialog(true)}
-      disabled={updateLoading}
-    >
-      <Trash2 className="w-4 h-4" />
-      Eliminar
-    </Button>
-  </div>
-</div>
+            {!isEditing && (
+              <div className="absolute bottom-0 right-0 flex gap-3">
+                <Button 
+                  className="bg-blue-500 hover:bg-blue-600" 
+                  onClick={handleEditClick}
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Editar
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => setShowDeleteDialog(true)}
+                  disabled={updateLoading}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Eliminar
+                </Button>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

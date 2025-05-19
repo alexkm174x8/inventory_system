@@ -93,7 +93,7 @@ const ClientesContent = () => {
             <tbody className="divide-y divide-[#e6e6e6] text-center">
               {currentData.map(client => (
                 <tr key={client.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085] capitalize">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26] capitalize">
                     {client.name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">

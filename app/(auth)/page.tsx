@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import LoginLogo from "@/components/login-logo"
 import { supabase } from "@/lib/supabase"
+import { getUserId, getUserRole } from '@/lib/userId';
 
 export default function LoginPage() {
   const router = useRouter()
@@ -58,7 +59,27 @@ export default function LoginPage() {
         }
 
         if (data.user) {
-          router.push("/dashboard/menu")
+          // Get user role after successful login
+          const role = await getUserRole();
+          
+          if (role === 'superadmin') {
+            router.push("/dashboard-superadmin/negocios");
+          } else if (role === 'employee') {
+            const { data: employeeData } = await supabase
+              .from('employees')
+              .select('role')
+              .eq('auth_id', data.user.id)
+              .single();
+
+            if (employeeData?.role === 'inventario') {
+              router.push("/dashboard/inventario");
+            } else if (employeeData?.role === 'ventas') {
+              router.push("/dashboard/ventas");
+            }
+          } else {
+            // Default to admin dashboard
+            router.push("/dashboard/menu");
+          }
         }
       } catch (error) {
         console.error("Login error:", error)
@@ -143,7 +164,7 @@ export default function LoginPage() {
               </div>
               {passwordError && <p className="text-xs text-red-500">{passwordError}</p>}
               <div className="text-right">
-                <Link href="#" className="text-xs text-blue-500 hover:underline">
+                <Link href="mailto:necconsultingg@gmail.com" className="text-xs text-blue-500 hover:underline">
                   ¿Olvidaste tu contraseña?
                 </Link>
               </div>
@@ -160,7 +181,7 @@ export default function LoginPage() {
             </Button>
             <div className="text-center text-sm">
               ¿No tienes una cuenta?{" "}
-              <Link href="#" className="text-blue-500 hover:underline">
+              <Link href="mailto:necconsultingg@gmail.com" className="text-blue-500 hover:underline">
                 Contacta a un administrador.
               </Link>
             </div>

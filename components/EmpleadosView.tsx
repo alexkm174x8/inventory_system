@@ -31,16 +31,20 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface EmployeeViewProps {
+  onClose?: () => void;
 }
 
-const EmployeeView: React.FC<EmployeeViewProps> = () => {
-  const params = useParams();
+type EmployeeViewParams = {
+  [key: string]: string | string[] | undefined;
+  id: string;
+}
+
+const EmployeeView: React.FC<EmployeeViewProps> = ({ onClose }) => {
+  const { id: employeeId } = useParams<EmployeeViewParams>();
   const router = useRouter();
-  const employeeIdFromParams = params?.employeeId || params?.id;
-  const employeeId = Array.isArray(employeeIdFromParams) ? employeeIdFromParams[0] : employeeIdFromParams;
   const { toast } = useToast();
-  if (!params?.id) return null;
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+
+  if (!employeeId) return null;
 
   const [employeeName, setEmployeeName] = useState('');
   const [employeeEmail, setEmployeeEmail] = useState('');
@@ -122,7 +126,7 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
     };
 
     fetchEmployee();
-  }, [id, router, toast]);
+  }, [employeeId, router, toast]);
 
   const handlePasswordReset = async () => {
     if (newPassword !== confirmPassword) {
@@ -145,7 +149,7 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          employeeId: id,
+          employeeId,
           newPassword,
         }),
       });
@@ -165,6 +169,7 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
       setNewPassword('');
       setConfirmPassword('');
       setIsResetDialogOpen(false);
+      router.refresh();
     } catch (error: any) {
       setResetError(error.message);
       toast({
@@ -182,8 +187,8 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
     setDeleteError(null);
 
     try {
-      console.log('Attempting to delete employee with ID:', id);
-      const response = await fetch(`/api/delete-employee?id=${id}`, {
+      console.log('Attempting to delete employee with ID:', employeeId);
+      const response = await fetch(`/api/delete-employee?id=${employeeId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -201,8 +206,14 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
         title: "Éxito",
         description: `Empleado ${data.deletedEmployee?.name || ''} eliminado exitosamente`,
       });
-      
-      router.push('/dashboard/empleados');
+      // Close dialog and navigate
+      setIsDeleteDialogOpen(false);
+      if (onClose) {
+        onClose();
+        router.refresh();
+      } else {
+        router.push('/dashboard/empleados');
+      }
     } catch (error: any) {
       console.error('Error deleting employee:', error);
       const errorMessage = error.message || 'Error desconocido al eliminar el empleado';
@@ -214,7 +225,6 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
       });
     } finally {
       setDeleteLoading(false);
-      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -234,7 +244,7 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
             <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3">
               <h1 className="text-2xl font-bold capitalize">Empleado</h1>
               <div className="flex items-center gap-4">
-              <p className="text-md font-light flex items-center gap-2"> ID# {employeeId}</p>
+                <p className="text-md font-light flex items-center gap-2">ID# {employeeId}</p>
               </div>
             </div>
 
@@ -251,108 +261,111 @@ const EmployeeView: React.FC<EmployeeViewProps> = () => {
               <p><strong>Rol:</strong> {employeeRole}</p>
               <p><strong>Sucursal:</strong> {employeeLocationName}</p>
             </section>
+
             <div className="relative mt-6">
               <div className="lg:text-center mt-6 sm:text-left">
-                <Button variant="outline" onClick={() => router.back()}>Cerrar</Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    if (onClose) {
+                      onClose();
+                      router.refresh();
+                    } else {
+                      router.push('/dashboard/empleados');
+                    }
+                  }}
+                >
+                  Cerrar
+                </Button>
               </div>
-              <div className="absolute bottom-0 right-0 flex gap-3 ">
-                  <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="bg-blue-500 hover:bg-blue-600 text-white">
-                        <Pencil className="w-4 h-4" />
-                        Resetear Contraseña
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Resetear Contraseña</DialogTitle>
-                        <DialogDescription>
-                          Establece una nueva contraseña para {employeeName}. Asegúrate de comunicarle la nueva contraseña de forma segura.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="newPassword">Nueva Contraseña</Label>
-                          <Input
-                            id="newPassword"
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            placeholder="Ingresa la nueva contraseña"
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
-                          <Input
-                            id="confirmPassword"
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            placeholder="Confirma la nueva contraseña"
-                          />
-                        </div>
-                        {resetError && (
-                          <p className="text-sm text-red-500">{resetError}</p>
-                        )}
+              <div className="absolute bottom-0 right-0 flex gap-3">
+                <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="bg-blue-500 hover:bg-blue-600 text-white">
+                      <Pencil className="w-4 h-4" />
+                      Resetear Contraseña
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Resetear Contraseña</DialogTitle>
+                      <DialogDescription>
+                        Establece una nueva contraseña para {employeeName}. Asegúrate de comunicarle la nueva contraseña de forma segura.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                        <Input
+                          id="newPassword"
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Ingresa la nueva contraseña"
+                        />
                       </div>
-                      <DialogFooter>
-                        <Button
-                          variant="outline"
-                          onClick={() => setIsResetDialogOpen(false)}
-                          disabled={resetLoading}
-                        >
-                          Cancelar
-                        </Button>
-                        <Button
-                          onClick={handlePasswordReset}
-                          disabled={resetLoading}
-                          className="bg-yellow-600 hover:bg-yellow-700"
-                        >
-                          {resetLoading ? 'Actualizando...' : 'Actualizar Contraseña'}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                  <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" className="text-white bg-red-600 hover:bg-red-50">
-                        <Trash2 className="w-4 h-4" />
-                        Eliminar
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>¿Estás seguro de eliminar este empleado?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta acción no se puede deshacer. Se eliminará permanentemente la cuenta de {employeeName} 
-                          y todos sus datos asociados. El empleado ya no podrá acceder al sistema.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      {deleteError && (
-                        <p className="text-sm text-red-500 mt-2">{deleteError}</p>
+                      <div className="grid gap-2">
+                        <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+                        <Input
+                          id="confirmPassword"
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Confirma la nueva contraseña"
+                        />
+                      </div>
+                      {resetError && (
+                        <p className="text-sm text-red-500">{resetError}</p>
                       )}
-                      <AlertDialogFooter>
-                        <AlertDialogCancel disabled={deleteLoading}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDeleteEmployee}
-                          disabled={deleteLoading}
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                        >
-                          {deleteLoading ? 'Eliminando...' : 'Sí, eliminar empleado'}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsResetDialogOpen(false)} disabled={resetLoading}>
+                        Cancelar
+                      </Button>
+                      <Button onClick={handlePasswordReset} disabled={resetLoading} className="bg-yellow-600 hover:bg-yellow-700">
+                        {resetLoading ? 'Actualizando...' : 'Actualizar Contraseña'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="text-white bg-red-600 hover:bg-red-700">
+                      <Trash2 className="w-4 h-4" />
+                      Eliminar
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Estás seguro de eliminar este empleado?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta acción no se puede deshacer. Se eliminará permanentemente la cuenta de {employeeName} 
+                        y todos sus datos asociados. El empleado ya no podrá acceder al sistema.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    {deleteError && (
+                      <p className="text-sm text-red-500 mt-2">{deleteError}</p>
+                    )}
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={deleteLoading}>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteEmployee}
+                        disabled={deleteLoading}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        {deleteLoading ? 'Eliminando...' : 'Sí, eliminar empleado'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
-            </div>          
+            </div>
           </CardContent>
         </Card>
-        </div>
+      </div>
     </main>
   );
 };
 
 export default EmployeeView;
-
-
-

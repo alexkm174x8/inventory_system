@@ -48,6 +48,7 @@ interface Client {
   phone?: string;
   user_id: number;
   discount: number;
+  is_default?: boolean;
 }
 
 // Interface for cart items
@@ -73,7 +74,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   const { toast } = useToast();
   // State for location info
   const [locationInfo, setLocationInfo] = useState<Location | null>(null);
-  const [selectedVariantId, setSelectedVariantId] = useState('');
+  const [selectedVariantId, setSelectedVariantId] = useState('');  
   // Add state for admin status
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   
@@ -113,27 +114,58 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         
         if (error) throw error;
         
-        // Check if we have a "Cliente General" in the data
-        // If not, we'll create a default client object
-        let clienteGeneral = data?.find(client => 
-          client.name.toLowerCase() === 'cliente general' || 
-          client.name.toLowerCase() === 'general'
+        // Create default "Público en General" client if it doesn't exist
+        let publicoGeneral = data?.find(client => 
+          client.name.toLowerCase() === 'público en general' || 
+          client.name.toLowerCase() === 'publico en general'
         );
         
-        if (clienteGeneral) {
-          setSelectedClientId(clienteGeneral.id);
-          setDescuento(clienteGeneral.discount || 0);
-          setInputDescuento(clienteGeneral.discount?.toString() || "0");
+        if (!publicoGeneral) {
+          // Insert the default client
+          const { data: newClient, error: insertError } = await supabase
+            .from('clients')
+            .insert([
+              {
+                name: 'Público en General',
+                user_id: userId,
+                discount: 0,
+                is_default: true
+              }
+            ])
+            .select()
+            .single();
+          
+          if (insertError) throw insertError;
+          publicoGeneral = newClient;
+        }
+        
+        // Combine the default client with other clients
+        const allClients = publicoGeneral 
+          ? [publicoGeneral, ...(data?.filter(c => c.id !== publicoGeneral?.id) || [])]
+          : data || [];
+        
+        setClients(allClients);
+        
+        // Always select "Público en General" by default
+        if (publicoGeneral) {
+          setSelectedClientId(publicoGeneral.id);
+          setDescuento(publicoGeneral.discount || 0);
+          setInputDescuento(publicoGeneral.discount?.toString() || "0");
+
         } else if (data && data.length > 0) {
-          // If no "Cliente General", select the first client
+          // Fallback to first client if somehow publicoGeneral wasn't created
           setSelectedClientId(data[0].id);
           setDescuento(data[0].discount || 0);
           setInputDescuento(data[0].discount?.toString() || "0");
         }
         
-        setClients(data || []);
       } catch (error) {
         console.error('Error fetching clients:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Error al cargar los clientes",
+        });
       } finally {
         setLoadingClients(false);
       }
@@ -623,7 +655,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                         })}
                       </div>
 
-                      {/* Imagen de la variante seleccionada o placeholder */}
+                      {/* Imagen de la variante seleccionada o placeholder
                       {selectedVariant?.image_url ? (
                         <img
                           src={selectedVariant.image_url}
@@ -634,7 +666,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                         <div className="w-24 h-24 flex items-center justify-center bg-gray-100 rounded mx-auto mt-4">
                           <Image className="w-12 h-12 text-[#1366D9]" />
                         </div>
-                      )}
+                      )} */}
 
                       {/* Siempre visible: cantidad, stock, precio y botón */}
                       <div className="mt-4 w-full">
@@ -748,29 +780,40 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
           </label>
           
           {clients.length > 0 ? (
-          <Select
-            value={selectedClientId?.toString() || ""}
-            onValueChange={(value) => {
-              const clientId = Number(value);
-              setSelectedClientId(clientId);
-              const selectedClient = clients.find(c => c.id === clientId);
-              if (selectedClient) {
-                setDescuento(selectedClient.discount || 0);
-                setInputDescuento(selectedClient.discount?.toString() || "0");
-              }
-            }}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleccionar cliente" />
-            </SelectTrigger>
-            <SelectContent>
-              {clients.map(client => (
-                <SelectItem key={client.id} value={client.id.toString()}>
-                  {client.name} {client.discount > 0 ? `(${client.discount}% desc.)` : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select 
+              value={selectedClientId?.toString() || ""} 
+              onValueChange={(value) => {
+                const clientId = Number(value);
+                setSelectedClientId(clientId);
+                const selectedClient = clients.find(c => c.id === clientId);
+                if (selectedClient) {
+                  setDescuento(selectedClient.discount || 0);
+                  setInputDescuento(selectedClient.discount?.toString() || "0");
+                }
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccionar cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map(client => (
+                  <SelectItem 
+                    key={client.id} 
+                    value={client.id.toString()}
+                    className={client.is_default ? "font-semibold" : ""}
+                  >
+                    {client.name} {client.discount > 0 ? `(${client.discount}% desc.)` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-sm text-gray-500">No hay clientes disponibles</p>
+          )}
+        </div>
+        
+        {ventaItems.length === 0 ? (
+          <p className="text-sm font-light">No hay productos agregados</p>
         ) : (
           <p className="text-sm text-gray-500">No hay clientes disponibles</p>
         )}
@@ -808,7 +851,30 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                 </div>
                 <div className="flex justify-between font-bold">
                   <span>Total:</span>
-                  <span>MXN ${total < 0 ? 0 : total}</span>
+                  <span>MXN ${subtotal}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Discount input - only show for admins */}
+            {isAdmin && (
+              <div className="mt-4">
+                <label htmlFor="descuento" className="block text-sm font-medium">
+                  Descuento {selectedClientId && clients.find(c => c.id === selectedClientId)?.discount ? 
+                    `(Descuento del cliente: ${clients.find(c => c.id === selectedClientId)?.discount}%)` : ''}
+                </label>
+                <div className="flex w-full max-w-sm items-center space-x-2">
+                  <Input 
+                    type="number"
+                    value={inputDescuento}
+                    onChange={(e) => setInputDescuento(e.target.value)}
+                  />
+                  <Button 
+                    type="submit"
+                    onClick={() => setDescuento(Number(inputDescuento))}
+                  > 
+                    Aplicar
+                  </Button>
                 </div>
               </>
             ) : (

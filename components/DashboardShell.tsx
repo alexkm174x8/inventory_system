@@ -23,20 +23,22 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
     let mounted = true;
 
     // Set up session listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
 
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        if (session?.user?.id) {
-          await getUserData(session.user.id);
+      setTimeout(async () => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (session?.user?.id) {
+            await getUserData(session.user.id);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUserName('No autenticado');
+          setIsLoading(false);
+          setUserRole(null);
+          setEmployeeRole(null);
+          router.push('/');
         }
-      } else if (event === 'SIGNED_OUT') {
-        setUserName('No autenticado');
-        setIsLoading(false);
-        setUserRole(null);
-        setEmployeeRole(null);
-        router.push('/');
-      }
+      }, 0);
     });
 
     async function getUserData(userId: string) {
@@ -76,10 +78,10 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         } else {
           // Fetch admin profile
           const result = await supabase
-            .from('admins')
-            .select('name, id, user_id')
-            .eq('user_id', effectiveUserId)
-            .single();
+          .from('admins')
+          .select('name, id, user_id')
+          .eq('user_id', effectiveUserId)
+          .single();
           profile = result.data;
           error = result.error;
         }
@@ -181,7 +183,9 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         // Only redirect if we're not already on the correct page
         if (userRole === 'employee') {
           if (employeeRole === 'inventario' && !pathname.startsWith('/dashboard/inventario')) {
+
             router.push('/dashboard/inventario');
+
           } else if (employeeRole === 'ventas' && !pathname.startsWith('/dashboard/ventas')) {
             router.push('/dashboard/ventas');
           }
@@ -236,7 +240,6 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           </button>
           <h1 className="text-2xl font-bold">{pageTitle}</h1>
           <div className="flex items-center space-x-4">
-            <Bell />
             <div className="flex items-center">
               <div className="h-8 w-8 rounded-full bg-[#007aff] text-white flex items-center justify-center">
                 {!isLoading && userName && !['Error de sesión', 'No autenticado', 'Error al cargar perfil', 'Perfil no encontrado', 'Error al obtener ID', 'Error inesperado', 'Error al obtener datos'].includes(userName)
