@@ -835,24 +835,17 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                 <span>Subtotal:</span>
                 <span>MXN ${subtotal}</span>
               </div>
-              {isAdmin && (
-                <>
-                  <div className="flex justify-between text-sm">
-                    <span>Descuento:</span>
-                    <span>% {descuento}</span>
-                  </div>
-                  <div className="flex justify-between font-bold">
-                    <span>Total:</span>
-                    <span>MXN ${total < 0 ? 0 : total}</span>
-                  </div>
-                </>
-              )}
-              {!isAdmin && (
-                <div className="flex justify-between font-bold">
-                  <span>Total:</span>
-                  <span>MXN ${subtotal}</span>
+              {/* Show discount for both admins and employees if there is one */}
+              {(descuento > 0 || isAdmin) && (
+                <div className="flex justify-between text-sm">
+                  <span>Descuento:</span>
+                  <span>% {descuento}</span>
                 </div>
               )}
+              <div className="flex justify-between font-bold">
+                <span>Total:</span>
+                <span>MXN ${total < 0 ? 0 : total}</span>
+              </div>
             </div>
 
             {/* Discount input - only show for admins */}
@@ -877,6 +870,16 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                 </div>
               </div>
             )}
+
+            {/* Show client discount info for employees */}
+            {!isAdmin && selectedClientId && (() => {
+              const clientDiscount = clients.find(c => c.id === selectedClientId)?.discount || 0;
+              return clientDiscount > 0 ? (
+                <div className="mt-4 text-sm text-gray-600">
+                  Descuento del cliente aplicado: {clientDiscount}%
+                </div>
+              ) : null;
+            })()}
 
             {/* Confirm sale button */}
             <button 
