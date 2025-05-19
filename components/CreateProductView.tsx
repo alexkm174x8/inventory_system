@@ -21,7 +21,7 @@ export interface Product {
 }
 
 interface CreateProductViewProps {
-  onSaveProduct: (product: Product) => void;  
+  onSaveProduct: () => void;  
   onClose: () => void;
 }
 
@@ -89,16 +89,14 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
         }
       }
 
-      onSaveProduct({
-        name: productName,
-        image: productImage,
-        attributes,
-      });
-
+      // Reset form state
       setProductName('');
       setProductImage(null);
       setAttributes([{ name: '', options: [''] }]);
       setAttributeErrors([]);
+      
+      // Just call onSaveProduct without passing data since product is already saved
+      onSaveProduct();
       onClose();
     } catch (error) {
       console.error("Error al guardar el producto:", error);
