@@ -533,7 +533,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   });
 
   return (
-    <div className="flex">
+    <div className="flex  gap-3">
       <div className="w-3/4 p-8 bg-white rounded-lg h-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-lg font-semibold capitalize">Nueva venta</h1>
@@ -697,7 +697,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                             ? selectedStock > 0
                               ? `Stock: ${selectedStock} piezas`
                               : 'Sin stock'
-                            : 'Selecciona una variante'}
+                            : 'Selecciona una opción'}
                         </div>
 
                         {/* Precio */}
@@ -733,14 +733,14 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
               );
             })
         )}
-        <div className="text-center mt-10">
+        <div >
           <Button type="button" variant="outline" onClick={onClose} className="w-40 h-10">
             Cancelar 
           </Button>
         </div>
       </div>
-      <div className="w-1/4 p-4 bg-white mx-4 h-full rounded-lg">
-        <h1 className="text-lg font-semibold capitalize">Resumen de venta</h1>
+      <div className="w-full md:w-1/3 p-4 bg-white md:mt-0 md:ml-4 rounded-lg h-full ">
+        <h1 className="text-lg font-semibold capitalize mb-4">Resumen de venta</h1>
         <div className="mb-4">
           <label htmlFor="client" className="text-sm font-medium mb-2 flex items-center">
             <Users className="w-4 h-4 mr-1 text-gray-500" />
@@ -748,101 +748,99 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
           </label>
           
           {clients.length > 0 ? (
-            <Select 
-              value={selectedClientId?.toString() || ""} 
-              onValueChange={(value) => {
-                const clientId = Number(value);
-                setSelectedClientId(clientId);
-                const selectedClient = clients.find(c => c.id === clientId);
-                if (selectedClient) {
-                  setDescuento(selectedClient.discount || 0);
-                  setInputDescuento(selectedClient.discount?.toString() || "0");
-                }
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Seleccionar cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map(client => (
-                  <SelectItem key={client.id} value={client.id.toString()}>
-                    {client.name} {client.discount > 0 ? `(${client.discount}% desc.)` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <p className="text-sm text-gray-500">No hay clientes disponibles</p>
-          )}
-        </div>
-        
-        {ventaItems.length === 0 ? (
-          <p className="text-sm font-light">No hay productos agregados</p>
-        ) : (
-          <>
-            <div className="space-y-2">
-              {ventaItems.map(item => (
-                <div key={item.id} className="flex text-sm justify-between">
-                  <span className="w-1/3"> {item.type}: {item.name}  x {item.quantity}</span>
-                  <div>
-                    <span className='px-5'>MXN ${item.unitPrice * item.quantity}</span>
-                    <span> 
-                      <button onClick={() => eliminarDelCarrito(item.variant_id)}>
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </button>
-                    </span>
-                  </div>
-                </div>
+          <Select
+            value={selectedClientId?.toString() || ""}
+            onValueChange={(value) => {
+              const clientId = Number(value);
+              setSelectedClientId(clientId);
+              const selectedClient = clients.find(c => c.id === clientId);
+              if (selectedClient) {
+                setDescuento(selectedClient.discount || 0);
+                setInputDescuento(selectedClient.discount?.toString() || "0");
+              }
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Seleccionar cliente" />
+            </SelectTrigger>
+            <SelectContent>
+              {clients.map(client => (
+                <SelectItem key={client.id} value={client.id.toString()}>
+                  {client.name} {client.discount > 0 ? `(${client.discount}% desc.)` : ''}
+                </SelectItem>
               ))}
-              <hr className="my-2" />
-              <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                <span>MXN ${subtotal}</span>
+            </SelectContent>
+          </Select>
+        ) : (
+          <p className="text-sm text-gray-500">No hay clientes disponibles</p>
+        )}
+      </div>
+
+      {/* Productos */}
+      {ventaItems.length === 0 ? (
+        <p className="text-sm font-light">No hay productos agregados</p>
+      ) : (
+        <>
+          <div className="space-y-2">
+            {ventaItems.map(item => (
+              <div key={item.id} className="flex text-sm justify-between">
+                <span className="w-1/2 truncate">{item.type}: {item.name} x {item.quantity}</span>
+                <div className="flex items-center">
+                  <span className='px-2'>MXN ${item.unitPrice * item.quantity}</span>
+                  <button onClick={() => eliminarDelCarrito(item.variant_id)}>
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </button>
+                </div>
               </div>
-              {isAdmin && (
-                <>
-                  <div className="flex justify-between text-sm">
-                    <span>Descuento:</span>
-                    <span>% {descuento}</span>
-                  </div>
-                  <div className="flex justify-between font-bold">
-                    <span>Total:</span>
-                    <span>MXN ${total < 0 ? 0 : total}</span>
-                  </div>
-                </>
-              )}
-              {!isAdmin && (
+            ))}
+
+            <hr className="my-2" />
+            <div className="flex justify-between text-sm">
+              <span>Subtotal:</span>
+              <span>MXN ${subtotal}</span>
+            </div>
+
+            {isAdmin ? (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span>Descuento:</span>
+                  <span>% {descuento}</span>
+                </div>
                 <div className="flex justify-between font-bold">
                   <span>Total:</span>
-                  <span>MXN ${subtotal}</span>
+                  <span>MXN ${total < 0 ? 0 : total}</span>
                 </div>
-              )}
-            </div>
-            {/* Discount input - only show for admins */}
-            {isAdmin && (
-              <div className="mt-4">
-                <label htmlFor="descuento" className="block text-sm font-medium">
-                  Descuento {selectedClientId && clients.find(c => c.id === selectedClientId)?.discount ? 
-                    `(Descuento del cliente: ${clients.find(c => c.id === selectedClientId)?.discount}%)` : ''}
-                </label>
-                <div className="flex w-full max-w-sm items-center space-x-2">
-                  <Input 
-                    type="number"
-                    value={inputDescuento}
-                    onChange={(e) => setInputDescuento(e.target.value)}
-                  />
-                  <Button 
-                    type="submit"
-                    onClick={() => setDescuento(Number(inputDescuento))}
-                  > 
-                    Aplicar
-                  </Button>
-                </div>
+              </>
+            ) : (
+              <div className="flex justify-between font-bold">
+                <span>Total:</span>
+                <span>MXN ${subtotal}</span>
               </div>
             )}
+          </div>
 
-            {/* Confirm sale button */}
-            <button 
+          {/* Descuento manual para admin */}
+          {isAdmin && (
+            <div className="mt-4">
+              <label htmlFor="descuento" className="block text-sm font-medium mb-1">
+                Descuento {selectedClientId && clients.find(c => c.id === selectedClientId)?.discount ?
+                  `(Descuento del cliente: ${clients.find(c => c.id === selectedClientId)?.discount}%)` : ''}
+              </label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="number"
+                  value={inputDescuento}
+                  onChange={(e) => setInputDescuento(e.target.value)}
+                />
+                <Button onClick={() => setDescuento(Number(inputDescuento))}>
+                  Aplicar
+                </Button>
+              </div>
+            </div>
+          )}
+
+            {/* Confirmar venta */}
+            <button
               className="w-full h-10 mt-6 rounded-sm bg-[#1366D9] text-white text-sm font-semibold shadow-lg hover:bg-[#0d4ea6] transition-colors"
               onClick={confirmarVenta}
             >
