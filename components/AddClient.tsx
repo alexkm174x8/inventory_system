@@ -17,11 +17,13 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
   const [clientName, setClientnName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientDiscount, setClientDiscount] = useState('');
+  const [clientSaldo, setClientSaldo] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{
       name?: string;
       phone?: string;
       discount?: string;
+      saldo?: string;
       general?: string;
     }>({});
 
@@ -57,6 +59,11 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
       isValid = false;
     }
 
+    if (clientSaldo && isNaN(parseFloat(clientSaldo))) {
+      newErrors.saldo = 'El saldo debe ser un número válido';
+      isValid = false;
+    }
+
     setErrors(newErrors);
     return isValid;
   };
@@ -74,6 +81,7 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
             name: clientName,
             phone: clientPhone,
             discount: clientDiscount ? parseFloat(clientDiscount) : 0,
+            saldo: clientSaldo ? parseFloat(clientSaldo) : 0,
             num_compras: 0,
             total_compras: 0,
             user_id: userId,
@@ -155,6 +163,25 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
                 {errors.discount}
               </p>
             )}
+            </div>
+            <div className="mb-4">
+              <Label htmlFor="saldo">Saldo Inicial</Label>
+              <Input
+                id="saldo"
+                type="number"
+                step="0.01"
+                className={`mt-1 ${
+                  errors.saldo ? 'border-red-500' : ''
+                }`}
+                value={clientSaldo}
+                onChange={(e) => setClientSaldo(e.target.value)}
+                placeholder="Saldo inicial del cliente (puede ser negativo)"
+              />
+              {errors.saldo && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.saldo}
+                </p>
+              )}
             </div>
             {errors.general && (
             <p className="text-red-500 text-xs mt-2">

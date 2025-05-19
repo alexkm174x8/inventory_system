@@ -12,6 +12,7 @@ interface Client {
   num_compras: number;
   total_compras: number;
   discount: number;
+  saldo: number;
 }
 
 const ClientesContent = () => {
@@ -35,7 +36,7 @@ const ClientesContent = () => {
 
       const { data, error } = await supabase
         .from('clients')
-        .select('id, name, phone, num_compras, total_compras, discount')
+        .select('id, name, phone, num_compras, total_compras, discount, saldo')
         .eq('user_id', userId);
 
       if (error) throw error;
@@ -80,10 +81,10 @@ const ClientesContent = () => {
           <h2 className="text-lg font-semibold capitalize">Lista de Clientes</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="min-w-full divide-y divide-[#e6e6e6]">
             <thead>
               <tr className="bg-[#f5f5f5] text-center">
-                {['Cliente', 'Teléfono', 'Descuento', 'Compras', 'Total', 'Acciones'].map(header => (
+                {['Cliente', 'Teléfono', 'Descuento', 'Saldo', 'Compras', 'Total', 'Acciones'].map(header => (
                   <th key={header} className="px-3 py-3 text-xs font-medium text-[#667085] uppercase tracking-wider">
                     {header}
                   </th>
@@ -93,9 +94,7 @@ const ClientesContent = () => {
             <tbody className="divide-y divide-[#e6e6e6] text-center">
               {currentData.map(client => (
                 <tr key={client.id}>
-                  
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1b1f26] capitalize">
-
                     {client.name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">
@@ -105,18 +104,21 @@ const ClientesContent = () => {
                     {client.discount}%
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">
+                    ${parseFloat(client.saldo.toString()).toLocaleString('es-MX')} MXN
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">
                     {client.num_compras}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">
                     ${parseFloat(client.total_compras.toString()).toLocaleString('es-MX')} MXN
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <button
-                    onClick={() => router.push(`/dashboard/clientes/${client.id}`)}
-                    className="text-indigo-600 hover:text-indigo-900"
-                  >
-                    <Eye className="w-4 h-4 mx-auto" />
-                  </button>
+                    <button
+                      onClick={() => router.push(`/dashboard/clientes/${client.id}`)}
+                      className="text-indigo-600 hover:text-indigo-900"
+                    >
+                      <Eye className="w-4 h-4 mx-auto" />
+                    </button>
                   </td>
                 </tr>
               ))}
