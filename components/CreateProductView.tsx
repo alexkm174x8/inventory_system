@@ -50,17 +50,17 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
 
     // Validar atributos
     const newAttrErrors = attributes.map(attr => {
-      if (attr.name.trim() && attr.name.length > 10) {
+      if (attr.name.trim() && attr.name.length > 20) {
         valid = false;
-        return 'El nombre del atributo no puede exceder los 10 caracteres.';
+        return 'El nombre del atributo no puede exceder los 20 caracteres.';
       }
       if (attr.name.trim() && !attr.options.some(opt => opt.trim())) {
         valid = false;
         return 'Debe ingresar al menos una opción para este atributo.';
       }
-      if (attr.options.some(opt => opt.length > 10)) {
+      if (attr.options.some(opt => opt.length > 20)) {
         valid = false;
-        return 'Las opciones no pueden exceder los 10 caracteres.';
+        return 'Las opciones no pueden exceder los 20 caracteres.';
       }
       return '';
     });
@@ -322,7 +322,7 @@ const CreateProductView: React.FC<CreateProductViewProps> = ({ onSaveProduct, on
             </div>
           </div>
           */}
-          <div className="space-y-2 mt-6">
+          <div className="space-y-2 my-6">
             <Label htmlFor="product-name">Nombre</Label>
             <Input
               id="product-name"
