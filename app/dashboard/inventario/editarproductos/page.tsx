@@ -7,21 +7,24 @@ import { getUserId } from '@/lib/userId';
 import { Edit, Trash2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
+interface Characteristic {
+  characteristics_id: number;
+  name: string;
+}
+
+interface Variant {
+  variant_id: number;
+  options: {
+    characteristics_id: number;
+    value: string;
+  }[];
+}
+
 interface Product {
   id: number;
   name: string;
-  characteristics: {
-    characteristics_id: number;
-    name: string;
-  }[];
-  variants: {
-    variant_id: number;
-    sku: string;
-    options: {
-      option_id: number;
-      value: string;
-    }[];
-  }[];
+  characteristics: Characteristic[];
+  variants: Variant[];
 }
 
 const EditarProductosPage = () => {
@@ -47,11 +50,9 @@ const EditarProductosPage = () => {
           ),
           productVariants (
             variant_id,
-            sku,
             optionVariants (
-              option_id,
               characteristics_options (
-                id,
+                characteristics_id,
                 values
               )
             )
@@ -64,15 +65,14 @@ const EditarProductosPage = () => {
       const formattedProducts: Product[] = data.map(product => ({
         id: product.id,
         name: product.name,
-        characteristics: product.product_characteristics.map(pc => ({
+        characteristics: product.product_characteristics.map((pc: any) => ({
           characteristics_id: pc.characteristics_id,
           name: pc.name
         })),
-        variants: product.productVariants.map(variant => ({
+        variants: product.productVariants.map((variant: any) => ({
           variant_id: variant.variant_id,
-          sku: variant.sku,
-          options: variant.optionVariants.map(opt => ({
-            option_id: opt.option_id,
+          options: variant.optionVariants.map((opt: any) => ({
+            characteristics_id: opt.characteristics_options.characteristics_id,
             value: opt.characteristics_options.values
           }))
         }))
@@ -149,7 +149,7 @@ const EditarProductosPage = () => {
                   Características
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[#667085] uppercase tracking-wider">
-                  SKU
+                  Variantes
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-[#667085] uppercase tracking-wider">
                   Acciones
@@ -166,7 +166,21 @@ const EditarProductosPage = () => {
                     {product.characteristics.map(c => c.name).join(', ')}
                   </td>
                   <td className="px-6 py-4 text-sm text-[#667085]">
-                    {product.variants.map(v => v.sku).join(', ')}
+                    {product.variants.map((variant, vIndex) => (
+                      <div key={variant.variant_id} className={vIndex > 0 ? 'mt-2' : ''}>
+                        {variant.options.map((opt, index) => {
+                          const characteristic = product.characteristics.find(
+                            c => c.characteristics_id === opt.characteristics_id
+                          );
+                          return (
+                            <span key={opt.characteristics_id}>
+                              {characteristic?.name || 'Desconocido'}: {opt.value}
+                              {index < variant.options.length - 1 ? ', ' : ''}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    ))}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                     <div className="flex justify-center gap-2">

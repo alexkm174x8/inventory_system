@@ -3,10 +3,6 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  experimental: {
-    // This helps with ESM packages
-    esmExternals: 'loose',
-  },
   // Configure webpack to handle @react-pdf/renderer properly
   webpack: (config: any, { isServer }: { isServer: boolean }) => {
     // Handle ESM modules properly

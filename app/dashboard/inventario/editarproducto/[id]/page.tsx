@@ -15,7 +15,7 @@ interface Characteristic {
 interface Variant {
   variant_id: number;
   options: {
-    option_id: number;
+    characteristics_id: number;
     value: string;
   }[];
 }
@@ -56,9 +56,8 @@ const EditarProductoPage = ({ params }: { params: Promise<{ id: string }> }) => 
           productVariants (
             variant_id,
             optionVariants (
-              option_id,
               characteristics_options (
-                id,
+                characteristics_id,
                 values
               )
             )
@@ -81,7 +80,7 @@ const EditarProductoPage = ({ params }: { params: Promise<{ id: string }> }) => 
         variants: data.productVariants.map((variant: any) => ({
           variant_id: variant.variant_id,
           options: variant.optionVariants.map((opt: any) => ({
-            option_id: opt.option_id,
+            characteristics_id: opt.characteristics_options.characteristics_id,
             value: opt.characteristics_options.values
           }))
         }))
@@ -417,14 +416,17 @@ const EditarProductoPage = ({ params }: { params: Promise<{ id: string }> }) => 
                 <div key={variant.variant_id} className="flex items-center gap-4 p-4 border border-gray-200 rounded-md">
                   <div className="flex-1">
                     <div className="text-sm text-gray-500">
-                      {variant.options.map((opt, index) => (
-                        <span key={opt.option_id}>
-                          {product.characteristics.find(c => 
-                            c.characteristics_id === opt.option_id
-                          )?.name}: {opt.value}
-                          {index < variant.options.length - 1 ? ', ' : ''}
-                        </span>
-                      ))}
+                      {variant.options.map((opt, index) => {
+                        const characteristic = product.characteristics.find(
+                          c => c.characteristics_id === opt.characteristics_id
+                        );
+                        return (
+                          <span key={opt.characteristics_id}>
+                            {characteristic?.name || 'Desconocido'}: {opt.value}
+                            {index < variant.options.length - 1 ? ', ' : ''}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                   <button
