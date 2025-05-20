@@ -32,8 +32,10 @@ interface Venta {
   total: number;
   locationId: number;
   locationName: string;
-  clientId: number | null; // Added client ID
-  clientName: string; // Added client name
+  clientId: number | null;
+  clientName: string;
+  adminName: string;
+  vendedorName: string;
 }
 
 interface SupabaseSale {
@@ -43,7 +45,12 @@ interface SupabaseSale {
   discount_percentage: number;
   location: number;
   created_at: string;
-  client: number | null; // Add client field
+  client: number | null;
+  salesman: string | null;
+  admin?: {
+    id: number;
+    name: string;
+  };
   sales_items?: {
     id: number;
     sale_id: number;
@@ -198,6 +205,10 @@ const VentasContent: React.FC = () => {
           .from('sales')
           .select(`
             *,
+            admin:user_id(
+              id,
+              name
+            ),
             sales_items:sales_items(
               *,
               variant:variant_id(
@@ -220,7 +231,7 @@ const VentasContent: React.FC = () => {
         const attributes = await fetchVariantAttributes([...new Set(variantIds)]);
         setVariantAttributes(attributes);
         
-        const transformedSales: Venta[] = salesData.map((sale: SupabaseSale) => {
+        const transformedSales = salesData.map((sale: SupabaseSale) => {
           const saleItems: SaleItem[] = sale.sales_items?.map(item => ({
             id: item.id,
             name: item.variant?.product?.name || 'Unknown Product',
@@ -231,7 +242,7 @@ const VentasContent: React.FC = () => {
           
           const subtotal = saleItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
           
-          return {
+          const venta: Venta = {
             id: sale.id.toString(),
             createdAt: sale.created_at,
             items: saleItems,
@@ -241,8 +252,12 @@ const VentasContent: React.FC = () => {
             locationId: sale.location,
             locationName: locationMap[sale.location] || 'Ubicación desconocida',
             clientId: sale.client,
-            clientName: sale.client ? clientMap[sale.client] || 'Cliente desconocido' : 'Sin cliente'
+            clientName: sale.client ? clientMap[sale.client] || 'Cliente desconocido' : 'Sin cliente',
+            adminName: sale.admin?.name || 'Admin no especificado',
+            vendedorName: sale.salesman || 'Vendedor no especificado'
           };
+          
+          return venta;
         });
         
         setVentas(transformedSales);
@@ -267,6 +282,10 @@ const VentasContent: React.FC = () => {
           .from('sales')
           .select(`
             *,
+            admin:user_id(
+              id,
+              name
+            ),
             sales_items:sales_items(
               *,
               variant:variant_id(
@@ -290,7 +309,7 @@ const VentasContent: React.FC = () => {
         setVariantAttributes(attributes);
         
         // Transform Supabase data to our Venta format
-        const transformedSales: Venta[] = salesData.map((sale: SupabaseSale) => {
+        const transformedSales = salesData.map((sale: SupabaseSale) => {
           const saleItems: SaleItem[] = sale.sales_items?.map(item => ({
             id: item.id,
             name: item.variant?.product?.name || 'Unknown Product',
@@ -301,7 +320,7 @@ const VentasContent: React.FC = () => {
           
           const subtotal = saleItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
           
-          return {
+          const venta: Venta = {
             id: sale.id.toString(),
             createdAt: sale.created_at,
             items: saleItems,
@@ -311,8 +330,12 @@ const VentasContent: React.FC = () => {
             locationId: sale.location,
             locationName: locations[sale.location] || 'Ubicación desconocida',
             clientId: sale.client,
-            clientName: sale.client ? clients[sale.client] || 'Cliente desconocido' : 'Sin cliente'
+            clientName: sale.client ? clients[sale.client] || 'Cliente desconocido' : 'Sin cliente',
+            adminName: sale.admin?.name || 'Admin no especificado',
+            vendedorName: sale.salesman || 'Vendedor no especificado'
           };
+          
+          return venta;
         });
         
         setVentas(transformedSales);
@@ -439,8 +462,10 @@ const VentasContent: React.FC = () => {
           <div class="ticket">
             <div class="header">
               <h2>Ticket de Venta</h2>
+              <h3>${venta.adminName}</h3>
               <p>Venta #${venta.id}</p>
               <p>${formattedDate} ${formattedTime}</p>
+              <p>Vendedor: ${venta.vendedorName}</p>
               <p>Ubicación: ${venta.locationName}</p>
               <p>Cliente: ${venta.clientName}</p>
             </div>
