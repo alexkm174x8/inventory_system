@@ -1,7 +1,7 @@
 "use client"
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Minus, Image, Trash2, Search, Filter, Building, Users } from 'lucide-react';
+import { Plus, Minus, Image, Trash2, Search, Filter, Building, Users, ShoppingCart } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -70,37 +70,192 @@ interface CheckoutVentaProps {
   locationId: number;
 }
 
+// Add new interface for selected attributes
+interface SelectedAttributes {
+  [characteristicName: string]: string;
+}
+
+// Add new interface for variant validation
+interface VariantValidation {
+  isValid: boolean;
+  message: string;
+}
+
+// Add new interface for product selections
+interface ProductSelections {
+  [productId: number]: {
+    attributes: SelectedAttributes;
+    variantId: string;
+    validation: VariantValidation;
+  };
+}
+
 const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) => {
+  // All useState hooks first
   const { toast } = useToast();
-  // State for location info
   const [locationInfo, setLocationInfo] = useState<Location | null>(null);
-  const [selectedVariantId, setSelectedVariantId] = useState('');  
-  // Add state for admin status
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  
-  // State for products, variants, stock and cart
   const [loading, setLoading] = useState<boolean>(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [productVariants, setProductVariants] = useState<ProductVariant[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [variantAttributes, setVariantAttributes] = useState<Record<number, Record<string, string>>>({});
-  
-  // New state for clients
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [loadingClients, setLoadingClients] = useState<boolean>(true);
-  
   const [cantidades, setCantidades] = useState<Record<number, number>>({});
   const [descuento, setDescuento] = useState<number>(0);
   const [inputDescuento, setInputDescuento] = useState<string>("0");
   const [ventaItems, setVentaItems] = useState<ProductoCarrito[]>([]);
-  
-  // Add states for search and filters
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<string[]>([]);
+  const [productSelections, setProductSelections] = useState<ProductSelections>({});
 
-  // Fetch clients from database
+  // All useMemo hooks next
+  const variantsByProduct = useMemo(() => {
+    const result: Record<number, ProductVariant[]> = {};
+    productVariants.forEach(variant => {
+      if (!result[variant.product_id]) {
+        result[variant.product_id] = [];
+      }
+      result[variant.product_id].push(variant);
+    });
+    return result;
+  }, [productVariants]);
+
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === 'all' || 
+                             (product.category && product.category === selectedCategory);
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, searchTerm, selectedCategory]);
+
+  // All useCallback hooks next
+  const getAvailableOptions = useCallback((productId: number, characteristicName: string, currentSelections: SelectedAttributes): string[] => {
+    const productVariants = variantsByProduct[productId] || [];
+    const options = new Set<string>();
+    
+    const allVariants = productVariants.filter(variant => {
+      const attrs = variantAttributes[variant.variant_id];
+      if (!attrs) return false;
+
+      return Object.entries(currentSelections).every(([name, value]) => {
+        if (!value) return true;
+        if (name === characteristicName) return true;
+        return attrs[name] === value;
+      });
+    });
+
+    allVariants.forEach(variant => {
+      const attrs = variantAttributes[variant.variant_id];
+      if (attrs && attrs[characteristicName]) {
+        options.add(attrs[characteristicName]);
+      }
+    });
+    
+    return Array.from(options).sort();
+  }, [variantsByProduct, variantAttributes]);
+
+  const validateVariantSelection = useCallback((productId: number, selections: SelectedAttributes): VariantValidation => {
+    const productVariants = variantsByProduct[productId] || [];
+    const characteristicNames = productVariants.length > 0 
+      ? getCharacteristicNames(productVariants[0].variant_id)
+      : [];
+    
+    const allSelected = characteristicNames.every(name => selections[name]);
+    if (!allSelected) {
+      return {
+        isValid: false,
+        message: 'Selecciona todas las opciones'
+      };
+    }
+    
+    const variantExists = productVariants.some(variant => {
+      const attrs = variantAttributes[variant.variant_id];
+      if (!attrs) return false;
+      
+      return Object.entries(selections).every(([name, value]) => attrs[name] === value);
+    });
+    
+    if (!variantExists) {
+      return {
+        isValid: false,
+        message: 'Esta combinación no está disponible'
+      };
+    }
+    
+    return {
+      isValid: true,
+      message: ''
+    };
+  }, [variantsByProduct, variantAttributes]);
+
+  const getVariantIdFromAttributes = useCallback((productId: number, selections: SelectedAttributes): number | null => {
+    const productVariants = variantsByProduct[productId] || [];
+    const validation = validateVariantSelection(productId, selections);
+    
+    if (!validation.isValid) {
+      return null;
+    }
+    
+    const variant = productVariants.find(variant => {
+      const attrs = variantAttributes[variant.variant_id];
+      if (!attrs) return false;
+      
+      return Object.entries(selections).every(
+        ([name, value]) => attrs[name] === value
+      );
+    });
+    
+    return variant?.variant_id || null;
+  }, [variantsByProduct, variantAttributes, validateVariantSelection]);
+
+  const handleAttributeChange = useCallback((productId: number, characteristicName: string, value: string) => {
+    setProductSelections(prev => {
+      const currentSelections = prev[productId] || {
+        attributes: {},
+        variantId: '',
+        validation: { isValid: true, message: '' }
+      };
+
+      // Create new selections object
+      const newAttributes = {
+        ...currentSelections.attributes,
+        [characteristicName]: value
+      };
+
+      // Clear subsequent selections if they're no longer valid
+      const characteristicNames = Object.keys(variantAttributes[productVariants[0]?.variant_id] || {});
+      const currentIndex = characteristicNames.indexOf(characteristicName);
+      
+      if (currentIndex !== -1) {
+        // Clear all selections after the current one
+        characteristicNames.slice(currentIndex + 1).forEach(name => {
+          delete newAttributes[name];
+        });
+      }
+
+      // Validate new selections
+      const validation = validateVariantSelection(productId, newAttributes);
+      const variantId = validation.isValid 
+        ? getVariantIdFromAttributes(productId, newAttributes)?.toString() || ''
+        : '';
+
+      return {
+        ...prev,
+        [productId]: {
+          attributes: newAttributes,
+          variantId,
+          validation
+        }
+      };
+    });
+  }, [productVariants, variantAttributes, validateVariantSelection, getVariantIdFromAttributes]);
+
+  // All useEffect hooks last
   useEffect(() => {
     const fetchClients = async () => {
       setLoadingClients(true);
@@ -174,7 +329,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     fetchClients();
   }, []);
 
-  // Fetch location information
   useEffect(() => {
     const fetchLocationInfo = async () => {
       try {
@@ -196,7 +350,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     }
   }, [locationId]);
 
-  // Fetch product data from Supabase
   useEffect(() => {
     const fetchProductData = async () => {
       setLoading(true);
@@ -311,7 +464,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     }
   }, [locationId]);
 
-  // Add useEffect to check user role
   useEffect(() => {
     const checkUserRole = async () => {
       try {
@@ -326,21 +478,9 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     checkUserRole();
   }, []);
 
-  // Filter products based on search and category
-  const filteredProducts = useMemo(() => {
-    return products.filter(product => {
-      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === 'all' || 
-                             (product.category && product.category === selectedCategory);
-      return matchesSearch && matchesCategory;
-    });
-  }, [products, searchTerm, selectedCategory]);
-
-  // Get available stock for a variant
-  const getAvailableStock = (variantId: number): number => {
-    const stockItem = stockItems.find(item => item.variant_id === variantId);
-    return stockItem ? stockItem.stock : 0;
-  };
+  useEffect(() => {
+    // Remove the old validation effect as it's now handled in handleAttributeChange
+  }, []);
 
   // Format variant name with attributes
   const formatVariantName = (variantId: number): string => {
@@ -373,9 +513,25 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     }));
   };
 
+  // Get available stock for a variant
+  const getAvailableStock = (variantId: number): number => {
+    const stockItem = stockItems.find(item => item.variant_id === variantId);
+    return stockItem ? stockItem.stock : 0;
+  };
+
   // Add product to cart
-  const agregarAlCarrito = (variantId: number) => {
-    // Find the basic variant info (for name, sku, image etc.)
+  const agregarAlCarrito = (productId: number) => {
+    const selection = productSelections[productId];
+    if (!selection || !selection.variantId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Selecciona todas las opciones del producto",
+      });
+      return;
+    }
+
+    const variantId = Number(selection.variantId);
     const variant = productVariants.find(v => v.variant_id === variantId);
     if (!variant) {
       console.error("Variant details not found for ID:", variantId);
@@ -387,18 +543,21 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       return;
     }
 
-    // Find the corresponding stock item for this variant
-    const stockItem = stockItems.find(item => item.variant_id === variantId);
+    const product = products.find(p => p.id === productId);
+    if (!product) {
+      console.error("Product not found for ID:", productId);
+      return;
+    }
 
-    // Check if we found a stock item and it has a valid price
+    const stockItem = stockItems.find(item => item.variant_id === variantId);
     if (!stockItem || typeof stockItem.price !== 'number') {
-        console.error("Stock information (including price) not found for variant ID:", variantId);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: `Precio no encontrado en el inventario para ${formatVariantName(variantId)}. No se puede agregar.`,
-        });
-        return;
+      console.error("Stock information not found for variant ID:", variantId);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Precio no encontrado en el inventario para ${formatVariantName(variantId)}. No se puede agregar.`,
+      });
+      return;
     }
 
     const unitPrice = stockItem.price;
@@ -408,7 +567,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     setVentaItems(prev => {
       const existe = prev.find(item => item.variant_id === variantId);
       if (existe) {
-
         return prev.map(item =>
           item.variant_id === variantId
             ? { ...item, quantity: cantidades[variantId], unitPrice: unitPrice }
@@ -416,9 +574,9 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         );
       }
       return [...prev, {
-        id: Date.now(), 
+        id: Date.now(),
         variant_id: variantId,
-        name: variantName,
+        name: `${product.name} - ${variantName}`,
         type: variantType,
         unitPrice: unitPrice,
         quantity: cantidades[variantId],
@@ -556,13 +714,6 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       </div>
     )
   }
-  const variantsByProduct: Record<number, ProductVariant[]> = {};
-  productVariants.forEach(variant => {
-    if (!variantsByProduct[variant.product_id]) {
-      variantsByProduct[variant.product_id] = [];
-    }
-    variantsByProduct[variant.product_id].push(variant);
-  });
 
   return (
     <div className="flex">
@@ -615,8 +766,18 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
             .map(([productId, variants]) => {
               const product = products.find(p => p.id === Number(productId));
               if (!product) return null;
-              const firstVariant = variants[0];
-              const selectedVariant = variants.find(v => v.variant_id === Number(selectedVariantId));
+              
+              const characteristicNames = variants.length > 0 
+                ? getCharacteristicNames(variants[0].variant_id)
+                : [];
+              
+              const selection = productSelections[Number(productId)] || {
+                attributes: {},
+                variantId: '',
+                validation: { isValid: true, message: '' }
+              };
+              
+              const selectedVariant = variants.find(v => v.variant_id === Number(selection.variantId));
               const selectedStockItem = selectedVariant
                 ? stockItems.find(
                     item => item.variant_id === selectedVariant.variant_id && item.location === locationId
@@ -628,139 +789,149 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
               return (
                 <div key={productId} className="mb-8">
                   <Card className="border border-gray-300 rounded-lg w-full hover:shadow-md transition-shadow">
-                    <CardContent className="text-center flex flex-col items-center gap-y-2 p-4">
+                    <CardContent className="p-4">
                       <h2 className="text-xl font-semibold mb-3 capitalize">{product.name}</h2>
-                      <h3 className="mb-2 text-sm text-gray-600">
-                        {variants.length > 0 ? getCharacteristicNames(variants[0].variant_id).join(", ") : ""}
-                      </h3>
-
-                      {/* Botones de variantes */}
-                      <div className="w-full flex flex-wrap gap-2 justify-center">
-                        {variants.map((variant) => {
-                          const idStr = variant.variant_id.toString();
-                          const name = formatVariantName(variant.variant_id);
-                          const isSelected = idStr === selectedVariantId;
-
+                      
+                      {/* Attribute dropdowns */}
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        {characteristicNames.map((characteristicName, index) => {
+                          const isDisabled = index > 0 && !characteristicNames.slice(0, index).every(
+                            name => selection.attributes[name]
+                          );
+                          
                           return (
-                              <button
-                                key={variant.variant_id}
-                                type="button"
-                                onClick={() => setSelectedVariantId(idStr)}
-                                className={`px-4 py-2 rounded-md border transition 
-                                  ${isSelected ? 'bg-[#1366D9] text-white border-indigo-500' : 'bg-white text-gray-700 border-gray-300'}`}
+                            <div key={characteristicName} className="flex flex-col">
+                              <label className="text-sm font-medium text-gray-700 mb-1">
+                                {characteristicName}
+                              </label>
+                              <Select
+                                value={selection.attributes[characteristicName] || ""}
+                                onValueChange={(value) => handleAttributeChange(Number(productId), characteristicName, value)}
+                                disabled={isDisabled}
                               >
-                                {name}
-                              </button>
+                                <SelectTrigger className={`w-full ${
+                                  !selection.validation.isValid && selection.attributes[characteristicName] 
+                                    ? 'border-red-500' 
+                                    : isDisabled
+                                    ? 'bg-gray-100'
+                                    : ''
+                                }`}>
+                                  <SelectValue placeholder={
+                                    isDisabled 
+                                      ? `Selecciona ${characteristicNames[index - 1]} primero`
+                                      : `Seleccionar ${characteristicName}`
+                                  } />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getAvailableOptions(Number(productId), characteristicName, selection.attributes).map(option => (
+                                    <SelectItem key={option} value={option}>
+                                      {option}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           );
                         })}
                       </div>
 
-                      {/* Imagen de la variante seleccionada o placeholder
-                      {selectedVariant?.image_url ? (
-                        <img
-                          src={selectedVariant.image_url}
-                          alt={formatVariantName(selectedVariant.variant_id)}
-                          className="w-24 h-24 object-cover rounded mx-auto mt-4"
-                        />
-                      ) : (
-                        <div className="w-24 h-24 flex items-center justify-center bg-gray-100 rounded mx-auto mt-4">
-                          <Image className="w-12 h-12 text-[#1366D9]" />
+                      {/* Validation message */}
+                      {!selection.validation.isValid && (
+                        <div className="text-sm text-red-500 mb-4">
+                          {selection.validation.message}
                         </div>
-                      )} */}
+                      )}
 
-                      {/* Siempre visible: cantidad, stock, precio y botón */}
-                      <div className="mt-4 w-full">
-                        {/* Selector de cantidad */}
-                        <div className="flex items-center border border-gray-300 rounded-md overflow-hidden w-full bg-white">
-                          <button
-                            onClick={() => selectedVariant && disminuir(selectedVariant.variant_id)}
-                            className="p-2 text-gray-700 hover:bg-gray-200 transition"
-                            disabled={!selectedVariant || selectedStock <= 0}
-                          >
-                            <Minus />
-                          </button>
-                          <input
-                            type="number"
-                            value={
-                              selectedVariant
-                                ? selectedStock <= 0
-                                  ? 0
-                                  : cantidades[selectedVariant.variant_id] || 1
-                                : ''
-                            }
-                            onChange={(e) => {
-                              if (!selectedVariant) return;
-                              let valor = Number(e.target.value);
-                              if (valor < 1) valor = 1;
-                              if (valor > selectedStock) valor = selectedStock;
-                              setCantidades((prev) => ({ ...prev, [selectedVariant.variant_id]: valor }));
-                            }}
-                            className="w-full text-center outline-none bg-transparent appearance-none"
-                            disabled={!selectedVariant || selectedStock <= 0}
-                            style={{ MozAppearance: 'textfield', appearance: 'textfield' }}
-                            placeholder="Cantidad"
-                          />
-                          <button
-                            onClick={() => selectedVariant && aumentar(selectedVariant.variant_id)}
-                            className="p-2 text-gray-700 hover:bg-gray-200 transition"
-                            disabled={
-                              !selectedVariant ||
-                              selectedStock <= 0 ||
-                              (cantidades[selectedVariant?.variant_id] || 1) >= selectedStock
-                            }
-                          >
-                            <Plus />
-                          </button>
-                        </div>
-
-                        {/* Stock */}
-                        <div
-                          className={`text-xs m-3 ${
-                            selectedVariant
-                              ? selectedStock > 5
-                                ? 'text-green-600'
-                                : selectedStock > 0
-                                ? 'text-orange-500'
-                                : 'text-red-500'
-                              : 'text-gray-400'
-                          }`}
-                        >
+                      {/* Product details and add to cart section */}
+                      <div className="mt-4 space-y-4">
+                        {/* Stock status */}
+                        <div className={`text-sm ${
+                          selectedVariant
+                            ? selectedStock > 5
+                              ? 'text-green-600'
+                              : selectedStock > 0
+                              ? 'text-orange-500'
+                              : 'text-red-500'
+                            : 'text-gray-400'
+                        }`}>
                           {selectedVariant
                             ? selectedStock > 0
-                              ? `Stock: ${selectedStock} piezas`
+                              ? `Stock disponible: ${selectedStock} piezas`
                               : 'Sin stock'
-                            : 'Selecciona una variante'}
+                            : selection.validation.message}
                         </div>
 
-                        {/* Precio */}
-                        <div className="text-sm text-gray-800 font-medium m-3">
-                          {selectedVariant && selectedDisplayPrice !== null
-                            ? `Precio: MXN $${selectedDisplayPrice}`
-                            : 'Precio: —'}
-                        </div>
+                        {/* Price display */}
+                        {selectedVariant && selectedDisplayPrice !== null && (
+                          <div className="text-lg font-semibold text-gray-900">
+                            MXN ${selectedDisplayPrice}
+                          </div>
+                        )}
 
-                        {/* Botón agregar */}
-                        <button
-                          onClick={() => selectedVariant && agregarAlCarrito(selectedVariant.variant_id)}
-                          className={`w-full h-10 rounded-sm ${
-                            !selectedVariant || selectedStock <= 0 || selectedDisplayPrice === null
-                              ? 'bg-gray-300 cursor-not-allowed'
-                              : 'bg-[#1366D9] hover:bg-[#0d4ea6]'
-                          } text-white text-sm font-semibold shadow-lg transition-colors`}
-                          disabled={!selectedVariant || selectedStock <= 0 || selectedDisplayPrice === null}
-                        >
-                          {!selectedVariant
-                            ? 'Selecciona una variante'
-                            : selectedStock <= 0
-                            ? 'Sin stock'
-                            : selectedDisplayPrice === null
-                            ? 'Precio no disp.'
-                            : 'Agregar'}
-                        </button>
+                        {/* Quantity selector and add button */}
+                        <div className="flex gap-4 items-center">
+                          <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
+                            <button
+                              onClick={() => selectedVariant && disminuir(selectedVariant.variant_id)}
+                              className="p-2 text-gray-700 hover:bg-gray-200 transition"
+                              disabled={!selectedVariant || selectedStock <= 0}
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                            <input
+                              type="number"
+                              value={
+                                selectedVariant
+                                  ? selectedStock <= 0
+                                    ? 0
+                                    : cantidades[selectedVariant.variant_id] || 1
+                                  : ''
+                              }
+                              onChange={(e) => {
+                                if (!selectedVariant) return;
+                                let valor = Number(e.target.value);
+                                if (valor < 1) valor = 1;
+                                if (valor > selectedStock) valor = selectedStock;
+                                setCantidades((prev) => ({ ...prev, [selectedVariant.variant_id]: valor }));
+                              }}
+                              className="w-16 text-center outline-none bg-transparent"
+                              disabled={!selectedVariant || selectedStock <= 0}
+                              style={{ MozAppearance: 'textfield', appearance: 'textfield' }}
+                            />
+                            <button
+                              onClick={() => selectedVariant && aumentar(selectedVariant.variant_id)}
+                              className="p-2 text-gray-700 hover:bg-gray-200 transition"
+                              disabled={
+                                !selectedVariant ||
+                                selectedStock <= 0 ||
+                                (cantidades[selectedVariant?.variant_id] || 1) >= selectedStock
+                              }
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <button
+                            onClick={() => agregarAlCarrito(Number(productId))}
+                            className={`flex-1 h-10 rounded-md ${
+                              !selectedVariant || selectedStock <= 0 || selectedDisplayPrice === null
+                                ? 'bg-gray-300 cursor-not-allowed'
+                                : 'bg-[#1366D9] hover:bg-[#0d4ea6]'
+                            } text-white text-sm font-semibold transition-colors`}
+                            disabled={!selectedVariant || selectedStock <= 0 || selectedDisplayPrice === null}
+                          >
+                            {!selectedVariant
+                              ? selection.validation.message
+                              : selectedStock <= 0
+                              ? 'Sin stock'
+                              : selectedDisplayPrice === null
+                              ? 'Precio no disp.'
+                              : 'Agregar al carrito'}
+                          </button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
-
                 </div>
               );
             })
@@ -771,125 +942,184 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
           </Button>
         </div>
       </div>
-      <div className="w-1/4 p-4 bg-white mx-4 h-full rounded-lg">
-        <h1 className="text-lg font-semibold capitalize">Resumen de venta</h1>
-        <div className="mb-4">
-          <label htmlFor="client" className="text-sm font-medium mb-2 flex items-center">
-            <Users className="w-4 h-4 mr-1 text-gray-500" />
-            Cliente
-          </label>
+      <div className="w-1/4 p-4 bg-white mx-4 h-full rounded-lg shadow-sm">
+        <div className="sticky top-4">
+          <h1 className="text-lg font-semibold capitalize mb-4">Resumen de venta</h1>
           
-          {clients.length > 0 ? (
-            <Select 
-              value={selectedClientId?.toString() || ""} 
-              onValueChange={(value) => {
-                const clientId = Number(value);
-                setSelectedClientId(clientId);
-                const selectedClient = clients.find(c => c.id === clientId);
-                if (selectedClient) {
-                  setDescuento(selectedClient.discount || 0);
-                  setInputDescuento(selectedClient.discount?.toString() || "0");
-                }
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Seleccionar cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map(client => (
-                  <SelectItem 
-                    key={client.id} 
-                    value={client.id.toString()}
-                    className={client.is_default ? "font-semibold" : ""}
-                  >
-                    {client.name} {client.discount > 0 ? `(${client.discount}% desc.)` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Client selection */}
+          <div className="mb-6">
+            <label htmlFor="client" className="text-sm font-medium mb-2 flex items-center">
+              <Users className="w-4 h-4 mr-1 text-gray-500" />
+              Cliente
+            </label>
+            
+            {clients.length > 0 ? (
+              <Select 
+                value={selectedClientId?.toString() || ""} 
+                onValueChange={(value) => {
+                  const clientId = Number(value);
+                  setSelectedClientId(clientId);
+                  const selectedClient = clients.find(c => c.id === clientId);
+                  if (selectedClient) {
+                    setDescuento(selectedClient.discount || 0);
+                    setInputDescuento(selectedClient.discount?.toString() || "0");
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map(client => (
+                    <SelectItem 
+                      key={client.id} 
+                      value={client.id.toString()}
+                      className={client.is_default ? "font-semibold" : ""}
+                    >
+                      {client.name} {client.discount > 0 ? `(${client.discount}% desc.)` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-sm text-gray-500">No hay clientes disponibles</p>
+            )}
+          </div>
+
+          {/* Cart items */}
+          {ventaItems.length === 0 ? (
+            <div className="text-center py-8 border border-dashed border-gray-200 rounded-lg">
+              <ShoppingCart className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">No hay productos agregados</p>
+            </div>
           ) : (
-            <p className="text-sm text-gray-500">No hay clientes disponibles</p>
-          )}
-        </div>
-        
-        {ventaItems.length === 0 ? (
-          <p className="text-sm font-light">No hay productos agregados</p>
-        ) : (
-          <>
-            <div className="space-y-2">
-              {ventaItems.map(item => (
-                <div key={item.id} className="flex text-sm justify-between">
-                  <span className="w-1/3"> {item.type}: {item.name}  x {item.quantity}</span>
-                  <div>
-                    <span className='px-5'>MXN ${item.unitPrice * item.quantity}</span>
-                    <span> 
-                      <button onClick={() => eliminarDelCarrito(item.variant_id)}>
+            <div className="space-y-4">
+              {/* Cart items list */}
+              <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3">
+                {ventaItems.map(item => (
+                  <div key={item.id} className="flex flex-col bg-gray-50 rounded-lg p-3">
+                    {/* Product header */}
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900">
+                              {item.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {item.type.join(' - ')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => eliminarDelCarrito(item.variant_id)}
+                        className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                      >
                         <Trash2 className="w-4 h-4 text-red-600" />
                       </button>
-                    </span>
+                    </div>
+
+                    {/* Product details */}
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => disminuir(item.variant_id)}
+                          className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                          disabled={item.quantity <= 1}
+                        >
+                          <Minus className="w-3 h-3 text-gray-600" />
+                        </button>
+                        <span className="w-8 text-center">{item.quantity}</span>
+                        <button
+                          onClick={() => aumentar(item.variant_id)}
+                          className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                          disabled={item.quantity >= getAvailableStock(item.variant_id)}
+                        >
+                          <Plus className="w-3 h-3 text-gray-600" />
+                        </button>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-gray-900">
+                          MXN ${(item.unitPrice * item.quantity).toFixed(2)}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          ${item.unitPrice.toFixed(2)} c/u
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Summary totals */}
+              <div className="border-t border-gray-200 pt-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="font-medium">MXN ${subtotal.toFixed(2)}</span>
+                </div>
+                
+                {(descuento > 0 || isAdmin) && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Descuento:</span>
+                    <span className="font-medium">% {descuento}</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between text-base font-semibold pt-2 border-t border-gray-200">
+                  <span>Total:</span>
+                  <span className="text-[#1366D9]">
+                    MXN ${(total < 0 ? 0 : total).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Discount input for admin */}
+              {isAdmin && (
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <label htmlFor="descuento" className="block text-sm font-medium mb-2">
+                    Descuento {selectedClientId && clients.find(c => c.id === selectedClientId)?.discount ? 
+                      `(Descuento del cliente: ${clients.find(c => c.id === selectedClientId)?.discount}%)` : ''}
+                  </label>
+                  <div className="flex gap-2">
+                    <Input 
+                      type="number"
+                      value={inputDescuento}
+                      onChange={(e) => setInputDescuento(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button 
+                      type="submit"
+                      onClick={() => setDescuento(Number(inputDescuento))}
+                      className="whitespace-nowrap"
+                    > 
+                      Aplicar
+                    </Button>
                   </div>
                 </div>
-              ))}
-              <hr className="my-2" />
-              <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                <span>MXN ${subtotal}</span>
-              </div>
-              {/* Show discount for both admins and employees if there is one */}
-              {(descuento > 0 || isAdmin) && (
-                <div className="flex justify-between text-sm">
-                  <span>Descuento:</span>
-                  <span>% {descuento}</span>
-                </div>
               )}
-              <div className="flex justify-between font-bold">
-                <span>Total:</span>
-                <span>MXN ${total < 0 ? 0 : total}</span>
-              </div>
+
+              {/* Client discount info for employees */}
+              {!isAdmin && selectedClientId && (() => {
+                const clientDiscount = clients.find(c => c.id === selectedClientId)?.discount || 0;
+                return clientDiscount > 0 ? (
+                  <div className="mt-2 text-sm text-gray-600 bg-blue-50 p-2 rounded-lg">
+                    Descuento del cliente aplicado: {clientDiscount}%
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Confirm sale button */}
+              <button 
+                className="w-full h-12 mt-6 rounded-md bg-[#1366D9] text-white text-sm font-semibold shadow-sm hover:bg-[#0d4ea6] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                onClick={confirmarVenta}
+                disabled={ventaItems.length === 0}
+              >
+                Confirmar venta
+              </button>
             </div>
-
-            {/* Discount input - only show for admins */}
-            {isAdmin && (
-              <div className="mt-4">
-                <label htmlFor="descuento" className="block text-sm font-medium">
-                  Descuento {selectedClientId && clients.find(c => c.id === selectedClientId)?.discount ? 
-                    `(Descuento del cliente: ${clients.find(c => c.id === selectedClientId)?.discount}%)` : ''}
-                </label>
-                <div className="flex w-full max-w-sm items-center space-x-2">
-                  <Input 
-                    type="number"
-                    value={inputDescuento}
-                    onChange={(e) => setInputDescuento(e.target.value)}
-                  />
-                  <Button 
-                    type="submit"
-                    onClick={() => setDescuento(Number(inputDescuento))}
-                  > 
-                    Aplicar
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Show client discount info for employees */}
-            {!isAdmin && selectedClientId && (() => {
-              const clientDiscount = clients.find(c => c.id === selectedClientId)?.discount || 0;
-              return clientDiscount > 0 ? (
-                <div className="mt-4 text-sm text-gray-600">
-                  Descuento del cliente aplicado: {clientDiscount}%
-                </div>
-              ) : null;
-            })()}
-
-            {/* Confirm sale button */}
-            <button 
-              className="w-full h-10 mt-6 rounded-sm bg-[#1366D9] text-white text-sm font-semibold shadow-lg hover:bg-[#0d4ea6] transition-colors"
-              onClick={confirmarVenta}
-            >
-              Confirmar venta
-            </button>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
