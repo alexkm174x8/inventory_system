@@ -1,11 +1,19 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Printer} from 'lucide-react';
+import { Plus, Search, Filter, Printer, FileText } from 'lucide-react';
 import LoginLogo from './login-logo';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 import { useRouter } from 'next/navigation';
 import LocationSelector from './locationSelection';
+import SalesReportGenerator from './SalesReportGenerator';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface SaleItem {
   id: number;
@@ -94,7 +102,7 @@ const VentasContent: React.FC = () => {
   const [locations, setLocations] = useState<Record<number, string>>({});
   const [clients, setClients] = useState<Record<number, string>>({});
   const [openLocations, setOpenLocations] = useState(false);
-
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const fetchLocations = async () => {
     try {
@@ -474,163 +482,180 @@ const VentasContent: React.FC = () => {
 
   return (
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5] pb-10">
-          <div className="flex justify-between items-center mb-6">
-          <button 
-            onClick={handleButtonClick}
-            className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'>
-            <Plus className="w-4 h-4" />
-            Crear venta
-          </button>
-          {showModal && (
-            <LocationSelector
-              isOpen={true}
-              onClose={() => {
-                setIsDialogOpen(false);
-                setShowModal(false);
-              }}
-              onLocationSelected={(locationId) => {
-                setSelectedLocation(locationId);
-                setIsDialogOpen(false);
-                setShowModal(false);
-              }}
-            />
-          )}
+      <div className="flex justify-between items-center mb-6">
+        <button 
+          onClick={handleButtonClick}
+          className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'>
+          <Plus className="w-4 h-4" />
+          Crear venta
+        </button>
+        {showModal && (
+          <LocationSelector
+            isOpen={true}
+            onClose={() => {
+              setIsDialogOpen(false);
+              setShowModal(false);
+            }}
+            onLocationSelected={(locationId) => {
+              setSelectedLocation(locationId);
+              setIsDialogOpen(false);
+              setShowModal(false);
+            }}
+          />
+        )}
 
-            <div className="flex gap-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Buscar productos o clientes..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"/>
-                <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
-              </div>
-              
-              <div className="relative">
-                <select
-                  value={locationFilter === null ? '' : locationFilter}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setLocationFilter(value === '' ? null : Number(value));
-                  }}
-                  className={`pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    locationFilter === null ? 'text-gray-400' : 'text-gray-900'
-                  }`}
-                >
-                  <option value="">Todas las ubicaciones</option>
-                  {Object.entries(locations).map(([id, name]) => (
-                    <option key={id} value={id}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-                <Filter className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
-              </div>
-
-              
-              
-              <div className="relative">
-                <input
-                  type="date"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className={`pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    dateFilter === '' ? 'text-gray-400' : 'text-gray-900'
-                  }`}
-                />
-                <Filter className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
-              </div>
-            </div>
+        <div className="flex gap-4 items-center">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Buscar productos o clientes..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"/>
+            <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
           </div>
           
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]"></div>
+          <div className="relative">
+            <select
+              value={locationFilter === null ? '' : locationFilter}
+              onChange={(e) => {
+                const value = e.target.value;
+                setLocationFilter(value === '' ? null : Number(value));
+              }}
+              className={`pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                locationFilter === null ? 'text-gray-400' : 'text-gray-900'
+              }`}
+            >
+              <option value="">Todas las ubicaciones</option>
+              {Object.entries(locations).map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <Filter className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
+          </div>
+
+          <div className="relative">
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className={`pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                dateFilter === '' ? 'text-gray-400' : 'text-gray-900'
+              }`}
+            />
+            <Filter className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
+          </div>
+
+          <Button
+            onClick={() => setShowReportModal(true)}
+            variant="outline"
+            className="flex items-center gap-2 px-3 py-2 h-10"
+          >
+            <FileText className="w-4 h-4" />
+            Reporte
+          </Button>
+        </div>
+      </div>
+      
+      {/* Report Generator Modal */}
+      <Dialog open={showReportModal} onOpenChange={setShowReportModal}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Generador de Reportes de Ventas</DialogTitle>
+          </DialogHeader>
+          <SalesReportGenerator locations={locations} />
+        </DialogContent>
+      </Dialog>
+      
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1366D9]"></div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 justify-items-center md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+          {filteredVentas.length === 0 ? (
+            <div className="col-span-full text-center py-12">
+              <p className="text-gray-500">No hay ventas registradas</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 justify-items-center md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
-              {filteredVentas.length === 0 ? (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-gray-500">No hay ventas registradas</p>
-                </div>
-              ) : (
-                filteredVentas.map((venta) => {
-                  const fecha = new Date(venta.createdAt);
-                  return (
-                    <div 
-                      key={venta.id} 
-                      className="relative flex flex-col bg-white shadow-sm border border-slate-200 rounded-lg w-full hover:shadow-md transition-shadow"
-                    >
-                      {/* Print Button */}
-                      <button
-                        onClick={() => handlePrint(venta)}
-                        className="absolute top-3 right-3 p-2 text-gray-500 hover:text-blue-600 transition-colors"
-                        title="Imprimir ticket"
-                      >
-                        <Printer className="w-5 h-5 text-[#1366D9]" />
-                      </button>
-                      {/* Header */}
-                      <div className="mx-3 mb-0 border-b border-slate-200 pt-3 pb-2 px-1">
-                        <div className="flex items-center gap-3">
-                          <LoginLogo size={60} />
-                          <div>
-                            <h2 className="text-lg font-semibold capitalize">Venta #{venta.id}</h2>
-                            <p className="font-light text-sm mt-2">Ubicación: {venta.locationName}</p>
-                            <p className="font-light text-sm mt-2">Cliente: {venta.clientName}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-6 mt-3 text-sm">
-                          <p>{fecha.toLocaleDateString()}</p>
-                          <p>{fecha.toLocaleTimeString()}</p>
-                        </div>
-                      </div>
-
-                      {/* Product List */}
-                      <div className="p-4 pb-20"> {/* <- Note the extra bottom padding */}
-                        <div className="grid grid-cols-3 text-gray-400 pb-3 text-sm font-medium">
-                          <span>Cantidad</span>
-                          <span className="text-center">Producto</span>
-                          <span className="text-right">Precio</span>
-                        </div>
-
-                        <ul className="text-slate-600 font-light text-sm">
-                          {venta.items.slice(0, 3).map((producto, index) => (
-                            <li key={index} className="grid grid-cols-3 py-1">
-                              <span>{producto.quantity}</span>
-                              <span className="text-center capitalize">
-                                {formatProductWithAttributes(producto)}
-                              </span>
-                              <span className="text-right">
-                                ${producto.unitPrice * producto.quantity} MXN
-                              </span>
-                            </li>
-                          ))}
-
-                          {venta.items.length > 3 && (
-                            <li className="text-center text-blue-600 text-sm py-1 col-span-3">
-                              {venta.items.length - 3} productos más...
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-
-                      {/* Fixed Bottom Section */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2 flex justify-between items-center rounded-b-lg">
-                        <p className="text-sm text-slate-600 font-medium">Total: ${venta.total} MXN</p>
-                        <button 
-                          onClick={() => router.push(`/dashboard/ventas/${venta.id}`)}
-                          className="text-blue-600 text-sm font-medium hover:text-blue-800"
-                        >
-                          Ver más
-                        </button>
+            filteredVentas.map((venta) => {
+              const fecha = new Date(venta.createdAt);
+              return (
+                <div 
+                  key={venta.id} 
+                  className="relative flex flex-col bg-white shadow-sm border border-slate-200 rounded-lg w-full hover:shadow-md transition-shadow"
+                >
+                  {/* Print Button */}
+                  <button
+                    onClick={() => handlePrint(venta)}
+                    className="absolute top-3 right-3 p-2 text-gray-500 hover:text-blue-600 transition-colors"
+                    title="Imprimir ticket"
+                  >
+                    <Printer className="w-5 h-5 text-[#1366D9]" />
+                  </button>
+                  {/* Header */}
+                  <div className="mx-3 mb-0 border-b border-slate-200 pt-3 pb-2 px-1">
+                    <div className="flex items-center gap-3">
+                      <LoginLogo size={60} />
+                      <div>
+                        <h2 className="text-lg font-semibold capitalize">Venta #{venta.id}</h2>
+                        <p className="font-light text-sm mt-2">Ubicación: {venta.locationName}</p>
+                        <p className="font-light text-sm mt-2">Cliente: {venta.clientName}</p>
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
+                    <div className="flex items-center gap-6 mt-3 text-sm">
+                      <p>{fecha.toLocaleDateString()}</p>
+                      <p>{fecha.toLocaleTimeString()}</p>
+                    </div>
+                  </div>
+
+                  {/* Product List */}
+                  <div className="p-4 pb-20"> {/* <- Note the extra bottom padding */}
+                    <div className="grid grid-cols-3 text-gray-400 pb-3 text-sm font-medium">
+                      <span>Cantidad</span>
+                      <span className="text-center">Producto</span>
+                      <span className="text-right">Precio</span>
+                    </div>
+
+                    <ul className="text-slate-600 font-light text-sm">
+                      {venta.items.slice(0, 3).map((producto, index) => (
+                        <li key={index} className="grid grid-cols-3 py-1">
+                          <span>{producto.quantity}</span>
+                          <span className="text-center capitalize">
+                            {formatProductWithAttributes(producto)}
+                          </span>
+                          <span className="text-right">
+                            ${producto.unitPrice * producto.quantity} MXN
+                          </span>
+                        </li>
+                      ))}
+
+                      {venta.items.length > 3 && (
+                        <li className="text-center text-blue-600 text-sm py-1 col-span-3">
+                          {venta.items.length - 3} productos más...
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+
+                  {/* Fixed Bottom Section */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2 flex justify-between items-center rounded-b-lg">
+                    <p className="text-sm text-slate-600 font-medium">Total: ${venta.total} MXN</p>
+                    <button 
+                      onClick={() => router.push(`/dashboard/ventas/${venta.id}`)}
+                      className="text-blue-600 text-sm font-medium hover:text-blue-800"
+                    >
+                      Ver más
+                    </button>
+                  </div>
+                </div>
+              );
+            })
           )}
+        </div>
+      )}
     </main>
   );
 };
