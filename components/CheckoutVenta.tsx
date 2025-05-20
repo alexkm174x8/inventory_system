@@ -138,18 +138,22 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     const productVariants = variantsByProduct[productId] || [];
     const options = new Set<string>();
     
-    const allVariants = productVariants.filter(variant => {
+    // Get all variants that match the current selections
+    const matchingVariants = productVariants.filter(variant => {
       const attrs = variantAttributes[variant.variant_id];
       if (!attrs) return false;
 
+      // Check if this variant matches all currently selected attributes
+      // except for the one we're currently getting options for
       return Object.entries(currentSelections).every(([name, value]) => {
-        if (!value) return true;
-        if (name === characteristicName) return true;
-        return attrs[name] === value;
+        if (!value) return true; // Skip unselected attributes
+        if (name === characteristicName) return true; // Skip the attribute we're getting options for
+        return attrs[name] === value; // Check if this variant has the selected value
       });
     });
 
-    allVariants.forEach(variant => {
+    // Get all unique values for the requested characteristic from matching variants
+    matchingVariants.forEach(variant => {
       const attrs = variantAttributes[variant.variant_id];
       if (attrs && attrs[characteristicName]) {
         options.add(attrs[characteristicName]);
@@ -222,20 +226,32 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       };
 
       // Create new selections object
-      const newAttributes = {
-        ...currentSelections.attributes,
-        [characteristicName]: value
-      };
-
-      // Clear subsequent selections if they're no longer valid
-      const characteristicNames = Object.keys(variantAttributes[productVariants[0]?.variant_id] || {});
-      const currentIndex = characteristicNames.indexOf(characteristicName);
+      const newAttributes = { ...currentSelections.attributes };
       
-      if (currentIndex !== -1) {
-        // Clear all selections after the current one
-        characteristicNames.slice(currentIndex + 1).forEach(name => {
-          delete newAttributes[name];
-        });
+      if (value === "__CLEAR__") {
+        // If clear option selected, remove this attribute and all subsequent ones
+        delete newAttributes[characteristicName];
+        
+        // Clear all subsequent selections
+        const characteristicNames = Object.keys(variantAttributes[productVariants[0]?.variant_id] || {});
+        const currentIndex = characteristicNames.indexOf(characteristicName);
+        if (currentIndex !== -1) {
+          characteristicNames.slice(currentIndex).forEach(name => {
+            delete newAttributes[name];
+          });
+        }
+      } else {
+        // Set the new value
+        newAttributes[characteristicName] = value;
+        
+        // Clear subsequent selections
+        const characteristicNames = Object.keys(variantAttributes[productVariants[0]?.variant_id] || {});
+        const currentIndex = characteristicNames.indexOf(characteristicName);
+        if (currentIndex !== -1) {
+          characteristicNames.slice(currentIndex + 1).forEach(name => {
+            delete newAttributes[name];
+          });
+        }
       }
 
       // Validate new selections
@@ -254,6 +270,17 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       };
     });
   }, [productVariants, variantAttributes, validateVariantSelection, getVariantIdFromAttributes]);
+
+  const handleClearAllAttributes = useCallback((productId: number) => {
+    setProductSelections(prev => ({
+      ...prev,
+      [productId]: {
+        attributes: {},
+        variantId: '',
+        validation: { isValid: true, message: '' }
+      }
+    }));
+  }, []);
 
   // All useEffect hooks last
   useEffect(() => {
@@ -790,7 +817,19 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                 <div key={productId} className="mb-8">
                   <Card className="border border-gray-300 rounded-lg w-full hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
-                      <h2 className="text-xl font-semibold mb-3 capitalize">{product.name}</h2>
+                      <div className="flex justify-between items-center mb-3">
+                        <h2 className="text-xl font-semibold capitalize">{product.name}</h2>
+                        {Object.keys(selection.attributes).length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleClearAllAttributes(Number(productId))}
+                            className="text-gray-500 hover:text-gray-700"
+                          >
+                            Limpiar selecciones
+                          </Button>
+                        )}
+                      </div>
                       
                       {/* Attribute dropdowns */}
                       <div className="grid grid-cols-2 gap-4 mb-4">
@@ -823,6 +862,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                                   } />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  {selection.attributes[characteristicName] && (
+                                    <SelectItem value="__CLEAR__">
+                                      <span className="text-gray-500">Limpiar selección</span>
+                                    </SelectItem>
+                                  )}
                                   {getAvailableOptions(Number(productId), characteristicName, selection.attributes).map(option => (
                                     <SelectItem key={option} value={option}>
                                       {option}
