@@ -55,8 +55,8 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
-        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
+        PrevButton: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
+        NextButton: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
       }}
       locale={es}
       {...props}
