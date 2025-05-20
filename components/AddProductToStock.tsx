@@ -438,7 +438,7 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
           <h1 className="text-lg font-semibold capitalize">Agregar Inventario</h1>
 
           {/* Producto */}
-          <div className="mb-4">
+          <div className="my-4">
             <Label htmlFor="product-select">Producto</Label>
             <select
               id="product-select"

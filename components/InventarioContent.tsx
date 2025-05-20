@@ -8,7 +8,8 @@ import {
   Check,
   Package,
   AlertCircle,
-  TrendingUp
+  TrendingUp,
+  Edit
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
@@ -167,20 +168,29 @@ const InventarioContent: React.FC = () => {
 
   return (
     <main className="flex-1 overflow-y-auto m-3 bg-[#f5f5f5] pb-10">
-      <div className="flex gap-4 mb-6">
+      <div className="flex justify-between gap-4 mb-6">
+        <div className="flex gap-4">
+          <button
+            onClick={() => router.push('/dashboard/inventario/crearproducto')}
+            className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
+          >
+            <Plus className="w-4 h-4" />
+            Crear producto
+          </button>
+          <button
+            onClick={() => router.push('/dashboard/inventario/agregarinventario')}
+            className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
+          >
+            <Plus className="inline-block w-4 h-4 mr-1" />
+            Agregar Inventario
+          </button>
+        </div>
         <button
-          onClick={() => router.push('/dashboard/inventario/crearproducto')}
+          onClick={() => router.push('/dashboard/inventario/editarproductos')}
           className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
         >
-          <Plus className="w-4 h-4" />
-          Crear producto
-        </button>
-        <button
-          onClick={() => router.push('/dashboard/inventario/agregarinventario')}
-          className='px-3 py-3 flex items-center gap-2 rounded-sm bg-[#1366D9] text-white shadow-lg hover:bg-[#0d4ea6] transition-colors'
-        >
-          <Plus className="inline-block w-4 h-4 mr-1" />
-          Agregar Inventario
+          <Edit className="w-4 h-4" />
+          Editar Productos
         </button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
