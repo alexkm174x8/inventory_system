@@ -651,7 +651,8 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
           .single();
         userName = adminData?.name || 'Admin no registrado';
       }
-      
+
+      // Start a transaction
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert([
@@ -670,6 +671,31 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       if (saleError) throw saleError;
       if (!saleData || saleData.length === 0) throw new Error('Failed to create sale');
       const saleId = saleData[0].id;
+
+      // If there's a selected client, update their balance
+      if (selectedClientId) {
+        // Get current client balance
+        const { data: clientData, error: clientError } = await supabase
+          .from('clients')
+          .select('saldo')
+          .eq('id', selectedClientId)
+          .single();
+
+        if (clientError) throw clientError;
+
+        // Calculate new balance (subtract the sale amount)
+        const currentBalance = clientData?.saldo || 0;
+        const newBalance = currentBalance - total;
+
+        // Update client balance
+        const { error: updateError } = await supabase
+          .from('clients')
+          .update({ saldo: newBalance })
+          .eq('id', selectedClientId);
+
+        if (updateError) throw updateError;
+      }
+
       const saleItems = ventaItems.map(item => ({
         sale_id: saleId,
         variant_id: item.variant_id,
@@ -680,56 +706,43 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       const { error: itemsError } = await supabase
         .from('sales_items')
         .insert(saleItems);
-      
+
       if (itemsError) throw itemsError;
-      if (selectedClientId) {
-        const { data: clientData, error: clientFetchError } = await supabase
-          .from('clients')
-          .select('num_compras, total_compras')
-          .eq('id', selectedClientId)
-          .eq('user_id', userId)
+
+      // Update inventory for each item
+      for (const item of ventaItems) {
+        // First get current stock
+        const { data: stockData, error: stockFetchError } = await supabase
+          .from('stock')
+          .select('stock')
+          .eq('variant_id', item.variant_id)
+          .eq('location', locationId)
           .single();
 
-        if (clientFetchError) throw clientFetchError;
-        const { error: clientError } = await supabase
-          .from('clients')
-          .update({
-            num_compras: (clientData?.num_compras || 0) + 1,
-            total_compras: (clientData?.total_compras || 0) + (total < 0 ? 0 : total)
-          })
-          .eq('id', selectedClientId)
-          .eq('user_id', userId);
-        
-        if (clientError) throw clientError;
+        if (stockFetchError) throw stockFetchError;
+
+        // Then update with new stock value
+        const { error: stockError } = await supabase
+          .from('stock')
+          .update({ stock: (stockData?.stock || 0) - item.quantity })
+          .eq('variant_id', item.variant_id)
+          .eq('location', locationId);
+
+        if (stockError) throw stockError;
       }
-      for (const item of ventaItems) {
-        const stockItem = stockItems.find(s => 
-          s.variant_id === item.variant_id && s.location === locationId
-        );
-        
-        if (stockItem) {
-          const { error: stockError } = await supabase
-            .from('stock')
-            .update({ stock: stockItem.stock - item.quantity })
-            .eq('id', stockItem.id);
-          
-          if (stockError) throw stockError;
-        }
-      }
-      
+
       toast({
-        variant: "success",
-        title: "¡Éxito!",
-        description: "Venta confirmada correctamente",
+        title: "Éxito",
+        description: "Venta registrada correctamente",
       });
+
       onClose();
-      
-    } catch (error) {
-      console.error('Error saving sale:', error);
+    } catch (error: any) {
+      console.error('Error creating sale:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Error al guardar la venta",
+        description: error.message || "Error al registrar la venta",
       });
     }
   };
