@@ -279,9 +279,62 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
     }));
   };
 
+  // Add new function to handle price conversion
+  const convertPriceToNumber = (priceStr: string | number): number => {
+    if (typeof priceStr === 'number') {
+      // Ensure we're working with a clean number
+      return Math.round(priceStr * 100) / 100;
+    }
+    // Remove any non-numeric characters except decimal point
+    const cleanPrice = priceStr.replace(/[^\d.]/g, '');
+    // Convert to number and ensure 2 decimal places
+    const num = Number(cleanPrice);
+    return Math.round(num * 100) / 100;
+  };
+
+  // Add effect to monitor price changes
+  useEffect(() => {
+    if (price !== '') {
+      console.log('Price state changed:', { 
+        original: price, 
+        converted: convertPriceToNumber(price),
+        type: typeof price 
+      });
+    }
+  }, [price]);
+
+  // Modify the price input handling
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Only allow numbers and one decimal point
+    if (/^\d*\.?\d{0,2}$/.test(value) || value === '') {
+      // Store as string to preserve exact input
+      setPrice(value);
+    }
+  };
+
+  const handlePriceBlur = () => {
+    if (price !== '') {
+      // Convert to number and back to string to ensure consistent format
+      const formattedPrice = convertPriceToNumber(price).toString();
+      console.log('Price blur:', { 
+        before: price, 
+        after: formattedPrice 
+      });
+      setPrice(formattedPrice);
+    }
+  };
+
   const handleSaveStock = async () => {
     // <-- validación primero -->
     if (!validateForm()) return;
+
+    // Ensure price is properly formatted before saving
+    const finalPrice = price !== '' ? convertPriceToNumber(price) : 0;
+    console.log('Saving price:', { 
+      original: price, 
+      final: finalPrice 
+    });
 
     setIsLoading(true);
     try {
@@ -372,7 +425,7 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
 
         // Only add price to update if it doesn't exist
         if (!stockCheck.price) {
-          updateData.price = parseFloat(price.toString());
+          updateData.price = finalPrice;
         }
 
         console.log("Updating stock with data:", updateData); // Debug log
@@ -394,7 +447,7 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
             variant_id: varianteId,
             location: selectedLocationId,
             stock: parseInt(quantity.toString(), 10),
-            price: parseFloat(price.toString()),
+            price: finalPrice,
             user_id: userId,
             added_at: new Date().toISOString()
           });
@@ -538,12 +591,24 @@ const AddProductToStock: React.FC<AddProductToStockProps> = ({ onSaveStock, onCl
                 id="price"
                 type="number"
                 value={price}
-                onChange={e => setPrice(e.target.value)}
+                onChange={handlePriceChange}
+                onBlur={handlePriceBlur}
                 placeholder="Precio del producto"
                 className="mt-1"
                 disabled={isLoading || existingPrice !== null}
                 min={0.01}
                 step={0.01}
+                // Add onFocus to prevent browser's number input behavior
+                onFocus={(e) => {
+                  // Select all text on focus for easier editing
+                  e.target.select();
+                }}
+                // Prevent browser's default number input behavior
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                  }
+                }}
               />
               <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
                 MXN

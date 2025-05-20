@@ -8,6 +8,9 @@ import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 import { useToast } from "@/components/ui/use-toast";
 import { Download, Calendar, MapPin } from 'lucide-react';
+import { DatePicker } from "@/components/ui/date-picker";
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface SalesReportData {
   totalSales: number;
@@ -36,8 +39,8 @@ interface SalesReportGeneratorProps {
 
 const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }) => {
   const { toast } = useToast();
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState<Date>();
+  const [endDate, setEndDate] = useState<Date>();
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [reportData, setReportData] = useState<SalesReportData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -71,6 +74,10 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
       setLoading(true);
       const userId = await getUserId();
 
+      // Format dates for the database query
+      const formattedStartDate = startDate.toISOString();
+      const formattedEndDate = endDate.toISOString();
+
       // Fetch sales data
       const { data: sales, error } = await supabase
         .from('sales')
@@ -86,8 +93,8 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
           clients(name)
         `)
         .eq('user_id', userId)
-        .gte('created_at', startDate)
-        .lte('created_at', endDate)
+        .gte('created_at', formattedStartDate)
+        .lte('created_at', formattedEndDate)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -191,7 +198,7 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
 
   // PDF Document Component - only create when PDF components are loaded
   const createPDFDocument = () => {
-    if (!pdfComponents || !reportData) return null;
+    if (!pdfComponents || !reportData || !startDate || !endDate) return null;
 
     const { Document, Page, Text, View, StyleSheet } = pdfComponents;
 
@@ -262,7 +269,7 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
               {selectedLocation ? `Ubicación: ${locations[selectedLocation]}` : 'Todas las ubicaciones'}
             </Text>
             <Text style={styles.subtitle}>
-              Del {new Date(startDate).toLocaleDateString()} al {new Date(endDate).toLocaleDateString()}
+              Del {format(startDate, "PPP", { locale: es })} al {format(endDate, "PPP", { locale: es })}
             </Text>
           </View>
 
@@ -374,30 +381,20 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="space-y-2">
           <Label htmlFor="startDate" className="text-base">Fecha Inicial</Label>
-          <div className="relative">
-            <Input
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="pl-9 h-10"
-            />
-            <Calendar className="absolute left-3 top-3 text-gray-400 w-4 h-4" />
-          </div>
+          <DatePicker
+            date={startDate}
+            setDate={setStartDate}
+            className="w-full"
+          />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="endDate" className="text-base">Fecha Final</Label>
-          <div className="relative">
-            <Input
-              id="endDate"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="pl-9 h-10"
-            />
-            <Calendar className="absolute left-3 top-3 text-gray-400 w-4 h-4" />
-          </div>
+          <DatePicker
+            date={endDate}
+            setDate={setEndDate}
+            className="w-full"
+          />
         </div>
 
         <div className="space-y-2">
@@ -433,7 +430,7 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
         {reportData && pdfComponents && (
           <pdfComponents.PDFDownloadLink
             document={createPDFDocument()}
-            fileName={`reporte-ventas-${startDate}-${endDate}.pdf`}
+            fileName={`reporte-ventas-${startDate?.toISOString().split('T')[0]}-${endDate?.toISOString().split('T')[0]}.pdf`}
             className="inline-flex items-center gap-2 px-6 h-10 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
           >
             {({ loading: pdfLoading }: { loading: boolean }) => (

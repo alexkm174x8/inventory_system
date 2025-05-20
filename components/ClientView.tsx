@@ -20,6 +20,40 @@ interface Payment {
   created_at: string;
 }
 
+interface Sale {
+  id: number;
+  total_amount: number;
+  created_at: string;
+  items: {
+    id: number;
+    quantity_sold: number;
+    sale_price: number;
+    variant?: {
+      product?: {
+        name: string;
+      }
+    }
+  }[];
+}
+
+interface DatabaseSaleItem {
+  id: number;
+  quantity_sold: number;
+  sale_price: number;
+  variant: {
+    product: {
+      name: string;
+    }
+  } | null;
+}
+
+interface DatabaseSale {
+  id: number;
+  total_amount: number;
+  created_at: string;
+  sales_items: DatabaseSaleItem[] | null;
+}
+
 interface ClientViewProps {
   onClose: () => void;
 }
@@ -46,6 +80,8 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
   const [paymentDescription, setPaymentDescription] = useState('');
   const [paymentType, setPaymentType] = useState<'payment' | 'charge'>('payment');
   const [updatingBalance, setUpdatingBalance] = useState(false);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [loadingSales, setLoadingSales] = useState(true);
 
   const fetchPayments = async () => {
     try {
@@ -64,6 +100,60 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
         title: "Error",
         description: "Error al cargar el historial de pagos",
       });
+    }
+  };
+
+  const fetchSales = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sales')
+        .select(`
+          id,
+          total_amount,
+          created_at,
+          sales_items (
+            id,
+            quantity_sold,
+            sale_price,
+            variant:variant_id (
+              product:product_id (
+                name
+              )
+            )
+          )
+        `)
+        .eq('client', id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      // Transform the data to match our Sale interface
+      const transformedSales: Sale[] = (data as unknown as DatabaseSale[] || []).map(sale => ({
+        id: sale.id,
+        total_amount: sale.total_amount,
+        created_at: sale.created_at,
+        items: (sale.sales_items || []).map(item => ({
+          id: item.id,
+          quantity_sold: item.quantity_sold,
+          sale_price: item.sale_price,
+          variant: item.variant ? {
+            product: {
+              name: item.variant.product.name
+            }
+          } : undefined
+        }))
+      }));
+      
+      setSales(transformedSales);
+    } catch (err) {
+      console.error('Error fetching sales:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al cargar el historial de ventas",
+      });
+    } finally {
+      setLoadingSales(false);
     }
   };
 
@@ -184,8 +274,8 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
         setClientSaldo(clientData.saldo.toString());
         setLastMonthTotal(lastMonthTotal);
 
-        // Fetch payment history
-        await fetchPayments();
+        // Fetch payment history and sales
+        await Promise.all([fetchPayments(), fetchSales()]);
       } catch (err) {
         console.error('Error al cargar el cliente', err);
         toast({
@@ -350,6 +440,58 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
                   <tr>
                     <td colSpan={4} className="px-6 py-4 text-sm text-[#667085] text-center">
                       No hay movimientos registrados
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Sales History Section */}
+          <div className="mt-8 mb-3">
+            <h2 className="font-semibold">Historial de Ventas</h2>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-[#e6e6e6]">
+              <thead>
+                <tr className="bg-[#f5f5f5] text-center">
+                  <th className="px-3 py-3 text-xs font-medium text-[#667085] uppercase tracking-wider">Fecha</th>
+                  <th className="px-3 py-3 text-xs font-medium text-[#667085] uppercase tracking-wider">Total</th>
+                  <th className="px-3 py-3 text-xs font-medium text-[#667085] uppercase tracking-wider">Detalles</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#e6e6e6] text-center">
+                {loadingSales ? (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-4 text-sm text-[#667085] text-center">
+                      Cargando ventas...
+                    </td>
+                  </tr>
+                ) : sales.length > 0 ? (
+                  sales.map((sale) => (
+                    <tr key={sale.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">
+                        {new Date(sale.created_at).toLocaleDateString('es-MX')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#667085]">
+                        ${parseFloat(sale.total_amount.toString()).toLocaleString('es-MX')} MXN
+                      </td>
+                      <td className="px-6 py-4 text-sm text-[#667085]">
+                        <div className="text-left">
+                          {sale.items.map((item) => (
+                            <div key={item.id} className="mb-1">
+                              {item.quantity_sold}x {item.variant?.product?.name || 'Producto desconocido'} - ${parseFloat(item.sale_price.toString()).toLocaleString('es-MX')} MXN
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-4 text-sm text-[#667085] text-center">
+                      No hay ventas registradas
                     </td>
                   </tr>
                 )}

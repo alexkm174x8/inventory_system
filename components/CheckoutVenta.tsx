@@ -138,18 +138,22 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     const productVariants = variantsByProduct[productId] || [];
     const options = new Set<string>();
     
-    const allVariants = productVariants.filter(variant => {
+    // Get all variants that match the current selections
+    const matchingVariants = productVariants.filter(variant => {
       const attrs = variantAttributes[variant.variant_id];
       if (!attrs) return false;
 
+      // Check if this variant matches all currently selected attributes
+      // except for the one we're currently getting options for
       return Object.entries(currentSelections).every(([name, value]) => {
-        if (!value) return true;
-        if (name === characteristicName) return true;
-        return attrs[name] === value;
+        if (!value) return true; // Skip unselected attributes
+        if (name === characteristicName) return true; // Skip the attribute we're getting options for
+        return attrs[name] === value; // Check if this variant has the selected value
       });
     });
 
-    allVariants.forEach(variant => {
+    // Get all unique values for the requested characteristic from matching variants
+    matchingVariants.forEach(variant => {
       const attrs = variantAttributes[variant.variant_id];
       if (attrs && attrs[characteristicName]) {
         options.add(attrs[characteristicName]);
@@ -222,20 +226,32 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       };
 
       // Create new selections object
-      const newAttributes = {
-        ...currentSelections.attributes,
-        [characteristicName]: value
-      };
-
-      // Clear subsequent selections if they're no longer valid
-      const characteristicNames = Object.keys(variantAttributes[productVariants[0]?.variant_id] || {});
-      const currentIndex = characteristicNames.indexOf(characteristicName);
+      const newAttributes = { ...currentSelections.attributes };
       
-      if (currentIndex !== -1) {
-        // Clear all selections after the current one
-        characteristicNames.slice(currentIndex + 1).forEach(name => {
-          delete newAttributes[name];
-        });
+      if (value === "__CLEAR__") {
+        // If clear option selected, remove this attribute and all subsequent ones
+        delete newAttributes[characteristicName];
+        
+        // Clear all subsequent selections
+        const characteristicNames = Object.keys(variantAttributes[productVariants[0]?.variant_id] || {});
+        const currentIndex = characteristicNames.indexOf(characteristicName);
+        if (currentIndex !== -1) {
+          characteristicNames.slice(currentIndex).forEach(name => {
+            delete newAttributes[name];
+          });
+        }
+      } else {
+        // Set the new value
+        newAttributes[characteristicName] = value;
+        
+        // Clear subsequent selections
+        const characteristicNames = Object.keys(variantAttributes[productVariants[0]?.variant_id] || {});
+        const currentIndex = characteristicNames.indexOf(characteristicName);
+        if (currentIndex !== -1) {
+          characteristicNames.slice(currentIndex + 1).forEach(name => {
+            delete newAttributes[name];
+          });
+        }
       }
 
       // Validate new selections
@@ -254,6 +270,17 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       };
     });
   }, [productVariants, variantAttributes, validateVariantSelection, getVariantIdFromAttributes]);
+
+  const handleClearAllAttributes = useCallback((productId: number) => {
+    setProductSelections(prev => ({
+      ...prev,
+      [productId]: {
+        attributes: {},
+        variantId: '',
+        validation: { isValid: true, message: '' }
+      }
+    }));
+  }, []);
 
   // All useEffect hooks last
   useEffect(() => {
@@ -624,7 +651,8 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
           .single();
         userName = adminData?.name || 'Admin no registrado';
       }
-      
+
+      // Start a transaction
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert([
@@ -643,6 +671,31 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       if (saleError) throw saleError;
       if (!saleData || saleData.length === 0) throw new Error('Failed to create sale');
       const saleId = saleData[0].id;
+
+      // If there's a selected client, update their balance
+      if (selectedClientId) {
+        // Get current client balance
+        const { data: clientData, error: clientError } = await supabase
+          .from('clients')
+          .select('saldo')
+          .eq('id', selectedClientId)
+          .single();
+
+        if (clientError) throw clientError;
+
+        // Calculate new balance (subtract the sale amount)
+        const currentBalance = clientData?.saldo || 0;
+        const newBalance = currentBalance - total;
+
+        // Update client balance
+        const { error: updateError } = await supabase
+          .from('clients')
+          .update({ saldo: newBalance })
+          .eq('id', selectedClientId);
+
+        if (updateError) throw updateError;
+      }
+
       const saleItems = ventaItems.map(item => ({
         sale_id: saleId,
         variant_id: item.variant_id,
@@ -653,56 +706,43 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       const { error: itemsError } = await supabase
         .from('sales_items')
         .insert(saleItems);
-      
+
       if (itemsError) throw itemsError;
-      if (selectedClientId) {
-        const { data: clientData, error: clientFetchError } = await supabase
-          .from('clients')
-          .select('num_compras, total_compras')
-          .eq('id', selectedClientId)
-          .eq('user_id', userId)
+
+      // Update inventory for each item
+      for (const item of ventaItems) {
+        // First get current stock
+        const { data: stockData, error: stockFetchError } = await supabase
+          .from('stock')
+          .select('stock')
+          .eq('variant_id', item.variant_id)
+          .eq('location', locationId)
           .single();
 
-        if (clientFetchError) throw clientFetchError;
-        const { error: clientError } = await supabase
-          .from('clients')
-          .update({
-            num_compras: (clientData?.num_compras || 0) + 1,
-            total_compras: (clientData?.total_compras || 0) + (total < 0 ? 0 : total)
-          })
-          .eq('id', selectedClientId)
-          .eq('user_id', userId);
-        
-        if (clientError) throw clientError;
+        if (stockFetchError) throw stockFetchError;
+
+        // Then update with new stock value
+        const { error: stockError } = await supabase
+          .from('stock')
+          .update({ stock: (stockData?.stock || 0) - item.quantity })
+          .eq('variant_id', item.variant_id)
+          .eq('location', locationId);
+
+        if (stockError) throw stockError;
       }
-      for (const item of ventaItems) {
-        const stockItem = stockItems.find(s => 
-          s.variant_id === item.variant_id && s.location === locationId
-        );
-        
-        if (stockItem) {
-          const { error: stockError } = await supabase
-            .from('stock')
-            .update({ stock: stockItem.stock - item.quantity })
-            .eq('id', stockItem.id);
-          
-          if (stockError) throw stockError;
-        }
-      }
-      
+
       toast({
-        variant: "success",
-        title: "¡Éxito!",
-        description: "Venta confirmada correctamente",
+        title: "Éxito",
+        description: "Venta registrada correctamente",
       });
+
       onClose();
-      
-    } catch (error) {
-      console.error('Error saving sale:', error);
+    } catch (error: any) {
+      console.error('Error creating sale:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Error al guardar la venta",
+        description: error.message || "Error al registrar la venta",
       });
     }
   };
@@ -716,8 +756,8 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   }
 
   return (
-    <div className="flex">
-      <div className="w-3/4 p-8 bg-white rounded-lg h-auto">
+    <div className="flex flex-col lg:flex-row">
+      <div className="w-full lg:w-3/4 p-4 lg:p-8 bg-white rounded-lg h-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-lg font-semibold capitalize">Nueva venta</h1>
           {locationInfo && (
@@ -790,7 +830,19 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                 <div key={productId} className="mb-8">
                   <Card className="border border-gray-300 rounded-lg w-full hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
-                      <h2 className="text-xl font-semibold mb-3 capitalize">{product.name}</h2>
+                      <div className="flex justify-between items-center mb-3">
+                        <h2 className="text-xl font-semibold capitalize">{product.name}</h2>
+                        {Object.keys(selection.attributes).length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleClearAllAttributes(Number(productId))}
+                            className="text-gray-500 hover:text-gray-700"
+                          >
+                            Limpiar selecciones
+                          </Button>
+                        )}
+                      </div>
                       
                       {/* Attribute dropdowns */}
                       <div className="grid grid-cols-2 gap-4 mb-4">
@@ -823,6 +875,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                                   } />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  {selection.attributes[characteristicName] && (
+                                    <SelectItem value="__CLEAR__">
+                                      <span className="text-gray-500">Limpiar selección</span>
+                                    </SelectItem>
+                                  )}
                                   {getAvailableOptions(Number(productId), characteristicName, selection.attributes).map(option => (
                                     <SelectItem key={option} value={option}>
                                       {option}
@@ -942,7 +999,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
           </Button>
         </div>
       </div>
-      <div className="w-1/4 p-4 bg-white mx-4 h-full rounded-lg shadow-sm">
+      <div className="w-full lg:w-1/4 p-4 bg-white lg:mx-4 mt-4 lg:mt-0 h-full rounded-lg shadow-sm">
         <div className="sticky top-4">
           <h1 className="text-lg font-semibold capitalize mb-4">Resumen de venta</h1>
           
@@ -998,53 +1055,35 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
               <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3">
                 {ventaItems.map(item => (
                   <div key={item.id} className="flex flex-col bg-gray-50 rounded-lg p-3">
-                    {/* Product header */}
+                    {/* Product header with delete button */}
                     <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900">
-                              {item.name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {item.type.join(' - ')}
-                            </p>
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className="flex flex-col">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {item.name}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {item.type.join(' - ')}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-600">
+                              Cantidad: {item.quantity}
+                            </span>
+                            <span className="text-xs text-gray-600">
+                              • ${item.unitPrice.toFixed(2)} c/u
+                            </span>
                           </div>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => eliminarDelCarrito(item.variant_id)}
-                        className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </button>
-                    </div>
-
-                    {/* Product details */}
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => disminuir(item.variant_id)}
+                      <div className="flex flex-col items-end gap-1">
+                        <button 
+                          onClick={() => eliminarDelCarrito(item.variant_id)}
                           className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-                          disabled={item.quantity <= 1}
                         >
-                          <Minus className="w-3 h-3 text-gray-600" />
+                          <Trash2 className="w-4 h-4 text-red-600" />
                         </button>
-                        <span className="w-8 text-center">{item.quantity}</span>
-                        <button
-                          onClick={() => aumentar(item.variant_id)}
-                          className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-                          disabled={item.quantity >= getAvailableStock(item.variant_id)}
-                        >
-                          <Plus className="w-3 h-3 text-gray-600" />
-                        </button>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-gray-900">
-                          MXN ${(item.unitPrice * item.quantity).toFixed(2)}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          ${item.unitPrice.toFixed(2)} c/u
+                        <p className="text-sm font-medium text-gray-900">
+                          ${(item.unitPrice * item.quantity).toFixed(2)}
                         </p>
                       </div>
                     </div>
