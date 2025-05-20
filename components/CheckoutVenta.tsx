@@ -743,8 +743,8 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   }
 
   return (
-    <div className="flex">
-      <div className="w-3/4 p-8 bg-white rounded-lg h-auto">
+    <div className="flex flex-col lg:flex-row">
+      <div className="w-full lg:w-3/4 p-4 lg:p-8 bg-white rounded-lg h-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-lg font-semibold capitalize">Nueva venta</h1>
           {locationInfo && (
@@ -986,7 +986,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
           </Button>
         </div>
       </div>
-      <div className="w-1/4 p-4 bg-white mx-4 h-full rounded-lg shadow-sm">
+      <div className="w-full lg:w-1/4 p-4 bg-white lg:mx-4 mt-4 lg:mt-0 h-full rounded-lg shadow-sm">
         <div className="sticky top-4">
           <h1 className="text-lg font-semibold capitalize mb-4">Resumen de venta</h1>
           
@@ -1042,53 +1042,35 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
               <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3">
                 {ventaItems.map(item => (
                   <div key={item.id} className="flex flex-col bg-gray-50 rounded-lg p-3">
-                    {/* Product header */}
+                    {/* Product header with delete button */}
                     <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900">
-                              {item.name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {item.type.join(' - ')}
-                            </p>
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className="flex flex-col">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {item.name}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {item.type.join(' - ')}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-600">
+                              Cantidad: {item.quantity}
+                            </span>
+                            <span className="text-xs text-gray-600">
+                              • ${item.unitPrice.toFixed(2)} c/u
+                            </span>
                           </div>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => eliminarDelCarrito(item.variant_id)}
-                        className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </button>
-                    </div>
-
-                    {/* Product details */}
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => disminuir(item.variant_id)}
+                      <div className="flex flex-col items-end gap-1">
+                        <button 
+                          onClick={() => eliminarDelCarrito(item.variant_id)}
                           className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-                          disabled={item.quantity <= 1}
                         >
-                          <Minus className="w-3 h-3 text-gray-600" />
+                          <Trash2 className="w-4 h-4 text-red-600" />
                         </button>
-                        <span className="w-8 text-center">{item.quantity}</span>
-                        <button
-                          onClick={() => aumentar(item.variant_id)}
-                          className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-                          disabled={item.quantity >= getAvailableStock(item.variant_id)}
-                        >
-                          <Plus className="w-3 h-3 text-gray-600" />
-                        </button>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-gray-900">
-                          MXN ${(item.unitPrice * item.quantity).toFixed(2)}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          ${item.unitPrice.toFixed(2)} c/u
+                        <p className="text-sm font-medium text-gray-900">
+                          ${(item.unitPrice * item.quantity).toFixed(2)}
                         </p>
                       </div>
                     </div>
