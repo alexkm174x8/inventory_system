@@ -10,7 +10,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Minus } from 'lucide-react';
+import { Plus, Minus, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Payment {
   id: number;
@@ -82,6 +93,7 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
   const [updatingBalance, setUpdatingBalance] = useState(false);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loadingSales, setLoadingSales] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchPayments = async () => {
     try {
@@ -219,6 +231,47 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
     }
   };
 
+  const handleDeleteClient = async () => {
+    try {
+      setIsDeleting(true);
+      const userId = await getUserId();
+
+      // Delete client payments first (due to foreign key constraint)
+      const { error: paymentsError } = await supabase
+        .from('client_payments')
+        .delete()
+        .eq('client_id', id)
+        .eq('user_id', userId);
+
+      if (paymentsError) throw paymentsError;
+
+      // Delete the client
+      const { error: clientError } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
+
+      if (clientError) throw clientError;
+
+      toast({
+        title: "Cliente eliminado",
+        description: "El cliente ha sido eliminado exitosamente",
+      });
+
+      router.push('/dashboard/clientes');
+    } catch (err) {
+      console.error('Error deleting client:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al eliminar el cliente",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   useEffect(() => {
     const fetchCliente = async () => {
       try {
@@ -306,9 +359,38 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
         <CardContent>
           <div className="border-b border-slate-200 pb-2 flex items-center justify-between mt-3 flex-wrap gap-2">
             <h1 className="text-lg font-semibold capitalize">Cliente</h1>
-            <p className="text-md font-light flex items-center gap-2">
-              ID# {clientId}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-md font-light flex items-center gap-2">
+                ID# {clientId}
+              </p>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Eliminar Cliente
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta acción no se puede deshacer. Se eliminará permanentemente el cliente
+                      y todo su historial de pagos. Las ventas asociadas se mantendrán en el sistema.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteClient}
+                      disabled={isDeleting}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      {isDeleting ? 'Eliminando...' : 'Eliminar'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
           <div className="mt-3 mb-3">
             <h2 className="font-semibold">Detalles principales</h2>
