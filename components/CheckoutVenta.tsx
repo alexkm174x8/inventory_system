@@ -613,6 +613,22 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         attributes: variantAttributes[variantId] || {}
       }];
     });
+
+    // Clear the selections for this product after successfully adding to cart
+    setProductSelections(prev => ({
+      ...prev,
+      [productId]: {
+        attributes: {},
+        variantId: '',
+        validation: { isValid: true, message: '' }
+      }
+    }));
+
+    // Reset quantity to 1 for this variant
+    setCantidades(prev => ({
+      ...prev,
+      [variantId]: 1
+    }));
   };
   const eliminarDelCarrito = (variantId: number) => {
     setVentaItems(prev => prev.filter(item => item.variant_id !== variantId));
