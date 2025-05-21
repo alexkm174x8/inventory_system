@@ -111,6 +111,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<string[]>([]);
   const [productSelections, setProductSelections] = useState<ProductSelections>({});
+  const [isConfirmingSale, setIsConfirmingSale] = useState(false);
 
   // All useMemo hooks next
   const variantsByProduct = useMemo(() => {
@@ -630,6 +631,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     }
 
     try {
+      setIsConfirmingSale(true);
       const userId = await getUserId();
       const role = await getUserRole();
       let userName = '';
@@ -744,6 +746,8 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         title: "Error",
         description: error.message || "Error al registrar la venta",
       });
+    } finally {
+      setIsConfirmingSale(false);
     }
   };
 
@@ -1150,11 +1154,18 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
 
               {/* Confirm sale button */}
               <button 
-                className="w-full h-12 mt-6 rounded-md bg-[#1366D9] text-white text-sm font-semibold shadow-sm hover:bg-[#0d4ea6] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="w-full h-12 mt-6 rounded-md bg-[#1366D9] text-white text-sm font-semibold shadow-sm hover:bg-[#0d4ea6] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 onClick={confirmarVenta}
-                disabled={ventaItems.length === 0}
+                disabled={ventaItems.length === 0 || isConfirmingSale}
               >
-                Confirmar venta
+                {isConfirmingSale ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Procesando venta...
+                  </>
+                ) : (
+                  'Confirmar venta'
+                )}
               </button>
             </div>
           )}
