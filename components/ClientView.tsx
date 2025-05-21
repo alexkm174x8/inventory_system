@@ -117,6 +117,7 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
 
   const fetchSales = async () => {
     try {
+      const userId = await getUserId();
       const { data, error } = await supabase
         .from('sales')
         .select(`
@@ -135,6 +136,7 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
           )
         `)
         .eq('client', id)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -156,6 +158,27 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
         }))
       }));
       
+      // Calculate actual sales statistics from the fetched sales
+      const totalSales = transformedSales.length;
+      const totalAmount = transformedSales.reduce((sum, sale) => sum + sale.total_amount, 0);
+      
+      // Update the client's sales statistics in the database
+      const { error: updateError } = await supabase
+        .from('clients')
+        .update({
+          num_compras: totalSales,
+          total_compras: totalAmount
+        })
+        .eq('id', id)
+        .eq('user_id', userId);
+
+      if (updateError) {
+        console.error('Error updating client statistics:', updateError);
+      }
+
+      // Update local state
+      setClientComprasNum(totalSales.toString());
+      setClientComprasTot(totalAmount.toString());
       setSales(transformedSales);
     } catch (err) {
       console.error('Error fetching sales:', err);

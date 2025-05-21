@@ -674,25 +674,33 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       if (!saleData || saleData.length === 0) throw new Error('Failed to create sale');
       const saleId = saleData[0].id;
 
-      // If there's a selected client, update their balance
+      // If there's a selected client, update their balance and sales statistics
       if (selectedClientId) {
-        // Get current client balance
+        // Get current client data
         const { data: clientData, error: clientError } = await supabase
           .from('clients')
-          .select('saldo')
+          .select('saldo, num_compras, total_compras')
           .eq('id', selectedClientId)
           .single();
 
         if (clientError) throw clientError;
 
-        // Calculate new balance (subtract the sale amount)
+        // Calculate new values
         const currentBalance = clientData?.saldo || 0;
         const newBalance = currentBalance - total;
+        const currentNumCompras = clientData?.num_compras || 0;
+        const currentTotalCompras = clientData?.total_compras || 0;
+        const newNumCompras = currentNumCompras + 1;
+        const newTotalCompras = currentTotalCompras + (total < 0 ? 0 : total);
 
-        // Update client balance
+        // Update client data
         const { error: updateError } = await supabase
           .from('clients')
-          .update({ saldo: newBalance })
+          .update({ 
+            saldo: newBalance,
+            num_compras: newNumCompras,
+            total_compras: newTotalCompras
+          })
           .eq('id', selectedClientId);
 
         if (updateError) throw updateError;
