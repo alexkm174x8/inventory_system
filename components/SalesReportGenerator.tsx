@@ -47,6 +47,34 @@ interface SalesReportData {
   }[];
 }
 
+// Add new interfaces for the database types
+interface Product {
+  name: string;
+}
+
+interface Variant {
+  product?: Product;
+}
+
+interface SalesItem {
+  variant?: Variant;
+  quantity_sold: number;
+  sale_price: number;
+}
+
+interface Sale {
+  id: number;
+  created_at: string;
+  location: number;
+  salesman?: string;
+  total_amount: number;
+  discount_percentage?: number;
+  sales_items?: SalesItem[];
+  clients?: {
+    name: string;
+  };
+}
+
 interface SalesReportGeneratorProps {
   locations: Record<number, string>;
 }
@@ -118,13 +146,13 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
       const filteredSales = sales;
 
       // Process sales data for detailed view
-      const detailedSales = filteredSales.map(sale => ({
+      const detailedSales = filteredSales.map((sale: Sale) => ({
         id: sale.id,
         date: new Date(sale.created_at).toLocaleString('es-MX'),
         clientName: sale.clients?.name || 'Sin cliente',
         location: locations[sale.location] || 'Ubicación desconocida',
         salesman: sale.salesman || 'Vendedor no especificado',
-        items: sale.sales_items?.map(item => ({
+        items: sale.sales_items?.map((item: SalesItem) => ({
           name: item.variant?.product?.name || 'Producto desconocido',
           quantity: item.quantity_sold,
           price: item.sale_price,
