@@ -687,7 +687,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
 
         // Calculate new values
         const currentBalance = clientData?.saldo || 0;
-        const newBalance = currentBalance - total;
+        const newBalance = currentBalance + (total < 0 ? 0 : total);
         const currentNumCompras = clientData?.num_compras || 0;
         const currentTotalCompras = clientData?.total_compras || 0;
         const newNumCompras = currentNumCompras + 1;

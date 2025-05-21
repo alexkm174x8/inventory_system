@@ -206,7 +206,7 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
       setUpdatingBalance(true);
       const userId = await getUserId();
       const amount = parseFloat(paymentAmount);
-      const newBalance = parseFloat(clientSaldo) + (paymentType === 'payment' ? amount : -amount);
+      const newBalance = parseFloat(clientSaldo) + (paymentType === 'payment' ? -amount : amount);
 
       // Start a transaction
       const { error: paymentError } = await supabase
