@@ -111,6 +111,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<string[]>([]);
   const [productSelections, setProductSelections] = useState<ProductSelections>({});
+  const [isConfirmingSale, setIsConfirmingSale] = useState(false);
 
   // All useMemo hooks next
   const variantsByProduct = useMemo(() => {
@@ -612,6 +613,22 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         attributes: variantAttributes[variantId] || {}
       }];
     });
+
+    // Clear the selections for this product after successfully adding to cart
+    setProductSelections(prev => ({
+      ...prev,
+      [productId]: {
+        attributes: {},
+        variantId: '',
+        validation: { isValid: true, message: '' }
+      }
+    }));
+
+    // Reset quantity to 1 for this variant
+    setCantidades(prev => ({
+      ...prev,
+      [variantId]: 1
+    }));
   };
   const eliminarDelCarrito = (variantId: number) => {
     setVentaItems(prev => prev.filter(item => item.variant_id !== variantId));
@@ -630,6 +647,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     }
 
     try {
+      setIsConfirmingSale(true);
       const userId = await getUserId();
       const role = await getUserRole();
       let userName = '';
@@ -672,25 +690,33 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
       if (!saleData || saleData.length === 0) throw new Error('Failed to create sale');
       const saleId = saleData[0].id;
 
-      // If there's a selected client, update their balance
+      // If there's a selected client, update their balance and sales statistics
       if (selectedClientId) {
-        // Get current client balance
+        // Get current client data
         const { data: clientData, error: clientError } = await supabase
           .from('clients')
-          .select('saldo')
+          .select('saldo, num_compras, total_compras')
           .eq('id', selectedClientId)
           .single();
 
         if (clientError) throw clientError;
 
-        // Calculate new balance (subtract the sale amount)
+        // Calculate new values
         const currentBalance = clientData?.saldo || 0;
-        const newBalance = currentBalance - total;
+        const newBalance = currentBalance + (total < 0 ? 0 : total);
+        const currentNumCompras = clientData?.num_compras || 0;
+        const currentTotalCompras = clientData?.total_compras || 0;
+        const newNumCompras = currentNumCompras + 1;
+        const newTotalCompras = currentTotalCompras + (total < 0 ? 0 : total);
 
-        // Update client balance
+        // Update client data
         const { error: updateError } = await supabase
           .from('clients')
-          .update({ saldo: newBalance })
+          .update({ 
+            saldo: newBalance,
+            num_compras: newNumCompras,
+            total_compras: newTotalCompras
+          })
           .eq('id', selectedClientId);
 
         if (updateError) throw updateError;
@@ -744,6 +770,8 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         title: "Error",
         description: error.message || "Error al registrar la venta",
       });
+    } finally {
+      setIsConfirmingSale(false);
     }
   };
 
@@ -1150,11 +1178,18 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
 
               {/* Confirm sale button */}
               <button 
-                className="w-full h-12 mt-6 rounded-md bg-[#1366D9] text-white text-sm font-semibold shadow-sm hover:bg-[#0d4ea6] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="w-full h-12 mt-6 rounded-md bg-[#1366D9] text-white text-sm font-semibold shadow-sm hover:bg-[#0d4ea6] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 onClick={confirmarVenta}
-                disabled={ventaItems.length === 0}
+                disabled={ventaItems.length === 0 || isConfirmingSale}
               >
-                Confirmar venta
+                {isConfirmingSale ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Procesando venta...
+                  </>
+                ) : (
+                  'Confirmar venta'
+                )}
               </button>
             </div>
           )}

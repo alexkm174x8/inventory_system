@@ -74,7 +74,9 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
     try {
       setLoading(true);
       const userId = await getUserId();
-      const { error } = await supabase
+      
+      // Start a transaction to create the client and add initial balance
+      const { data: clientData, error: clientError } = await supabase
         .from('clients')
         .insert([
           {
@@ -85,10 +87,33 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
             num_compras: 0,
             total_compras: 0,
             user_id: userId,
-        }])
+          }
+        ])
+        .select()
+        .single();
 
-      if (error)
-        throw error
+      if (clientError) throw clientError;
+      if (!clientData) throw new Error('Failed to create client');
+
+      // If there's an initial balance, add it as a charge in the payment history
+      if (clientSaldo && parseFloat(clientSaldo) > 0) {
+        const { error: paymentError } = await supabase
+          .from('client_payments')
+          .insert([
+            {
+              client_id: clientData.id,
+              amount: parseFloat(clientSaldo),
+              type: 'charge',
+              description: 'Saldo inicial',
+              user_id: userId,
+            }
+          ]);
+
+        if (paymentError) {
+          console.error('Error adding initial balance to payment history:', paymentError);
+          // Don't throw here, as the client was created successfully
+        }
+      }
 
       onSave();
     } catch (err) {
@@ -175,7 +200,7 @@ const AddClient: React.FC<AddClientProps> = ({ onClose, onSave }) => {
                 }`}
                 value={clientSaldo}
                 onChange={(e) => setClientSaldo(e.target.value)}
-                placeholder="Saldo inicial del cliente (puede ser negativo)"
+                placeholder="Saldo inicial del cliente"
               />
               {errors.saldo && (
                 <p className="text-red-500 text-xs mt-1">

@@ -7,9 +7,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
 import { useToast } from "@/components/ui/use-toast";
-import { Download, Calendar, MapPin } from 'lucide-react';
-import { DatePicker } from "@/components/ui/date-picker";
-import { format } from 'date-fns';
+import { Download, Calendar, MapPin, Filter } from 'lucide-react';
 import { es } from 'date-fns/locale';
 
 interface SalesReportData {
@@ -31,6 +29,50 @@ interface SalesReportData {
     count: number;
     amount: number;
   }[];
+  detailedSales: {
+    id: number;
+    date: string;
+    clientName: string;
+    location: string;
+    salesman: string;
+    items: {
+      name: string;
+      quantity: number;
+      price: number;
+      total: number;
+    }[];
+    subtotal: number;
+    discount: number;
+    total: number;
+  }[];
+}
+
+// Add new interfaces for the database types
+interface Product {
+  name: string;
+}
+
+interface Variant {
+  product?: Product;
+}
+
+interface SalesItem {
+  variant?: Variant;
+  quantity_sold: number;
+  sale_price: number;
+}
+
+interface Sale {
+  id: number;
+  created_at: string;
+  location: number;
+  salesman?: string;
+  total_amount: number;
+  discount_percentage?: number;
+  sales_items?: SalesItem[];
+  clients?: {
+    name: string;
+  };
 }
 
 interface SalesReportGeneratorProps {
@@ -78,7 +120,7 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
       const formattedStartDate = startDate.toISOString();
       const formattedEndDate = endDate.toISOString();
 
-      // Fetch sales data
+      // Fetch sales data with more detailed information
       const { data: sales, error } = await supabase
         .from('sales')
         .select(`
@@ -93,6 +135,7 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
           clients(name)
         `)
         .eq('user_id', userId)
+        .eq('location', selectedLocation)
         .gte('created_at', formattedStartDate)
         .lte('created_at', formattedEndDate)
         .order('created_at', { ascending: true });
@@ -100,9 +143,25 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
       if (error) throw error;
 
       // Filter by location if selected
-      const filteredSales = selectedLocation 
-        ? sales.filter(sale => sale.location === selectedLocation)
-        : sales;
+      const filteredSales = sales;
+
+      // Process sales data for detailed view
+      const detailedSales = filteredSales.map((sale: Sale) => ({
+        id: sale.id,
+        date: new Date(sale.created_at).toLocaleString('es-MX'),
+        clientName: sale.clients?.name || 'Sin cliente',
+        location: locations[sale.location] || 'Ubicación desconocida',
+        salesman: sale.salesman || 'Vendedor no especificado',
+        items: sale.sales_items?.map((item: SalesItem) => ({
+          name: item.variant?.product?.name || 'Producto desconocido',
+          quantity: item.quantity_sold,
+          price: item.sale_price,
+          total: item.quantity_sold * item.sale_price
+        })) || [],
+        subtotal: sale.sales_items?.reduce((sum, item) => sum + (item.quantity_sold * item.sale_price), 0) || 0,
+        discount: sale.discount_percentage || 0,
+        total: sale.total_amount
+      }));
 
       // Process sales data
       const salesByDate: Record<string, { count: number; amount: number }> = {};
@@ -182,6 +241,7 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
         })),
         topProducts,
         salesByClient: topClients,
+        detailedSales
       });
 
     } catch (err) {
@@ -258,6 +318,36 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
         backgroundColor: '#f8f8f8',
         borderRadius: 4,
       },
+      saleItem: {
+        marginBottom: 10,
+        padding: 8,
+        backgroundColor: '#f8f8f8',
+        borderRadius: 4,
+      },
+      saleHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 5,
+        borderBottom: '1 solid #ddd',
+        paddingBottom: 5,
+      },
+      saleItems: {
+        marginLeft: 10,
+        marginTop: 5,
+      },
+      saleItemRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 2,
+      },
+      saleTotal: {
+        marginTop: 5,
+        borderTop: '1 solid #ddd',
+        paddingTop: 5,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        fontWeight: 'bold',
+      },
     });
 
     return (
@@ -269,7 +359,7 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
               {selectedLocation ? `Ubicación: ${locations[selectedLocation]}` : 'Todas las ubicaciones'}
             </Text>
             <Text style={styles.subtitle}>
-              Del {format(startDate, "PPP", { locale: es })} al {format(endDate, "PPP", { locale: es })}
+              Del {startDate?.toLocaleDateString('es-MX')} al {endDate?.toLocaleDateString('es-MX')}
             </Text>
           </View>
 
@@ -371,6 +461,45 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
               ))}
             </View>
           </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Detalle de Ventas</Text>
+            {reportData.detailedSales.map((sale, index) => (
+              <View key={index} style={styles.saleItem}>
+                <View style={styles.saleHeader}>
+                  <Text>Venta #{sale.id}</Text>
+                  <Text>{sale.date}</Text>
+                </View>
+                <Text>Cliente: {sale.clientName}</Text>
+                <Text>Ubicación: {sale.location}</Text>
+                <Text>Vendedor: {sale.salesman}</Text>
+                
+                <View style={styles.saleItems}>
+                  {sale.items.map((item, itemIndex) => (
+                    <View key={itemIndex} style={styles.saleItemRow}>
+                      <Text>{item.quantity}x {item.name}</Text>
+                      <Text>${item.total.toLocaleString('es-MX')} MXN</Text>
+                    </View>
+                  ))}
+                </View>
+
+                <View style={styles.saleTotal}>
+                  <Text>Subtotal:</Text>
+                  <Text>${sale.subtotal.toLocaleString('es-MX')} MXN</Text>
+                </View>
+                {sale.discount > 0 && (
+                  <View style={styles.saleItemRow}>
+                    <Text>Descuento ({sale.discount}%):</Text>
+                    <Text>-${((sale.subtotal * sale.discount) / 100).toLocaleString('es-MX')} MXN</Text>
+                  </View>
+                )}
+                <View style={styles.saleTotal}>
+                  <Text>Total:</Text>
+                  <Text>${sale.total.toLocaleString('es-MX')} MXN</Text>
+                </View>
+              </View>
+            ))}
+          </View>
         </Page>
       </Document>
     );
@@ -381,20 +510,34 @@ const SalesReportGenerator: React.FC<SalesReportGeneratorProps> = ({ locations }
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="space-y-2">
           <Label htmlFor="startDate" className="text-base">Fecha Inicial</Label>
-          <DatePicker
-            date={startDate}
-            setDate={setStartDate}
-            className="w-full"
-          />
+          <div className="relative">
+            <input
+              type="date"
+              id="startDate"
+              value={startDate ? startDate.toISOString().split('T')[0] : ''}
+              onChange={(e) => setStartDate(e.target.value ? new Date(e.target.value) : undefined)}
+              className={`w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                !startDate ? 'text-gray-400' : 'text-gray-900'
+              }`}
+            />
+            <Filter className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
+          </div>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="endDate" className="text-base">Fecha Final</Label>
-          <DatePicker
-            date={endDate}
-            setDate={setEndDate}
-            className="w-full"
-          />
+          <div className="relative">
+            <input
+              type="date"
+              id="endDate"
+              value={endDate ? endDate.toISOString().split('T')[0] : ''}
+              onChange={(e) => setEndDate(e.target.value ? new Date(e.target.value) : undefined)}
+              className={`w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                !endDate ? 'text-gray-400' : 'text-gray-900'
+              }`}
+            />
+            <Filter className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
+          </div>
         </div>
 
         <div className="space-y-2">

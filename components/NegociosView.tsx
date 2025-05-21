@@ -45,6 +45,8 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchNegocio = async () => {
@@ -87,10 +89,18 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
   }, [id, router, toast]);
   const handleDelete = async () => {
     if (!id) return;
+    
+    if (deleteConfirmation !== negocioName) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "El nombre del negocio no coincide",
+      });
+      return;
+    }
 
     setIsDeleting(true);
     try {
-      // Delete the admin using our new endpoint
       const response = await fetch('/api/delete-admin', {
         method: 'POST',
         headers: {
@@ -98,6 +108,7 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
         },
         body: JSON.stringify({
           adminId: id,
+          businessName: negocioName,
         }),
       });
 
@@ -121,6 +132,8 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
       });
     } finally {
       setIsDeleting(false);
+      setDeleteConfirmation('');
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -275,7 +288,7 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
               </AlertDialogContent>
             </AlertDialog>
 
-            <AlertDialog>
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" className="bg-red-500 hover:bg-red-600 text-white">
                   Eliminar
@@ -284,15 +297,31 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta acción no se puede deshacer. Se eliminará permanentemente el negocio {negocioName} y todos sus datos asociados.
-                  </AlertDialogDescription>
+                  <div className="space-y-4">
+                    <AlertDialogDescription>
+                      Esta acción no se puede deshacer. Se eliminará permanentemente el negocio {negocioName} y todos sus datos asociados.
+                    </AlertDialogDescription>
+                    <div className="mt-4">
+                      <p className="text-sm font-medium mb-2">Para confirmar, escribe el nombre del negocio:</p>
+                      <Input
+                        value={deleteConfirmation}
+                        onChange={(e) => setDeleteConfirmation(e.target.value)}
+                        placeholder="Escribe el nombre del negocio"
+                        className="mt-2"
+                      />
+                    </div>
+                  </div>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogCancel onClick={() => {
+                    setDeleteConfirmation('');
+                    setIsDeleteDialogOpen(false);
+                  }}>
+                    Cancelar
+                  </AlertDialogCancel>
                   <Button
                     onClick={handleDelete}
-                    disabled={isDeleting}
+                    disabled={isDeleting || deleteConfirmation !== negocioName}
                     className="bg-red-500 hover:bg-red-600 text-white"
                   >
                     {isDeleting ? 'Eliminando...' : 'Eliminar'}

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Printer, FileText } from 'lucide-react';
 import LoginLogo from './login-logo';
 import { supabase } from '@/lib/supabase';
-import { getUserId } from '@/lib/userId';
+import { getUserId, getUserRole } from '@/lib/userId';
 import { useRouter } from 'next/navigation';
 import LocationSelector from './locationSelection';
 import SalesReportGenerator from './SalesReportGenerator';
@@ -110,6 +110,21 @@ const VentasContent: React.FC = () => {
   const [clients, setClients] = useState<Record<number, string>>({});
   const [openLocations, setOpenLocations] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const role = await getUserRole();
+        setIsAdmin(role === 'admin' || role === 'superadmin');
+      } catch (error) {
+        console.error('Error checking user role:', error);
+        setIsAdmin(false);
+      }
+    };
+    
+    checkUserRole();
+  }, []);
 
   const fetchLocations = async () => {
     try {
@@ -573,26 +588,30 @@ const VentasContent: React.FC = () => {
             <Filter className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
           </div>
 
-          <Button
-            onClick={() => setShowReportModal(true)}
-            variant="outline"
-            className="flex items-center gap-2 px-3 py-2 h-10"
-          >
-            <FileText className="w-4 h-4" />
-            Reporte
-          </Button>
+          {isAdmin && (
+            <Button
+              onClick={() => setShowReportModal(true)}
+              variant="outline"
+              className="flex items-center gap-2 px-3 py-2 h-10"
+            >
+              <FileText className="w-4 h-4" />
+              Reporte
+            </Button>
+          )}
         </div>
       </div>
       
       {/* Report Generator Modal */}
-      <Dialog open={showReportModal} onOpenChange={setShowReportModal}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Generador de Reportes de Ventas</DialogTitle>
-          </DialogHeader>
-          <SalesReportGenerator locations={locations} />
-        </DialogContent>
-      </Dialog>
+      {isAdmin && (
+        <Dialog open={showReportModal} onOpenChange={setShowReportModal}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Generador de Reportes de Ventas</DialogTitle>
+            </DialogHeader>
+            <SalesReportGenerator locations={locations} />
+          </DialogContent>
+        </Dialog>
+      )}
       
       {loading ? (
         <div className="flex justify-center items-center h-64">
