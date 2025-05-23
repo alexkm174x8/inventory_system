@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   BarChart2, Archive, Users, CircleDollarSign,
-  Store, Settings, LogOut, Bell, ChevronDown, SquareUserRound, UserPlus, Menu as MenuIcon
+  Store, LogOut, SquareUserRound, Menu as MenuIcon
 } from 'lucide-react';
 import { getUserId, getUserRole } from '@/lib/userId';
 import { supabase } from '@/lib/supabase';
@@ -247,7 +247,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                   : ''}
               </div>
               <button className="ml-2 flex items-center text-sm">
-                {userName} <ChevronDown className="ml-1 h-4 w-4" />
+                {userName}
               </button>
             </div>
           </div>

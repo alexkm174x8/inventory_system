@@ -3,7 +3,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu as MenuIcon, LogOut, ChevronDown, Bell, Building2 } from 'lucide-react';
+import { Menu as MenuIcon, LogOut, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function SuperAdminShell({ children }: { children: ReactNode }) {
@@ -146,7 +146,6 @@ export default function SuperAdminShell({ children }: { children: ReactNode }) {
           </button>
           <h1 className="text-2xl font-bold">{pageTitle}</h1>
           <div className="flex items-center space-x-4">
-            <Bell />
             <div className="flex items-center">
               <div className="h-8 w-8 rounded-full bg-[#007aff] text-white flex items-center justify-center">
                 {userName
@@ -157,7 +156,7 @@ export default function SuperAdminShell({ children }: { children: ReactNode }) {
                   .substring(0, 2)}
               </div>
               <button className="ml-2 flex items-center text-sm">
-                {userName} <ChevronDown className="ml-1 h-4 w-4" />
+                {userName}
               </button>
             </div>
           </div>
