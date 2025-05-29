@@ -87,7 +87,7 @@ const AddSucursal: React.FC<AddSucursalProps> = ({ onClose, onSave }) => {
             Agregar nueva sucursal
           </h1>
 
-          <div className="mb-4">
+          <div className="my-4">
             <Label htmlFor="location-name">Nombre</Label>
             <Input
               id="location-name"

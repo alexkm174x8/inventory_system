@@ -1,13 +1,21 @@
 "use client"
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Minus, Image, Trash2, Search, Filter, Building, Users, ShoppingCart } from 'lucide-react';
+import { Plus, Minus, Image, Trash2, Search, Filter, Building, Users, ShoppingCart, AlertCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '@/lib/supabase';
 import { getUserId, getUserRole } from '@/lib/userId';
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface ProductVariant {
   variant_id: number; 
@@ -112,6 +120,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   const [categories, setCategories] = useState<string[]>([]);
   const [productSelections, setProductSelections] = useState<ProductSelections>({});
   const [isConfirmingSale, setIsConfirmingSale] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   // All useMemo hooks next
   const variantsByProduct = useMemo(() => {
@@ -636,7 +645,13 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   const subtotal = ventaItems.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
   const descuentoAplicado = descuento ? subtotal * (descuento / 100) : 0;
   const total = subtotal - descuentoAplicado;
+
+  const handleConfirmSale = () => {
+    setShowConfirmation(true);
+  };
+
   const confirmarVenta = async () => {
+    setShowConfirmation(false); // Close the confirmation modal
     if (ventaItems.length === 0) {
       toast({
         variant: "destructive",
@@ -1179,7 +1194,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
               {/* Confirm sale button */}
               <button 
                 className="w-full h-12 mt-6 rounded-md bg-[#1366D9] text-white text-sm font-semibold shadow-sm hover:bg-[#0d4ea6] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                onClick={confirmarVenta}
+                onClick={handleConfirmSale}
                 disabled={ventaItems.length === 0 || isConfirmingSale}
               >
                 {isConfirmingSale ? (
@@ -1195,6 +1210,95 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
           )}
         </div>
       </div>
+
+      {/* Add the confirmation dialog */}
+      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-blue-600" />
+              Confirmar Venta
+            </DialogTitle>
+            <DialogDescription>
+              Por favor, revisa los detalles de la venta antes de confirmar.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            {/* Client Info */}
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-gray-600">Cliente:</p>
+              <p className="font-bold text-lg text-blue-900">
+                {clients.find(c => c.id === selectedClientId)?.name || 'Cliente no seleccionado'}
+              </p>
+            </div>
+
+            {/* Sale Summary */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-700">Resumen de la venta:</p>
+              <div className="max-h-[200px] overflow-y-auto space-y-2">
+                {ventaItems.map(item => (
+                  <div key={item.id} className="flex justify-between text-sm bg-gray-50 p-2 rounded">
+                    <div className="flex-1">
+                      <p className="font-medium">{item.name}</p>
+                      <p className="text-gray-600 text-xs">
+                        {item.quantity} x ${item.unitPrice.toFixed(2)}
+                      </p>
+                    </div>
+                    <p className="font-medium">
+                      ${(item.quantity * item.unitPrice).toFixed(2)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Totals */}
+            <div className="border-t pt-3 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Subtotal:</span>
+                <span className="font-medium">MXN ${subtotal.toFixed(2)}</span>
+              </div>
+              {descuento > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Descuento ({descuento}%):</span>
+                  <span className="font-medium">-MXN ${descuentoAplicado.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-base font-bold pt-2 border-t">
+                <span>Total:</span>
+                <span className="text-[#1366D9]">
+                  MXN ${(total < 0 ? 0 : total).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmation(false)}
+              className="flex-1 sm:flex-none"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={confirmarVenta}
+              className="flex-1 sm:flex-none bg-[#1366D9] hover:bg-[#0d4ea6]"
+              disabled={isConfirmingSale}
+            >
+              {isConfirmingSale ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                  Procesando...
+                </>
+              ) : (
+                'Confirmar y procesar venta'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
