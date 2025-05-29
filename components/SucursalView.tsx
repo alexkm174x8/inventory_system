@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
 import { getUserId } from '@/lib/userId';
-import { Package, ShoppingCart, Users, MapPin, ArrowLeft, Trash2 } from 'lucide-react';
+import { Package, Users, MapPin, Trash2 } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import {
   AlertDialog,
@@ -19,6 +19,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface SucursalViewProps {
   onClose?: () => void;
@@ -33,6 +43,11 @@ const SucursalView: React.FC<SucursalViewProps> = ({ onClose }) => {
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [availableLocations, setAvailableLocations] = useState<{ id: number; name: string }[]>([]);
+  const [selectedTransferLocation, setSelectedTransferLocation] = useState<string>('');
+  const [transferring, setTransferring] = useState(false);
+  const [transferType, setTransferType] = useState<'stock' | 'employees' | 'both'>('both');
 
   useEffect(() => {
     if (!id) return;
@@ -75,12 +90,86 @@ const SucursalView: React.FC<SucursalViewProps> = ({ onClose }) => {
     fetchSucursal();
   }, [id, router, toast]);
 
+  const fetchAvailableLocations = async () => {
+    try {
+      const userId = await getUserId();
+      const { data, error } = await supabase
+        .from('locations')
+        .select('id, name')
+        .eq('user_id', userId)
+        .neq('id', id);
+
+      if (error) throw error;
+      setAvailableLocations(data || []);
+    } catch (err) {
+      console.error('Error fetching locations:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al cargar las sucursales disponibles",
+      });
+    }
+  };
+
+  const handleTransfer = async () => {
+    if (!selectedTransferLocation) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Por favor selecciona una sucursal destino",
+      });
+      return;
+    }
+
+    try {
+      setTransferring(true);
+      const userId = await getUserId();
+      const targetLocationId = parseInt(selectedTransferLocation);
+
+      if (transferType === 'stock' || transferType === 'both') {
+        const { error: stockError } = await supabase
+          .from('stock')
+          .update({ location: targetLocationId })
+          .eq('location', id)
+          .eq('user_id', userId);
+
+        if (stockError) throw stockError;
+      }
+
+      if (transferType === 'employees' || transferType === 'both') {
+        const { error: employeeError } = await supabase
+          .from('employees')
+          .update({ location_id: targetLocationId })
+          .eq('location_id', id)
+          .eq('user_id', userId);
+
+        if (employeeError) throw employeeError;
+      }
+
+      toast({
+        title: "Éxito",
+        description: "Transferencia completada correctamente",
+      });
+
+      await handleDeleteLocation();
+    } catch (err) {
+      console.error('Error during transfer:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error durante la transferencia. Por favor, intenta de nuevo.",
+      });
+    } finally {
+      setTransferring(false);
+      setShowTransferDialog(false);
+    }
+  };
+
   const handleDeleteLocation = async () => {
     try {
       setIsDeleting(true);
       const userId = await getUserId();
 
-      // First, check if there are any sales associated with this location
       const { data: sales, error: salesError } = await supabase
         .from('sales')
         .select('id')
@@ -93,30 +182,37 @@ const SucursalView: React.FC<SucursalViewProps> = ({ onClose }) => {
         toast({
           variant: "destructive",
           title: "Error",
-          description: "No se puede eliminar la sucursal porque tiene ventas asociadas. Elimine las ventas primero.",
+          description: "No se puede eliminar la sucursal porque tiene ventas asociadas. Por favor, elimina las ventas primero.",
         });
         return;
       }
 
-      // Check if there are any inventory items in this location
-      const { data: inventory, error: inventoryError } = await supabase
-        .from('location_inventory')
-        .select('id')
-        .eq('location', id)
-        .eq('user_id', userId);
+      const [inventoryResult, employeesResult] = await Promise.all([
+        supabase
+          .from('stock')
+          .select('id')
+          .eq('location', id)
+          .eq('user_id', userId),
+        supabase
+          .from('employees')
+          .select('id')
+          .eq('location_id', id)
+          .eq('user_id', userId)
+      ]);
 
-      if (inventoryError) throw inventoryError;
+      if (inventoryResult.error) throw inventoryResult.error;
+      if (employeesResult.error) throw employeesResult.error;
 
-      if (inventory && inventory.length > 0) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "No se puede eliminar la sucursal porque tiene inventario. Transfiera o elimine el inventario primero.",
-        });
+      const hasInventory = inventoryResult.data && inventoryResult.data.length > 0;
+      const hasEmployees = employeesResult.data && employeesResult.data.length > 0;
+
+      if (hasInventory || hasEmployees) {
+        setTransferType(hasInventory && hasEmployees ? 'both' : hasInventory ? 'stock' : 'employees');
+        await fetchAvailableLocations();
+        setShowTransferDialog(true);
         return;
       }
 
-      // If no sales or inventory, proceed with deletion
       const { error: deleteError } = await supabase
         .from('locations')
         .delete()
@@ -229,6 +325,75 @@ const SucursalView: React.FC<SucursalViewProps> = ({ onClose }) => {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transferir antes de eliminar</DialogTitle>
+            <DialogDescription>
+              Esta sucursal tiene {transferType === 'both' ? 'inventario y empleados' : 
+                transferType === 'stock' ? 'inventario' : 'empleados'} que deben ser transferidos antes de eliminarla.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label>Selecciona la sucursal destino</Label>
+              <Select
+                value={selectedTransferLocation}
+                onValueChange={setSelectedTransferLocation}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una sucursal" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableLocations.map(location => (
+                    <SelectItem key={location.id} value={location.id.toString()}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="text-sm text-gray-500">
+              {transferType === 'both' && (
+                <p>Se transferirán todos los empleados e inventario a la sucursal seleccionada.</p>
+              )}
+              {transferType === 'stock' && (
+                <p>Se transferirá todo el inventario a la sucursal seleccionada.</p>
+              )}
+              {transferType === 'employees' && (
+                <p>Se transferirán todos los empleados a la sucursal seleccionada.</p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowTransferDialog(false)}
+              disabled={transferring}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleTransfer}
+              disabled={transferring || !selectedTransferLocation}
+              className="bg-[#1366D9] hover:bg-[#0d4ea6]"
+            >
+              {transferring ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                  Transferiendo...
+                </>
+              ) : (
+                'Transferir y eliminar'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

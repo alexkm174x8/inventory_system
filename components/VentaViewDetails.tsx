@@ -144,7 +144,7 @@ const VentaViewDetails: React.FC<VentaViewDetailsProps> = ({ venta, onClose }) =
       if (saleError) throw saleError;
 
       toast({
-        title: "Venta eliminada",
+        title: "¡Éxito!",
         description: "La venta ha sido eliminada exitosamente",
       });
 
@@ -154,7 +154,7 @@ const VentaViewDetails: React.FC<VentaViewDetailsProps> = ({ venta, onClose }) =
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Error al eliminar la venta",
+        description: "Error al eliminar la venta. Por favor, intenta de nuevo.",
       });
     } finally {
       setIsDeleting(false);

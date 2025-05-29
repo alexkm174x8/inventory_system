@@ -185,7 +185,7 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Error al cargar el historial de ventas",
+        description: "Error al cargar el historial de ventas. Por favor, intenta de nuevo.",
       });
     } finally {
       setLoadingSales(false);
@@ -197,7 +197,7 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Por favor ingrese un monto válido",
+        description: "Por favor ingresa un monto válido para el pago.",
       });
       return;
     }
@@ -239,7 +239,7 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
       await fetchPayments();
 
       toast({
-        title: "Éxito",
+        title: "¡Éxito!",
         description: paymentType === 'payment' ? "Pago registrado correctamente" : "Cargo aplicado correctamente",
       });
     } catch (err) {
@@ -278,7 +278,7 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
       if (clientError) throw clientError;
 
       toast({
-        title: "Cliente eliminado",
+        title: "¡Éxito!",
         description: "El cliente ha sido eliminado exitosamente",
       });
 
@@ -288,7 +288,7 @@ const ClientView: React.FC<ClientViewProps> = ({ onClose }) => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Error al eliminar el cliente",
+        description: "Error al eliminar el cliente. Por favor, intenta de nuevo.",
       });
     } finally {
       setIsDeleting(false);

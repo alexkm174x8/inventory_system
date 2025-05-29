@@ -294,7 +294,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: errorMessage,
+        description: errorMessage || "Error desconocido al eliminar el producto. Por favor, intenta de nuevo.",
       });
     } finally {
       console.log('=== Frontend Delete Process Complete ===');

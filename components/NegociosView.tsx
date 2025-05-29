@@ -47,6 +47,7 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
   const [passwordError, setPasswordError] = useState('');
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchNegocio = async () => {
@@ -87,55 +88,8 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
 
     fetchNegocio();
   }, [id, router, toast]);
-  const handleDelete = async () => {
-    if (!id) return;
-    
-    if (deleteConfirmation !== negocioName) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "El nombre del negocio no coincide",
-      });
-      return;
-    }
-
-    setIsDeleting(true);
-    try {
-      const response = await fetch('/api/delete-admin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          adminId: id,
-          businessName: negocioName,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al eliminar el negocio');
-      }
-
-      toast({
-        title: "Éxito",
-        description: "Negocio eliminado exitosamente",
-      });
-      router.push('/dashboard-superadmin/negocios');
-    } catch (err: any) {
-      console.error('Error al eliminar negocio:', err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message || "Error al eliminar el negocio. Por favor, intenta de nuevo.",
-      });
-    } finally {
-      setIsDeleting(false);
-      setDeleteConfirmation('');
-      setIsDeleteDialogOpen(false);
-    }
-  };
+  
+  
 
   const handleResetPassword = async () => {
     if (!id) return;
@@ -193,6 +147,58 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
       });
     } finally {
       setIsResettingPassword(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (deleteConfirmation !== negocioName) {
+      setDeleteError('El nombre del negocio no coincide');
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      console.log('Attempting to delete business with ID:', id);
+      const response = await fetch(`/api/delete-business?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('Delete response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al eliminar el negocio');
+      }
+
+      toast({
+        title: "Éxito",
+        description: `Negocio ${data.deletedBusiness?.name || ''} eliminado exitosamente`,
+      });
+
+      // Close dialog and navigate
+      setIsDeleteDialogOpen(false);
+      if (onClose) {
+        onClose();
+        router.refresh();
+      } else {
+        router.push('/dashboard-superadmin/negocios');
+      }
+    } catch (error: any) {
+      console.error('Error deleting business:', error);
+      const errorMessage = error.message || 'Error desconocido al eliminar el negocio';
+      setDeleteError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -310,6 +316,9 @@ const NegociosView: React.FC<NegociosViewProps> = ({ onClose }) => {
                         className="mt-2"
                       />
                     </div>
+                    {deleteError && (
+                      <p className="text-sm text-red-500 mt-2">{deleteError}</p>
+                    )}
                   </div>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

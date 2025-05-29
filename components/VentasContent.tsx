@@ -446,6 +446,7 @@ const VentasContent: React.FC = () => {
                 padding: 5mm;
                 font-family: 'Courier New', monospace;
                 font-size: 12px;
+                font-weight: bold;
               }
               .ticket {
                 width: 100%;
@@ -453,6 +454,17 @@ const VentasContent: React.FC = () => {
               .header {
                 text-align: center;
                 margin-bottom: 10px;
+              }
+              .header h2 {
+                font-size: 14px;
+                margin-bottom: 5px;
+              }
+              .header h3 {
+                font-size: 13px;
+                margin-bottom: 5px;
+              }
+              .header p {
+                margin: 2px 0;
               }
               .divider {
                 border-top: 1px dashed #000;
@@ -469,6 +481,9 @@ const VentasContent: React.FC = () => {
                 text-align: center;
                 margin-top: 20px;
                 font-size: 10px;
+              }
+              .item, .totals, .footer, p, div {
+                font-weight: bold !important;
               }
             }
           </style>
