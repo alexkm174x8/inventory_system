@@ -2,6 +2,18 @@ import { createBrowserClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  // Get the current path
+  const path = request.nextUrl.pathname
+
+  // Skip middleware for static files and images
+  if (
+    path.startsWith('/_next/') ||
+    path === '/favicon.ico' ||
+    /\.(png|jpg|jpeg|gif)$/.test(path)
+  ) {
+    return NextResponse.next()
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -35,9 +47,6 @@ export async function middleware(request: NextRequest) {
   )
 
   const { data: { session } } = await supabase.auth.getSession()
-
-  // Get the current path
-  const path = request.nextUrl.pathname
 
   // Define public paths that don't require authentication
   const publicPaths = ['/']
@@ -107,13 +116,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    // Match all paths
+    '/:path*',
   ],
 } 

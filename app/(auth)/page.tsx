@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 // Import icons (assuming you use lucide-react, common with shadcn/ui)
 import { Eye, EyeOff, Loader2 } from "lucide-react" 
+import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -97,7 +98,15 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-white p-4">
       <div className="flex w-full max-w-4xl flex-col items-center justify-center gap-8 md:flex-row md:items-start md:gap-16">
         <div className="flex flex-col items-center">
-          <LoginLogo size={300} />
+          <Image 
+            src="/logo.jpg" 
+            alt="Logo" 
+            width={400} 
+            height={400}
+            priority
+            className="w-auto h-auto"
+            style={{ maxWidth: '400px' }}
+          />
         </div>
         <div className="w-full max-w-md space-y-6">
           <div className="space-y-2 text-center md:text-left">
