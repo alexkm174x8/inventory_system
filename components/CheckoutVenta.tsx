@@ -475,7 +475,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
         // Initialize quantities for each variant
         const initialQuantities: Record<number, number> = {};
         variantsData.forEach((variant: ProductVariant) => {
-          initialQuantities[variant.variant_id] = 1;
+          initialQuantities[variant.variant_id] = 0;
         });
         setCantidades(initialQuantities);
         
@@ -542,11 +542,11 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     }));
   };
 
-  // Decrease quantity (minimum 1)
+  // Decrease quantity (minimum 0)
   const disminuir = (variantId: number) => {
     setCantidades(prev => ({
       ...prev,
-      [variantId]: prev[variantId] > 1 ? prev[variantId] - 1 : 1
+      [variantId]: prev[variantId] > 1 ? prev[variantId] - 1 : 0
     }));
   };
 
@@ -636,7 +636,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
     // Reset quantity to 1 for this variant
     setCantidades(prev => ({
       ...prev,
-      [variantId]: 1
+      [variantId]: 0
     }));
   };
   const eliminarDelCarrito = (variantId: number) => {
@@ -984,13 +984,13 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                                 selectedVariant
                                   ? selectedStock <= 0
                                     ? 0
-                                    : cantidades[selectedVariant.variant_id] || 1
+                                    : cantidades[selectedVariant.variant_id] || 0
                                   : ''
                               }
                               onChange={(e) => {
                                 if (!selectedVariant) return;
                                 let valor = Number(e.target.value);
-                                if (valor < 1) valor = 1;
+                                if (valor < 0) valor = 0;
                                 if (valor > selectedStock) valor = selectedStock;
                                 setCantidades((prev) => ({ ...prev, [selectedVariant.variant_id]: valor }));
                               }}
@@ -1004,7 +1004,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                               disabled={
                                 !selectedVariant ||
                                 selectedStock <= 0 ||
-                                (cantidades[selectedVariant?.variant_id] || 1) >= selectedStock
+                                (cantidades[selectedVariant?.variant_id] || 0) >= selectedStock
                               }
                             >
                               <Plus className="w-4 h-4" />
@@ -1029,6 +1029,10 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
                               : 'Agregar al carrito'}
                           </button>
                         </div>
+
+
+
+    
                       </div>
                     </CardContent>
                   </Card>
