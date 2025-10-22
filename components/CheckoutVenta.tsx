@@ -121,6 +121,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   const [productSelections, setProductSelections] = useState<ProductSelections>({});
   const [isConfirmingSale, setIsConfirmingSale] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<string>('efectivo');
 
   // All useMemo hooks next
   const variantsByProduct = useMemo(() => {
@@ -530,6 +531,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
   
   const getCharacteristicNames = (variantId: number): string[] => {
     const attrs = variantAttributes[variantId];
+    if (!attrs) return [];
     return Object.keys(attrs);
   };
 
@@ -696,7 +698,8 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
             created_at: new Date().toISOString(),
             location: locationId,
             client: selectedClientId,
-            salesman: userName
+            salesman: userName,
+            payment_method: paymentMethod
           }
         ])
         .select();
@@ -1052,6 +1055,7 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
           
           {/* Client selection */}
           <div className="mb-6">
+            
             <label htmlFor="client" className="text-sm font-medium mb-2 flex items-center">
               <Users className="w-4 h-4 mr-1 text-gray-500" />
               Cliente
@@ -1089,6 +1093,23 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
               <p className="text-sm text-gray-500">No hay clientes disponibles</p>
             )}
           </div>
+
+            {/* Payment method selection */}
+            <div className="mb-6">
+              <label htmlFor="paymentMethod" className="text-sm font-medium mb-2 flex items-center">
+                💳 Método de pago
+              </label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar método de pago" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="efectivo">Efectivo</SelectItem>
+                  <SelectItem value="transferencia">Transferencia</SelectItem>
+                  <SelectItem value="tarjeta">Pago con tarjeta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
           {/* Cart items */}
           {ventaItems.length === 0 ? (
@@ -1235,6 +1256,12 @@ const CheckoutVenta: React.FC<CheckoutVentaProps> = ({ onClose, locationId }) =>
               <p className="font-bold text-lg text-blue-900">
                 {clients.find(c => c.id === selectedClientId)?.name || 'Cliente no seleccionado'}
               </p>
+            </div>
+
+            {/* Payment Method Info */}
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-gray-600">Método de pago:</p>
+              <p className="font-bold text-base text-blue-900 capitalize">{paymentMethod}</p>
             </div>
 
             {/* Sale Summary */}
